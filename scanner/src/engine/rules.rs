@@ -18,6 +18,7 @@
 
 use crate::jsonr::J;
 use crate::engine::model::{Meta, Nation};
+use crate::names::{self, Sym};
 use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::{py_float, py_sum, trunc_int};
@@ -307,7 +308,7 @@ fn str_j(v: &J) -> String {
 pub struct World {
     pub year: i64,
     pub great_powers: FxSet<String>,
-    pub at_war: FxSet<String>,
+    pub at_war: FxSet<Sym>,
 }
 
 /// `modrules.great_powers(meta, mod)`.
@@ -326,10 +327,10 @@ pub fn save_world(meta: &Meta, m: &Mod) -> World {
             continue;
         }
         if !war.fighting.is_empty() {
-            at_war.extend(war.fighting.iter().cloned());
+            at_war.extend(war.fighting.iter().copied());
         } else {
-            at_war.extend(war.attackers.iter().cloned());
-            at_war.extend(war.defenders.iter().cloned());
+            at_war.extend(war.attackers.iter().copied());
+            at_war.extend(war.defenders.iter().copied());
         }
     }
     let head = meta.date.split('.').next().unwrap_or("");
@@ -454,7 +455,7 @@ impl<'a> Asker<'a> {
                     }
                     "war" => match self.world {
                         None => return Ok(None),
-                        Some(w) => w.at_war.contains(&nat.tag),
+                        Some(w) => w.at_war.contains(&names::intern_str(&nat.tag)),
                     },
                     "is_greater_power" => match self.world {
                         None => return Ok(None),

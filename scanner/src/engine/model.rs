@@ -28,17 +28,17 @@ pub type R<T> = Result<T, ()>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Side {
-    pub country: String,
-    pub leader: String,
+    pub country: Sym,
+    pub leader: Sym,
     pub losses: i64,
-    pub units: OMap<String, i64>,
+    pub units: OMap<Sym, i64>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Battle {
-    pub name: String,
+    pub name: Sym,
     pub location: i64,
-    pub date: Option<String>,
+    pub date: Option<Sym>,
     pub attacker_won: bool,
     pub attacker: Option<Side>,
     pub defender: Option<Side>,
@@ -46,38 +46,38 @@ pub struct Battle {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Goal {
-    pub casus_belli: String,
-    pub actor: String,
-    pub receiver: String,
+    pub casus_belli: Sym,
+    pub actor: Sym,
+    pub receiver: Sym,
     pub province: i64,
-    pub added: String,
+    pub added: Sym,
     pub fulfilled: bool,
 }
 
 /// `original_wargoal`: the four fields `read_war` keeps of it.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct FirstGoal {
-    pub casus_belli: String,
-    pub actor: String,
-    pub receiver: String,
+    pub casus_belli: Sym,
+    pub actor: Sym,
+    pub receiver: Sym,
     pub province: i64,
 }
 
 /// `readwar.read_war`'s dict.
 #[derive(Clone, Debug, PartialEq)]
 pub struct War {
-    pub name: String,
+    pub name: Sym,
     pub active: bool,
-    pub start: String,
-    pub end: String,
-    pub original_attacker: String,
-    pub original_defender: String,
-    pub attackers: Vec<String>,
-    pub defenders: Vec<String>,
-    pub fighting: Vec<String>,
+    pub start: Sym,
+    pub end: Sym,
+    pub original_attacker: Sym,
+    pub original_defender: Sym,
+    pub attackers: Vec<Sym>,
+    pub defenders: Vec<Sym>,
+    pub fighting: Vec<Sym>,
     /// (date, tag, on the attacking side)
-    pub joins: Vec<(String, String, bool)>,
-    pub leaves: Vec<(String, String, bool)>,
+    pub joins: Vec<(Sym, Sym, bool)>,
+    pub leaves: Vec<(Sym, Sym, bool)>,
     pub goals: Vec<Goal>,
     pub goal: FirstGoal,
     pub battles: Vec<Battle>,
@@ -444,8 +444,8 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
 
 // ------------------------------------------------------- wars and market
 
-fn s(b: &[u8]) -> String {
-    latin1(b)
+fn s(b: &[u8]) -> Sym {
+    names::intern(b)
 }
 
 fn side(v: Option<&V>) -> R<Option<Side>> {
@@ -487,7 +487,8 @@ fn battle(raw: &V, when: Option<&[u8]>, out: &mut Vec<Battle>) -> R<()> {
     Ok(())
 }
 
-fn sorted_names(mut v: Vec<Vec<u8>>) -> Vec<String> {
+/// Sorted on the bytes, which orders latin-1 names as their text is ordered.
+fn sorted_names(mut v: Vec<Vec<u8>>) -> Vec<Sym> {
     v.sort();
     v.dedup();
     v.iter().map(|x| s(x)).collect()
@@ -589,7 +590,7 @@ pub fn read_war(v: &V, active: bool) -> R<Option<War>> {
             fighting.push(clause::name(Some(tag))?);
         }
     }
-    let event = |list: &Vec<(Vec<u8>, Vec<u8>, bool)>| -> Vec<(String, String, bool)> {
+    let event = |list: &Vec<(Vec<u8>, Vec<u8>, bool)>| -> Vec<(Sym, Sym, bool)> {
         list.iter().map(|(d, w, a)| (s(d), s(w), *a)).collect()
     };
     let one_side = |attacking: bool| -> Vec<Vec<u8>> {
