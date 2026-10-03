@@ -600,6 +600,67 @@ buy about 0.03 s of a warm rebuild's 0.9 s; the estimates in the table
 the cost. For the empty-cache run the model stages are still where the churn is
 (08 especially). The re-ranking is in `STATUS.md`.
 
+### 4.5 After task 08 (pops and cultures)
+
+`c28648c` with the probe rebased on it (`speed/model-probe.diff` applies to
+it); the same probes. Before is 4.4 above; expected is task 08's file.
+
+**Allocations, empty cache, per save** (`-j 1`):
+
+| stage | before | after | |
+|---|---|---|---|
+| `read_provinces` | 40,451 | 22,014 | -18,400: a pop's type and culture were looked up and copied into four Counters |
+| `model::build` | 30,039 | 11,811 | -18,200: the Group and mobilizable-pop Strings |
+| `prepare` | 14,541 | 4,497 | -10,000: the snapshot's `word` made a String a call |
+| `read_countries` | 38,073 | 37,520 | -550: accepted cultures |
+| `read_rest`, store | 68,992, 2,361 | unchanged | |
+| read + build | 177,600 | 140,300 | |
+
+**The cache load, warm:** 17,167 allocations a save to 15,565 (4.55 M to
+4.12 M).
+
+**Live allocations, whole process:**
+
+| phase | before | after |
+|---|---|---|
+| pass one done, empty cache | 3,953,770; 413.4 MB | 3,529,954; 394.1 MB |
+| pass one done, warm | 3,947,098; 311.1 MB | 3,522,499; 295.9 MB |
+
+**What is held:** `nat.pop_by_culture` 343,712 to 35,104 allocations (7.0 MB),
+`nat.pop_by_type` 127,324 to 31,177, `accepted_cultures` 25,621 to 16,116, the
+nation's seven names 84,552 to 73,983; a whole `PreNation` 2.35 M to 1.92 M
+(123.7 to 110.8 MB). What is left of the pops is 66,000 allocations in two
+`OMap`s and the per-state counters; flattening them would take about 2,500 of
+the 140,000 a save. **No container was flattened**: the counts do not pay for
+it. The dense tables for `strata` and `culture_groups` were not made either:
+a row looks a stratum up 27 times (285,000 string lookups in the campaign, about
+11 ms of thread time of a finish that takes 400), and `culture_groups` is asked
+once a trigger.
+
+**The clocks** (alternating rounds of the build before this stage against this
+one, six each, medians; the stage clocks are one thread's time with the probe,
+two rounds each, in the hour the 07 numbers were taken):
+
+| | before | after | expected |
+|---|---|---|---|
+| empty-cache pass one | 1.457 s | 1.379 s (-0.078) | 1.47 s to 1.30-1.40 s |
+| empty-cache wall | 2.216 s | 2.150 s (-0.066) | |
+| warm rebuild wall | 0.862 s | 0.861 s | hardly changes |
+| warm pass one | 0.140 s | 0.134 s | |
+| `model::build`, one thread's time | 575 ms | 300 ms | |
+| `prepare` | 1,288 ms | 1,052 ms | |
+| `read_provinces` | 5,344 ms | 4,862 ms | |
+
+**Read it as:** the first run gained 0.078 s, inside the expected range, and
+the warm rebuild did not move, as expected. `build` halved and the
+provinces' stage lost a tenth, which is the churn the task file named;
+`read_provinces` is still 18.3 ms of a save's 49 (37%), countries 10.6 (22%),
+reading the file and finding its blocks 5.0 + 4.9 (20%), `prepare` 4.0 (8%),
+the wars and market 3.7 (7.5%), the store 1.6, `build` 1.1. The wars and market
+are still half of all pass-one allocations (68,992 of 140,300) and 7.5% of the
+time: allocation counts and time are far apart in this reader too, which is
+what section 6's order was built on.
+
 ## 5. The design
 
 ### 5.1 What it does, in one paragraph

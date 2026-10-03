@@ -898,3 +898,95 @@ were brought to the new numbers.
   entry follows). The re-profile of the warm rebuild and 09 are the other
   candidates above. Not pushed; bundle `~/vic2saveanalyzer-backup-<hash>.bundle`
   named for this notes commit, the one after `8210b2b`.
+
+## 2026-10-03, task 08 done on the Windows PC (pops and cultures)
+
+- **Made on the Windows PC**, in the same session as task 07, at the
+  maintainer's word ("run task 8 here, once the mutation run is done").
+  Commits, not pushed: `c28648c` pops and cultures on `Sym` (containers as they
+  were); `087f684` the probe diff rebased; `da45417` two mutations; `5592ba4` the
+  rebuilt exe; the notes commit follows. INTERNALS.md: "Pops and cultures on
+  `Sym`, 2026-10-03". MODEL.md has a new section 4.5 with every number.
+- **What was done**: `Counter` keyed by `Sym`, the provinces looking each pop's
+  type and culture up once and handing the name to the four counters,
+  `Interner` gone, `Nation.pop_by_type`/`pop_by_culture`/`accepted_cultures`/
+  `primary_culture`, `Group`, `mobilizable_pops`, `Kept`, `Spec.mob_types`,
+  `PopulationRules.accepted`, `Country.accepted_cultures` and the snapshot's
+  words as `Sym`; sorts on `names::cmp`; text only where it is written. The
+  cache format is unchanged (a `Sym` is written as its text).
+- **Verification** of `c28648c`: suite 28 of 28; the real campaign against
+  `speed/runs/11e1f21` (`cmpruns.py --payload`: IDENTICAL); the same with
+  `VIC2_ENGINE_NAMES_SHIFT=7` (IDENTICAL); `warmshift.py` clean; `cargo test`
+  10 of 10. Timed before the commit this time.
+
+| | expected (estimate) | measured |
+|---|---|---|
+| empty-cache pass one | 1.47 s to about 1.30-1.40 s | 1.457 s to 1.379 s (-0.078) |
+| empty-cache run | | 2.216 s to 2.150 s (-0.066) |
+| warm rebuild | hardly changes | 0.862 s to 0.861 s; warm pass one 0.140 s to 0.134 s |
+| allocations a save, empty cache | about 50,000 of the 221,000 made and dropped | 177,600 to 140,300 (-37,300; `read_provinces` -18,400, `build` -18,200, `prepare` -10,000) |
+| live after pass one | | 3.95 M to 3.53 M |
+| `model::build`, one thread's time | | 575 ms to 300 ms |
+
+  (Six alternating rounds, medians, `speed/abwarm.py`, the build before task 08
+  against `c28648c`; `--empty` for the empty-cache runs. The stage clocks are
+  the probe's, two rounds each, one thread.)
+
+- **Gained under 0.05 s?** No: 0.078 s, inside what the task file expected, so
+  the rule to re-rank 10 and 11 is not triggered by the number. I re-ranked
+  anyway, from the stage clocks (per save, one thread: provinces 18.3 ms of 49,
+  countries 10.6, reading the file 5.0 and finding its blocks 4.9, `prepare` 4.0,
+  wars and market 3.7, store 1.6, `build` 1.1), because they say more than 07's:
+  - **Not a model task: the provinces' reader itself** (37%, 22,000
+    allocations a save left; by reading the code, not measured apart: a
+    `Vec<Pop>` and a `cores` Vec a province, the nation's key copied
+    (`owner.to_vec()`) a province, six allocations a state in the counters),
+    and **mapping the saves on Windows** (reading and finding blocks, 20%). These
+    are task 13's list and are worth more to the first run than 10 or 11.
+  - **10 (units and ships)**: in the countries (22%), of which units and ships
+    are part; the allocations are 0.88 M, but the first two stages show time
+    follows less than the counts. I would do it after the two above.
+  - **11 (wars and market from the bytes)** is the last: half of all pass-one
+    allocations and 7.5% of the time. Its estimate (0.04-0.08 s) is the most
+    suspect of the table.
+  - **09 stays first for the warm rebuild** (07's entry: `Held` and `Row.nat`
+    are the settle's 0.040 s and the walk's 0.067 s).
+- **Tried and dropped / not done, on the counts:** no container was flattened:
+  `pop_by_type` and `pop_by_culture` hold 66,000 allocations between them, the
+  per-state counters and the group vectors about 2,500 of the 140,000 a save,
+  and the snapshot's layouts about 1,200. The dense tables for `strata` and
+  `culture_groups` were not made: 285,000 string lookups in a campaign (about 11
+  ms of thread time) and one a trigger. Both are one commit each if a later
+  profile asks.
+- **Mutations**: all 65 on `da45417` (clean worktree `~/vic2speed/rw/mut08`,
+  `logs/mut-08.out`; the sources are `c28648c`'s): 64 caught, 1 BLIND, 0 did not
+  apply, 0 untested. The blind one is `keeper-folder-windows-only`, as in every
+  run on this PC. None needed re-aiming (`cross-min-pop`, `name-runs-as-script`,
+  `chunk-stream-cut`, `naval-base-int-becomes-float`, `walk-navy-not-entered`,
+  `walk-colonies-ignored` and the rest of those that patch `finish.rs`,
+  `model.rs` and `walk.rs` still apply). The two new ones,
+  `culture-ties-broken-by-name` (the stable tie in `pop_by_culture`) and
+  `group-types-reversed`, are caught by `enginecheck.py` with the saves and the
+  mod; I ran those two alone first.
+- **Probe**: `speed/model-probe.diff` applies to `c28648c` (its census lines for
+  pops, cultures and pop types read the names' text; fixed in `087f684`).
+- **exe**: rebuilt (`5592ba4`) after the code commits, once; its `--help`
+  matches the source's from "positional arguments" down (105 lines each); a run
+  of it on the campaign is IDENTICAL to the reference. No instance of it was
+  running.
+- **My mistakes:** the first start of my edit script for `finish.rs` and the
+  others failed in the shell (a heredoc with quotes) before it changed
+  anything; I wrote it to a file. The probe diff did not apply after the change
+  (its census lines took `&String`): found at the first build and fixed, and the
+  diff regenerated from the tree it was fixed in. The composition of the
+  provinces' remaining 22,000 allocations a save is from reading the code; I
+  did not count it.
+- **Not verified:** Linux; a campaign with many more nations or pop groups; the
+  stage clocks are two rounds and drift between hours (07's two rounds of the
+  same build differed by 25% in `countries`), so only the factor-of-two ones
+  (`build`) mean more than the A/B walls.
+- Next: the maintainer's call. By the numbers above: task 13's candidates (the
+  provinces' reader, Windows file mapping) before 10 and 11; 09 first if the
+  warm rebuild is what matters. Task 09 is not started. Not pushed; bundle
+  `~/vic2saveanalyzer-backup-<hash>.bundle` named for this notes commit, the one
+  after `5592ba4`.

@@ -504,6 +504,48 @@ occupied; only that third one took anything.
 
 ## Speed
 
+### Pops and cultures on `Sym`, 2026-10-03
+
+**What changed.** The provinces look a pop's type and culture up in the name
+table once (`names::intern`) and hand the `Sym` to every counter it feeds: the
+nation's `pop_by_type` and `pop_by_culture`, the state's types and cultures.
+`Counter` is keyed by `Sym` (`order`, `index`, `total` as before) and the
+scanner's own `Interner` is gone: the mobilizable pops and the pop kinds of the
+pops regiments name are `Sym`s. `Nation.pop_by_type`, `pop_by_culture`,
+`accepted_cultures`, `primary_culture`, `Group.types` and `cultures`,
+`mobilizable_pops`, `Kept`, `Spec.mob_types`, `PopulationRules.accepted` and
+`Country.accepted_cultures` are all `Sym`; the cache writes them as the text
+they stand for, as before. Containers and their order are what they were
+(`pop_by_culture` is still sorted by size with a stable sort, so equal sizes
+keep the save's order; a state's types and cultures still number the chunk's
+words and layouts in the order the reader met them). Every sort that was on a
+string is `names::cmp` (the pop-type table's names, the accepted cultures'
+list in a row and in `--explain-mob`), and the text comes back only where it is
+written: the CSVs, the payload's tables, `--explain-mob`.
+
+| | before | after |
+|---|---|---|
+| allocations a save, empty cache | 177,600 | 140,300 |
+| of which `read_provinces`, `build`, `prepare` | 85,000 | 38,300 |
+| live allocations after pass one | 3.95 M | 3.53 M |
+| empty-cache pass one | 1.457 s | 1.379 s |
+| empty-cache run | 2.216 s | 2.150 s |
+| warm rebuild | 0.862 s | 0.861 s |
+
+(Alternating rounds against the build before this stage, medians; the rest in
+`speed/MODEL.md` 4.5.) The first run gained what the task file expected, the
+warm rebuild did not move, and the counters and the groups are now so small
+that flattening them would take 2% of the allocations that are left, so they
+were left as `OMap`s and `Vec`s. **Not done, on the counts:** dense tables for
+`strata` and `culture_groups` (285,000 string lookups in a whole campaign, 11
+ms of thread time) and one `Vec` a nation for the groups.
+
+**What is left of pass one, and where its time is** (one thread, per save):
+the provinces 18.3 ms of 49, the countries 10.6, reading the file 5.0 and
+finding its blocks 4.9, `prepare` 4.0, the wars and market 3.7, the cache store
+1.6, `build` 1.1. The wars and market are still half the allocations and 7.5%
+of the time.
+
 ### The wars on `Sym`, and what a warm pass one costs, 2026-10-03
 
 **The wars.** `War`, `Goal`, `FirstGoal`, `Battle` and `Side` hold every name,
