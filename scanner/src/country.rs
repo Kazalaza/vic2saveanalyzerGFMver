@@ -24,6 +24,7 @@
 
 use crate::text::{find, latin1, unquote_b};
 use crate::fx::FxMap;
+use crate::names::{self, Sym};
 
 /// Whether a byte of the save is whitespace, as Python's `\s` judged the
 /// latin-1 text it decoded -- the ASCII spaces, NEL and the no-break space --
@@ -337,7 +338,7 @@ pub struct Country {
     pub is_mobilized: i64,
     pub human: bool,
     pub reforms: Vec<(String, String)>,
-    pub accepted_cultures: Vec<String>,
+    pub accepted_cultures: Vec<Sym>,
     pub country_flags: Vec<String>,
     pub modifiers: Vec<String>,
     pub goods_supply: Vec<(String, f64)>,
@@ -596,7 +597,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
             b"culture" => {
                 for v in bare_values(&parse_block(&mut tok, &[])) {
                     if let Value::Text(s) = v {
-                        out.accepted_cultures.push(latin1(s));
+                        out.accepted_cultures.push(names::intern(s));
                     }
                 }
             }

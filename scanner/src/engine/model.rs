@@ -114,8 +114,8 @@ pub struct Group {
     pub group: i64,
     pub size: i64,
     pub literate: f64,
-    pub types: Vec<(String, i64)>,
-    pub cultures: Vec<(String, i64)>,
+    pub types: Vec<(Sym, i64)>,
+    pub cultures: Vec<(Sym, i64)>,
     pub provinces: i64,
 }
 
@@ -126,8 +126,8 @@ pub struct Nation {
     /// name. `tag` is the record's own field, from its country block.
     pub key: String,
     pub tag: String,
-    pub primary_culture: String,
-    pub accepted_cultures: Vec<String>,
+    pub primary_culture: Sym,
+    pub accepted_cultures: Vec<Sym>,
     pub civilized: String,
     pub government: String,
     pub capital: String,
@@ -173,8 +173,8 @@ pub struct Nation {
     pub fort_levels: Num,
     pub railroad_levels: Num,
     pub total_pop: i64,
-    pub pop_by_type: OMap<String, i64>,
-    pub pop_by_culture: OMap<String, i64>,
+    pub pop_by_type: OMap<Sym, i64>,
+    pub pop_by_culture: OMap<Sym, i64>,
     pub life_unmet: i64,
     pub starving: i64,
     pub soldiers_noncolonial: i64,
@@ -187,7 +187,7 @@ pub struct Nation {
     pub population_by_state: Vec<Group>,
     pub goods_supply: OMap<String, f64>,
     /// (pop type, culture, size, province), in save order.
-    pub mobilizable_pops: Vec<(String, String, i64, i64)>,
+    pub mobilizable_pops: Vec<(Sym, Sym, i64, i64)>,
     pub mob_excluded_culture: i64,
     pub colonial_provinces: FxSet<i64>,
     pub province_state: FxMap<i64, i64>,
@@ -210,15 +210,15 @@ impl Nation {
     }
 
     /// The primary culture and every accepted one (`accepted_cultures_of`).
-    pub fn accepts(&self, culture: &str) -> bool {
+    pub fn accepts(&self, culture: Sym) -> bool {
         (!self.primary_culture.is_empty() && self.primary_culture == culture)
-            || self.accepted_cultures.iter().any(|c| c == culture)
+            || self.accepted_cultures.contains(&culture)
     }
 }
 
 // ------------------------------------------------------------------ folds
 
-fn fold_provinces(nat: &mut Nation, n: &crate::province::Nation, names: &[Vec<u8>]) {
+fn fold_provinces(nat: &mut Nation, n: &crate::province::Nation) {
     nat.provinces += n.provinces;
     nat.ports += n.ports;
     nat.total_pop += n.total_pop;
@@ -244,18 +244,18 @@ fn fold_provinces(nat: &mut Nation, n: &crate::province::Nation, names: &[Vec<u8
         nat.province_colonial.insert(*pid, *flag);
     }
     for (k, t) in n.pop_by_type.order.iter().zip(&n.pop_by_type.total) {
-        *nat.pop_by_type.entry(latin1(k), || 0) += t;
+        *nat.pop_by_type.entry(*k, || 0) += t;
     }
     for (k, t) in n.pop_by_culture.order.iter().zip(&n.pop_by_culture.total) {
-        *nat.pop_by_culture.entry(latin1(k), || 0) += t;
+        *nat.pop_by_culture.entry(*k, || 0) += t;
     }
     // `_population_rows`: the field replaced, one row a group.
     nat.population_by_state = n.population_order.iter().map(|group| {
         let st = &n.population_by_state[group];
-        let pairs = |c: &crate::province::Counter| -> Vec<(String, i64)> {
+        let pairs = |c: &crate::province::Counter| -> Vec<(Sym, i64)> {
             // A dict built from pairs: a name met twice keeps its first place
             // and its last value, which a Counter never gives it anyway.
-            c.order.iter().zip(&c.total).map(|(k, t)| (latin1(k), *t)).collect()
+            c.order.iter().zip(&c.total).map(|(k, t)| (*k, *t)).collect()
         };
         Group { group: *group, size: st.total, literate: st.literate, types: pairs(&st.types),
                 cultures: pairs(&st.cultures), provinces: st.provinces }
@@ -272,9 +272,7 @@ fn fold_provinces(nat: &mut Nation, n: &crate::province::Nation, names: &[Vec<u8
             None => nat.soldier_pops_at.push((*pid, n.soldier_pops_at[pid].clone())),
         }
     }
-    let name = |i: u32| latin1(&names[i as usize]);
-    nat.mobilizable_pops.extend(n.mobilizable.iter()
-        .map(|(kind, culture, size, pid)| (name(*kind), name(*culture), *size, *pid)));
+    nat.mobilizable_pops.extend(n.mobilizable.iter().copied());
 }
 
 fn fold_country(nat: &mut Nation, c: &Country) {
@@ -283,7 +281,7 @@ fn fold_country(nat: &mut Nation, c: &Country) {
         let v = value.clone();
         match name.as_str() {
             "nationalvalue" => nat.nationalvalue = v,
-            "primary_culture" => nat.primary_culture = v,
+            "primary_culture" => nat.primary_culture = names::intern_str(&v),
             "civilized" => nat.civilized = v,
             "government" => nat.government = v,
             "capital" => nat.capital = v,
@@ -393,7 +391,7 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
             order.push(tag.clone());
             Nation::blank()
         });
-        fold_provinces(nat, scanned, &scan.words.names);
+        fold_provinces(nat, scanned);
     }
     for c in countries {
         let key: Vec<u8> = c.tag.chars().map(|ch| ch as u32 as u8).collect();
@@ -405,9 +403,9 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
     // soldier.
     let mut registry: FxMap<i64, bool> = FxMap::default();
     registry.reserve(scan.pop_ids.len());
+    let soldiers = names::intern(b"soldiers");
     for (id, kind) in scan.pop_ids.iter().zip(&scan.pop_kinds) {
-        let name = scan.words.names.get(*kind as usize).ok_or(())?;
-        registry.insert(*id, name.as_slice() == b"soldiers");
+        registry.insert(*id, *kind == soldiers);
     }
     let mut live = Vec::with_capacity(order.len());
     for tag in &order {

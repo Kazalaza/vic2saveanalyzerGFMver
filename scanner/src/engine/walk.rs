@@ -469,7 +469,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                         let block = parse_block(&mut sub, &[]);
                         if matches!(block, V::List(_) | V::Dict(_)) {
                             out.accepted_cultures = items_of(&block).iter()
-                                .map(|c| text(&str_of(c))).collect();
+                                .map(|c| crate::names::intern_str(&text(&str_of(c)))).collect();
                         }
                     }
                     b"flags" => {
@@ -768,11 +768,10 @@ pub fn read<'a>(text_: &'a [u8], pop_types: &[Vec<u8>], mob_types: &[Vec<u8>], t
         if looks_like_country_tag(key) {
             let country = read_country(text_, *at, &text(key), tables)?;
             let rule = rules.entry(key.to_vec()).or_default();
-            let bytes = |s: &str| s.chars().map(|c| c as u8).collect::<Vec<_>>();
-            rule.accepted.extend(country.accepted_cultures.iter().map(|s| bytes(s)));
+            rule.accepted.extend(country.accepted_cultures.iter().copied());
             for (name, value) in &country.scalars {
                 if name == "primary_culture" && !value.is_empty() {
-                    rule.accepted.insert(bytes(value));
+                    rule.accepted.insert(crate::names::intern_str(value));
                 }
             }
             rule.colonial.extend(&country.colonial_provinces);

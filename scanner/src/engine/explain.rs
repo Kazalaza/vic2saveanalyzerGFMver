@@ -23,6 +23,7 @@ use crate::engine::rules::{self, Mod};
 use crate::engine::{read_save, Reading, Refused};
 use crate::jsonr::J;
 use crate::fx::FxSet;
+use crate::names::{self, Sym};
 
 /// What was asked, and the settings the answers read.
 pub struct Ask {
@@ -187,7 +188,7 @@ fn explain_mob_pool(ask: &Ask, tag: &str, m: &Mod, live: &FxSet<String>, pres: &
     let mut per_pop: Vec<(i64, i64)> = Vec::new();
     let mut pool = 0i64;
     for (poptype, culture, size, pid) in &nat.mobilizable_pops {
-        if !mob_types.contains(poptype.as_str()) || !nat.accepts(culture) {
+        if !mob_types.contains(names::text(*poptype)) || !nat.accepts(*culture) {
             continue;
         }
         if nat.colonial_provinces.contains(pid) || (!occ && nat.occupied_provinces.contains(pid)) {
@@ -197,10 +198,10 @@ fn explain_mob_pool(ask: &Ask, tag: &str, m: &Mod, live: &FxSet<String>, pres: &
         per_pop.push((*pid, *size));
     }
     let entries = per_pop.len();
-    let mut per_pt: Vec<(i64, String, i64)> = Vec::new();
+    let mut per_pt: Vec<(i64, Sym, i64)> = Vec::new();
     {
         for (poptype, culture, size, pid) in &nat.mobilizable_pops {
-            if !mob_types.contains(poptype.as_str()) || !nat.accepts(culture) {
+            if !mob_types.contains(names::text(*poptype)) || !nat.accepts(*culture) {
                 continue;
             }
             if nat.colonial_provinces.contains(pid) || (!occ && nat.occupied_provinces.contains(pid)) {
@@ -208,7 +209,7 @@ fn explain_mob_pool(ask: &Ask, tag: &str, m: &Mod, live: &FxSet<String>, pres: &
             }
             match per_pt.iter_mut().find(|(p, t, _)| p == pid && t == poptype) {
                 Some(slot) => slot.2 += size,
-                None => per_pt.push((*pid, poptype.clone(), *size)),
+                None => per_pt.push((*pid, *poptype, *size)),
             }
         }
     }
@@ -222,10 +223,10 @@ fn explain_mob_pool(ask: &Ask, tag: &str, m: &Mod, live: &FxSet<String>, pres: &
         drop("non-accepted culture", nat.mob_excluded_culture);
     }
     for (poptype, culture, size, pid) in &nat.mobilizable_pops {
-        if !mob_types.contains(poptype.as_str()) {
+        if !mob_types.contains(names::text(*poptype)) {
             continue;
         }
-        if !nat.accepts(culture) {
+        if !nat.accepts(*culture) {
             drop("non-accepted culture", *size);
         } else if !occ && nat.occupied_provinces.contains(pid) {
             drop("occupied province", *size);
@@ -236,8 +237,8 @@ fn explain_mob_pool(ask: &Ask, tag: &str, m: &Mod, live: &FxSet<String>, pres: &
     let ppr = ask.pop_per_regiment;
     crate::outln!("\nMobilization pool for {} at {} ({})", tag, meta.date,
                   crate::engine::basename(&meta.file));
-    crate::outln!("  primary culture   {}", nat.primary_culture);
-    let mut accepted = nat.accepted_cultures.clone();
+    crate::outln!("  primary culture   {}", names::text(nat.primary_culture));
+    let mut accepted: Vec<&str> = nat.accepted_cultures.iter().map(|s| names::text(*s)).collect();
     accepted.sort();
     let joined = accepted.join(" ");
     crate::outln!("  accepted cultures {}", if joined.is_empty() { "(none)".to_string() } else { joined });
@@ -266,7 +267,7 @@ fn explain_mob_pool(ask: &Ask, tag: &str, m: &Mod, live: &FxSet<String>, pres: &
     crate::outln!("  standing brigades                      {}  ({} of them mobilized, {} queued)",
                   right(&nat.brigades.to_string(), 6), nat.mobilized_brigades, nat.mobilizing);
     crate::outln!("\n  Compare the two ceilings against the in-game military panel.");
-    let mut biggest: Vec<&(i64, String, i64)> = per_pt.iter().collect();
+    let mut biggest: Vec<&(i64, Sym, i64)> = per_pt.iter().collect();
     biggest.sort_by(|a, b| b.2.cmp(&a.2));
     biggest.truncate(10);
     if !biggest.is_empty() {

@@ -20,6 +20,7 @@
 
 use crate::deflate;
 use crate::engine::model::{Meta, Nation};
+use crate::names::{self, Sym};
 use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::{floordiv, push_csv_field, push_float, push_int, push_json_float,
@@ -31,7 +32,7 @@ use crate::engine::rules::{impact_for, naval_profile, rate_for, save_world, Held
 /// engine is handed only runs with one.
 pub struct Spec {
     pub pop_per_regiment: i64,
-    pub mob_types: FxSet<String>,
+    pub mob_types: FxSet<Sym>,
     pub include_occupied: bool,
     pub player_nations: Option<Vec<String>>,
     pub wanted: Option<FxSet<String>>,
@@ -149,30 +150,30 @@ fn brigade_cap(nat: &Nation, defines: &FxMap<String, f64>, ppr: i64) -> i64 {
 /// `state_history.Snapshot`.
 #[derive(Default)]
 pub struct Snapshot {
-    words: OMap<String, usize>,
+    words: OMap<Sym, usize>,
     layouts: OMap<(Vec<usize>, Vec<usize>), usize>,
     nations: Vec<(String, String)>,
 }
 
 impl Snapshot {
-    fn word(&mut self, value: &str) -> usize {
+    fn word(&mut self, value: Sym) -> usize {
         let n = self.words.len();
-        *self.words.entry(value.to_string(), || n)
+        *self.words.entry(value, || n)
     }
 
     fn add(&mut self, tag: &str, nat: &Nation, regions: &FxMap<i64, String>) {
         let mut rows = String::from("[");
         for (i, g) in nat.population_by_state.iter().enumerate() {
             let region = match regions.get(&g.group) {
-                Some(r) if !r.is_empty() => r.clone(),
-                _ => format!("province:{}", g.group),
+                Some(r) if !r.is_empty() => names::intern_str(r),
+                _ => names::intern_str(&format!("province:{}", g.group)),
             };
-            let types: Vec<usize> = g.types.iter().map(|(t, _)| self.word(t)).collect();
+            let types: Vec<usize> = g.types.iter().map(|(t, _)| self.word(*t)).collect();
             let cultures: Vec<usize> = g.cultures.iter()
-                .map(|(c, _)| 2 * self.word(c) + nat.accepts(c) as usize).collect();
+                .map(|(c, _)| 2 * self.word(*c) + nat.accepts(*c) as usize).collect();
             let n = self.layouts.len();
             let index = *self.layouts.entry((types, cultures), || n);
-            let region_word = self.word(&region);
+            let region_word = self.word(region);
             if i > 0 {
                 rows.push(',');
             }
@@ -215,7 +216,7 @@ impl Snapshot {
             if i > 0 {
                 raw.push(',');
             }
-            push_json_str(&mut raw, w);
+            push_json_str(&mut raw, names::text(*w));
         }
         raw.push_str("],[");
         for (i, (types, cultures)) in self.layouts.keys().enumerate() {
@@ -282,7 +283,7 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
             pre.is_player = playing.contains(&tag);
             // `mobilization_clusters`.
             for (poptype, culture, size, pid) in &nat.mobilizable_pops {
-                if !spec.mob_types.contains(poptype) || !nat.accepts(culture) {
+                if !spec.mob_types.contains(poptype) || !nat.accepts(*culture) {
                     continue;
                 }
                 if nat.colonial_provinces.contains(pid)
@@ -401,7 +402,7 @@ impl Row {
             "year" => Val::S(&self.year),
             "tag" => Val::S(&n.tag),
             "is_player" => Val::B(self.is_player),
-            "primary_culture" => Val::S(&n.primary_culture),
+            "primary_culture" => Val::S(names::text(n.primary_culture)),
             "civilized" => Val::S(&n.civilized),
             "provinces" => Val::I(n.provinces),
             "states" => Val::I(n.states),
@@ -459,7 +460,7 @@ impl Row {
             "starving_pct" => Val::F(self.starving_pct),
             "accepted_cultures" => Val::S(&self.accepted_cultures),
             _ => match col.strip_prefix("pop_") {
-                Some(t) => Val::I(n.pop_by_type.get(t).copied().unwrap_or(0)),
+                Some(t) => Val::I(n.pop_by_type.get(&names::intern_str(t)).copied().unwrap_or(0)),
                 None => Val::S(""),
             },
         }
@@ -482,8 +483,8 @@ pub struct Kept {
     pub tag: String,
     pub units_at: OMap<i64, OMap<String, i64>>,
     pub men_at: OMap<i64, OMap<String, i64>>,
-    pub primary_culture: String,
-    pub accepted_cultures: Vec<String>,
+    pub primary_culture: Sym,
+    pub accepted_cultures: Vec<Sym>,
     pub government: String,
     pub capital: String,
 }
@@ -591,8 +592,8 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
             if total != 0 { round(100.0 * part as f64 / total as f64, digits) } else { 0.0 }
         };
         let accepted_pop: i64 = nat.pop_by_culture.iter()
-            .filter(|(c, _)| nat.accepts(c)).map(|(_, s)| *s).sum();
-        let primary_pop = nat.pop_by_culture.get(nat.primary_culture.as_str()).copied().unwrap_or(0);
+            .filter(|(c, _)| nat.accepts(**c)).map(|(_, s)| *s).sum();
+        let primary_pop = nat.pop_by_culture.get(&nat.primary_culture).copied().unwrap_or(0);
         let mut policy = String::new();
         let mut cap = 0i64;
         let index = trunc_int(if nat.ruling_party.truthy() { nat.ruling_party.as_f64() } else { 0.0 })
@@ -615,13 +616,13 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
                 .map(|(_, v)| v.as_slice()).unwrap_or(&[]);
             if !layers.is_empty() {
                 nat.pop_by_type.iter()
-                    .filter(|(t, _)| layers.get(t.as_str()).map(|s| s.as_str()) == Some(name))
+                    .filter(|(t, _)| layers.get(names::text(**t)).map(|s| s.as_str()) == Some(name))
                     .map(|(_, s)| *s).sum()
             } else {
-                vanilla.iter().map(|t| nat.pop_by_type.get(t.as_str()).copied().unwrap_or(0)).sum()
+                vanilla.iter().map(|t| nat.pop_by_type.get(&names::intern_str(t)).copied().unwrap_or(0)).sum()
             }
         };
-        let mut accepted: Vec<&String> = nat.accepted_cultures.iter().collect();
+        let mut accepted: Vec<&str> = nat.accepted_cultures.iter().map(|s| names::text(*s)).collect();
         accepted.sort();
         let row = Row {
             key: tag.clone(),
@@ -652,7 +653,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
             soldiers_noncolonial_pct: pct(nat.soldiers_noncolonial, 3),
             life_unmet_pct: pct(nat.life_unmet, 3),
             starving_pct: pct(nat.starving, 3),
-            accepted_cultures: accepted.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(";"),
+            accepted_cultures: accepted.join(";"),
             nat,
         };
         let nat = &row.nat;
@@ -711,27 +712,29 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         if !names.is_empty() {
             tables.techs.push((tag.clone(), names));
         }
-        let mut pops: Vec<(&String, &i64)> = nat.pop_by_type.iter().collect();
-        pops.sort();
+        let mut pops: Vec<(&Sym, &i64)> = nat.pop_by_type.iter().collect();
+        pops.sort_by(|a, b| names::cmp(*a.0, *b.0));
         let mut held = Vec::new();
         for (ptype, size) in pops {
+            let ptype = names::text(*ptype);
             csv_line(&mut text[4], &[head[0], head[1], head[2], Val::S(ptype), Val::I(*size)]);
-            held.push((ptype.clone(), *size));
+            held.push((ptype.to_string(), *size));
         }
         if !held.is_empty() {
             tables.pops.push((tag.clone(), held));
         }
         // Largest first; a stable sort, so equal sizes keep the save's order.
-        let mut cultures: Vec<(&String, &i64)> = nat.pop_by_culture.iter().collect();
+        let mut cultures: Vec<(&Sym, &i64)> = nat.pop_by_culture.iter().collect();
         cultures.sort_by(|a, b| b.1.cmp(a.1));
-        let accepted_set = |c: &str| nat.accepted_cultures.iter().any(|a| a == c)
+        let accepted_set = |c: Sym| nat.accepted_cultures.contains(&c)
             || nat.primary_culture == c;
         let mut largest = Vec::new();
         for (culture, size) in cultures {
-            let acc = accepted_set(culture) as i64;
+            let acc = accepted_set(*culture) as i64;
+            let culture = names::text(*culture);
             csv_line(&mut text[5], &[head[0], head[1], head[2], Val::S(culture), Val::I(*size),
                                      Val::I(acc)]);
-            largest.push((culture.clone(), *size, acc));
+            largest.push((culture.to_string(), *size, acc));
         }
         if !largest.is_empty() {
             tables.cultures.push((tag.clone(), largest));
@@ -749,7 +752,7 @@ fn trim(tag: &str, nat: &Nation) -> Kept {
         tag: tag.to_string(),
         units_at: nat.units_at.clone(),
         men_at: nat.men_at.clone(),
-        primary_culture: nat.primary_culture.clone(),
+        primary_culture: nat.primary_culture,
         accepted_cultures: nat.accepted_cultures.clone(),
         government: nat.government.clone(),
         capital: nat.capital.clone(),

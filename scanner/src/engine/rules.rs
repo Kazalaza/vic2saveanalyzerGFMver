@@ -467,7 +467,7 @@ impl<'a> Asker<'a> {
             }
             "tag" => return Ok(Some(text == nat.tag)),
             "government" => return Ok(Some(text == nat.government)),
-            "primary_culture" => return Ok(Some(text == nat.primary_culture)),
+            "primary_culture" => return Ok(Some(text == names::text(nat.primary_culture))),
             "nationalvalue" => return Ok(Some(text == nat.nationalvalue)),
             "revanchism" | "badboy" | "prestige" | "war_exhaustion" | "plurality" | "money"
             | "total_pops" => {
@@ -509,7 +509,7 @@ impl<'a> Asker<'a> {
             if m.culture_groups.is_empty() {
                 return Ok(None);
             }
-            return Ok(Some(m.culture_groups.get(&nat.primary_culture).map(|g| g.as_str())
+            return Ok(Some(m.culture_groups.get(names::text(nat.primary_culture)).map(|g| g.as_str())
                            == Some(text)));
         }
         if key == "invention" {

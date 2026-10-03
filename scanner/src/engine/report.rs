@@ -415,9 +415,9 @@ fn succession(parsed: &[Kept1], m: &Mod) -> String {
         let owners = k.meta.province_owner.iter().map(|(_, o, _)| *o)
             .filter(|o| !o.is_empty()).collect();
         let home = k.nations.iter().map(|n| {
-            let mut acc: FxSet<&str> = n.accepted_cultures.iter().map(|s| s.as_str()).collect();
-            acc.insert(n.primary_culture.as_str());
-            (n.tag.as_str(), (n.primary_culture.as_str(), acc))
+            let mut acc: FxSet<&str> = n.accepted_cultures.iter().map(|s| names::text(*s)).collect();
+            acc.insert(names::text(n.primary_culture));
+            (n.tag.as_str(), (names::text(n.primary_culture), acc))
         }).collect();
         Ledger { date: &k.meta.date, book: &k.meta.province_owner, owners, home }
     }).collect();
