@@ -118,7 +118,9 @@ same order, so they can be one field:
 ### 1.3 How the numbers were taken
 
 Everything on `398de81` with `speed/model-probe.diff` applied in a worktree
-(`~/vic2speed/rw/model05`), release build, `-j 1`, scratch `TMPDIR`:
+(`~/vic2speed/rw/model05`; the diff was rebased onto `c12ec7f` in task 06 and
+applies there and after, with `VIC2_WARDROP=forget|inline` for the other two
+ways of ending the walk, the thread being the default now), release build, `-j 1`, scratch `TMPDIR`:
 
 - `VIC2_ALLOC=1`: the live allocation count and bytes at every `phase()` line.
 - `VIC2_STAGES=file`: allocations by stage, counted on the reading thread
@@ -444,6 +446,67 @@ makes the free cheaper at its source (4.1 M allocations to about 1 M); until
 then it is a three-line change that is worth more to a warm rebuild than any
 stage of the model.
 
+### 4.3 After task 06 (names.rs, the owners, the market)
+
+`c12ec7f` with the probe rebased on it; the same probes, the raw output in
+`speed/model-census-task06.txt`. Before is section 4 above.
+
+**Allocations, empty cache, per save** (`-j 1`):
+
+| stage | before | after | |
+|---|---|---|---|
+| `read_provinces` | 45,562 | 40,451 | -5,100: two Vec<u8>s a province became two lookups |
+| `read_rest` | 85,208 | 81,027 | -4,200: the market's good and stamp strings |
+| `model::build` | 35,151 | 30,039 | -5,100: the owners were decoded again to Strings |
+| `read_countries`, `prepare`, store | 38,073, 14,541, 2,361 | unchanged | |
+| read + build | 204,000 | 189,600 | |
+
+**The cache load, warm:** 38,200 allocations a save to 28,922 (10.13 M to 7.66 M),
+thread time 4.92 s to 4.38 s over the campaign.
+
+**Live allocations, whole process:**
+
+| phase | before | after |
+|---|---|---|
+| pass one done, empty cache | 9,614,015; 687.6 MB | 7,145,167; 590.0 MB |
+| pass one done, warm | 9,535,387; 484.3 MB | 7,062,040; 420.5 MB |
+| tables written, empty | 7,876,401; 593.6 MB | 5,406,774; 492.2 MB |
+| tables written, warm | 7,875,474; 483.8 MB | 5,402,271; 420.0 MB |
+| heap peak, empty / warm | 841.9 / 667.7 MB | 744.2 / 603.9 MB |
+
+(`walked` reads higher than before, 8.93 M against 7.18 M, only because the
+saves' war records are now freed by a thread nothing waits for and are not yet
+gone when the line is taken.)
+
+**What is held** (sum over the campaign, clone counts): `Meta.province_owner`
+1,354,887 to 267; `Meta.market` 1,118,229 to 6,627; `Meta` 2,474,174 to 7,952;
+`Kept1` 3,320,114 to 853,892. `Meta` is now the wars and nothing else
+(4.14 M); `Pre.meta` 6.61 M to 4.15 M.
+
+**The clocks** (alternating rounds of the previous commit's build against this
+one, medians; the stage clocks in the raw file ran at a slower hour of the
+machine and are not comparable with section 4.2's):
+
+| | before | after |
+|---|---|---|
+| warm rebuild wall | 1.009 s | 0.951 s (-0.058) |
+| warm pass one | 0.205 s | 0.203 s |
+| warm `map: owners` | 0.043 s | 0.010 s |
+| warm raster and spots / payload sections | 0.125 / 0.127 s | 0.077 / 0.163 s |
+| empty-cache wall | 2.336 s | 2.193 s (-0.143) |
+| empty pass one | 1.492 s | 1.434 s (-0.058) |
+| empty `map: owners` | 0.049 s | 0.009 s |
+
+**Read it as:** the counts fell as the estimate said (live 9.49 M to about 7.0 M:
+7.15 M), the owners phase fell by more than estimated (0.044 s to 0.010 s), and
+**the warm cache load did not follow its allocations**: 24% fewer allocations,
+11% less thread time, 0.002 s of wall. That is the gate's question (section 6)
+answered early, with only half of `Meta` converted: what the load costs is
+not mostly the allocator calls. The other 0.04-0.06 s of the gain sits
+between the raster phase (-0.048 s) and the payload sections (+0.036 s),
+which share a heap with the thread that frees the war records; it is real
+(the wall moved by it) but I cannot say which of the two phases it belongs to.
+
 ## 5. The design
 
 ### 5.1 What it does, in one paragraph
@@ -486,7 +549,9 @@ pub fn cmp(a: Sym, b: Sym) -> std::cmp::Ordering;   // by text
 - The table is a `Mutex` over `Vec<&'static str>` and `FxMap<&'static str,
   u32>`. Strings are leaked: the process ends by forgetting the campaign
   (task 02) and a `--cross` run is a few campaigns, so nothing is lost by it.
-- Each thread has a cache `FxMap<Vec<u8>, Sym>` (bytes to id) and a mirror
+- Each thread has a cache `FxMap<Vec<u8>, Sym>` (bytes to id), a second
+  `FxMap<&'static str, Sym>` for `intern_str` (text to id; added in task 06,
+  where this draft had only the first) and a mirror
   `Vec<&'static str>` of the table. `intern` is a hash and a compare on a hit,
   with no lock, no allocation and no copy of the save's bytes; a miss takes
   the lock once, and the name is then in that thread's cache for good.
@@ -566,7 +631,12 @@ each sorts by `names::cmp`. The two stable sorts that depend on ties
 Finished in task 12; tasks 06-11 change the cache only as far as their
 fields need, writing what they hold the way the old format would, with a
 `Sym` written by its text through the entry's own string table (the
-`W::s` table already in `cache.rs:75-86`).
+`W::s` table already in `cache.rs:75-86`). **Done in task 06:** `Keep for Sym`
+writes `names::text` through `W::s`, which is the byte stream a `String`
+made, so an entry is byte for byte what it was and `V2ENGC02` is unchanged;
+`R::sym` reads it back with `intern_str` (no copy of the text when the entry's
+table has it). A cache made before task 06 is read as it is, and the other
+way about.
 
 The new format:
 

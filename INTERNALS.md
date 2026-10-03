@@ -504,6 +504,61 @@ occupied; only that third one took anything.
 
 ## Speed
 
+### The name table, the owners and the market, 2026-10-03
+
+**The war records are freed on a thread nothing waits for.** The walk's
+thread that folds the saves' war records into the `Book` used to drop them
+before it returned (4.1 M small allocations), and the walk waited: 0.13 s of
+every warm rebuild. The drop is `std::thread::spawn(move || drop(wars))` and
+nothing joins it; if the process ends first the work is not done. (Not
+`mem::forget`: quicker still, and 189 MB more at the peak.) Warm rebuild, six
+alternating rounds: 1.213 s to 1.055 s, the walk 0.207 s to 0.071 s. Because
+it changes how the run ends it was checked through a pipe, hosted, and for a
+leftover process (`speed/pipecheck.sh`, which looks with `tasklist` on
+Windows).
+
+**`names.rs`: one table of the names a run meets.** A `Sym` is a `u32`. The
+table is shared by every thread; each thread keeps a cache in front of it
+(bytes to name for the saves, text to name for the mod, the spec and the
+cache), so a name met before is a hash and a compare with no lock and no
+allocation. Names are leaked. Ids are handed out in the order threads first
+meet names, so they differ from run to run, and nothing may depend on one:
+`Sym` has no `Ord` and its number is private to the file, a cache entry is
+written by the names' text, and order by name is `names::cmp`.
+`VIC2_ENGINE_NAMES_SHIFT=k` takes the first `k` ids for placeholders, which
+moves every id and every hash order; the real campaign gives the same answers
+with it set, and a cache made with it is read by a run without
+(`speed/warmshift.py`).
+
+**What uses it so far:** the provinces' owners (`Scan.owners` and
+`Meta.province_owner`, `(i64, Sym, Sym)` where there were two `Vec<u8>`s and
+then two `String`s a province), and the world market (`Market.current`,
+`history`, `snapshot`). The containers are the ones they were; only the keys
+changed. `report.rs` and `wars.rs` read the text where they write it, and
+everything that came out of a hash order is sorted on `names::cmp` first. The
+cache writes a `Sym` through the entry's string table exactly as it wrote a
+`String`, so entries are byte for byte what they were and the magic is the
+same.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 9.61 M | 7.15 M |
+| a warm load, allocations a save | 38,200 | 28,922 |
+| what `Meta` holds besides the wars | 2.47 M allocations | 8,000 |
+| warm rebuild | 1.009 s | 0.951 s |
+| warm `map: owners` | 0.043 s | 0.010 s |
+| warm pass one | 0.205 s | 0.203 s |
+| empty-cache run | 2.336 s | 2.193 s |
+
+(Alternating rounds of the commit before against this one, medians.) **The
+warm cache load did not get quicker with its allocations**: a quarter fewer,
+a tenth less thread time, two milliseconds of wall. What the load costs is not
+mostly the allocator, and that is why the next stages are gated on it.
+
+**Tried and dropped:** nothing was dropped; the containers were not flattened
+(the task asks for that only where the counts say it pays, and `OMap` and
+`Vec` of two or three words per entry are not what is left to count).
+
 ### The state chunk is compressed at level 5, 2026-10-03
 
 Each save's state-history chunk (`Snapshot::pack`, `finish.rs`) is JSON,

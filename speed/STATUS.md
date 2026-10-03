@@ -709,3 +709,82 @@ were brought to the new numbers.
   named for the last commit.
 - Next: the quick win (alone, or as the first commit of task 06), then task 06
   (`06-model-names-owners-market.md`): `names.rs` first (MODEL.md 5.2).
+
+## 2026-10-03, task 06 done on the Windows PC (the quick win, names.rs, the owners, the market)
+
+- **Made on the Windows PC** (Ryzen 9 7950X, 31 workers). Commits, not pushed:
+  `f5b8517` the quick win; `2dabcee` `names.rs` and the shift knob; `4eb661a`
+  the owners as `Sym` and the cache's `Sym`; `fceb3a9` the market as `Sym`;
+  `372b4f3` two mutations; `c12ec7f` `abwarm.py --empty`; `c13f2ce` the rebuilt
+  exe. The notes commit follows. INTERNALS.md: "The name table, the owners and
+  the market, 2026-10-03". MODEL.md has a new section 4.3 with the numbers.
+- **The quick win**: the drop of the saves' war records is `std::thread::spawn(
+  move || drop(wars))`, nothing joins it. Warm rebuild, six alternating rounds
+  (`speed/abwarm.py`, committed): 1.213 s to 1.055 s (expected 1.17 to 1.04),
+  the walk 0.207 s to 0.071 s. Checked through a pipe, hosted and for leftovers
+  with `speed/pipecheck.sh`, which I fixed to use `tasklist` when there is no
+  `pgrep` and to fail when it has neither (it printed "none" whatever ran):
+  nothing left, "none". Suite 28 of 28; reference run IDENTICAL.
+- **Task 06**, each part checked by the suite (28 of 28), the real campaign
+  against `speed/runs/11e1f21` (`cmpruns.py --payload`: IDENTICAL), the same
+  with `VIC2_ENGINE_NAMES_SHIFT=7` (IDENTICAL), and `speed/warmshift.py`
+  (new): empty run, warm run with shift 13, warm run without, all identical,
+  so no run's id is in a cache entry. A unit test checks the shift moves the
+  first id. The cache format and magic are unchanged: a `Sym` is written as
+  the `String` it stands for.
+
+| | expected (estimate) | measured |
+|---|---|---|
+| live allocations after pass one | 9.49 M to about 7.0 M | 9.61 M to 7.15 M |
+| warm rebuild | 0.05-0.07 s quicker | 1.009 s to 0.951 s (-0.058) |
+| warm pass one | 0.214 s to about 0.17 s | 0.205 s to 0.203 s: **not met** |
+| warm `map: owners` | 0.044 s to about 0.02 s | 0.043 s to 0.010 s |
+| empty-cache run | 0.03-0.05 s quicker | 2.336 s to 2.193 s (-0.143) |
+
+  (Alternating rounds of `f5b8517`'s build against `c12ec7f`'s, medians.)
+  Numbers beside MODEL.md section 4: its 4.3; raw in
+  `speed/model-census-task06.txt`.
+- **The gate's question, early.** The warm load made 24% fewer allocations
+  (38,200 to 28,922 a save) and 11% less thread time, and pass one moved by
+  two milliseconds. By the standing rule (pass one above 0.17 s after 06 and
+  07) the estimates for 08-10 are in doubt; `Meta` still holds the wars, 4.14 M
+  of what remains, so task 07 is the real test, but I would not trust the
+  tables' warm figures for 08-10 until it has run. The empty-cache gain beat
+  its estimate; I do not know why it is three times the estimate.
+- **Unexplained**: the warm raster phase fell 0.048 s and the payload sections
+  rose 0.036 s, in the same runs; the code in neither changed. They share a
+  heap with the thread freeing the war records, so I read it as that thread's
+  contention moving, not as a gain, but I did not test it.
+- **Tried and dropped**: nothing. I did not flatten any container: the counts
+  left nothing there to pay for it.
+- **Mutations**: 61 now (`logs/mut-06.out`, clean worktree `~/vic2speed/rw/mut04` at
+  `c12ec7f`): the 59 from task 04 and two new,
+  `market-snapshot-goods-by-id` and `market-prices-goods-by-id` (sort by a
+  Sym's id through a `names::id` the mutation adds). 60 caught, 1 BLIND
+  (`keeper-folder-windows-only`, Linux's to answer, as in task 04), 0 did not
+  apply: no existing mutation needed re-aiming, since every patch still matched.
+  The new two are BLIND under `frontcheck.py` (the synthetic saves have no goods
+  order to break); `enginecheck.py` with the saves and the mod catches both.
+- **Probe**: `speed/model-probe.diff` is rebased onto this tree (it applies to
+  `c13f2ce`); the walk's drop is the thread by default and `VIC2_WARDROP=forget`
+  or `inline` the others. The census's 'what is held' list is only taken on an
+  empty cache.
+- **exe**: rebuilt (`c13f2ce`) after the code commits; `--help` matches the
+  source's from "positional arguments" down; a run of it on the campaign is
+  IDENTICAL to the reference.
+- **My mistakes**: I ran `git stash` in the main tree and in the mutation
+  worktree while copying a file, and had to drop the two stashes I made (the
+  older stash, "user's 09:22 exe rebuild", is untouched). A Python heredoc
+  turned `\n` into real newlines in the first version of the new mutations and
+  the harness would not parse; fixed before anything ran. I read the old
+  census's held-table as this run's for a minute and nearly reported it. The
+  new mutations were BLIND under `frontcheck.py` on first aim: the synthetic
+  saves cannot see a goods order, and the real campaign's check can, so that is
+  their catcher. The first run of a freshly built exe on this PC takes
+  about 2.6 s (probably Defender scanning it): the first A/B round of each new
+  build is an outlier and the medians ignore it.
+- **Not verified**: Linux (nothing here is platform specific, but the cache and
+  threads were only run on Windows); a campaign with many more nations or
+  goods; whether a thread-local `names::text` costs more in the readers than
+  the allocations it saved (the stage clocks drifted too much to say).
+- Next: task 07 (`07-model-wars.md`). Not started.

@@ -1,5 +1,5 @@
 diff --git a/scanner/src/engine/finish.rs b/scanner/src/engine/finish.rs
-index b2e5bf2..5a7e18e 100644
+index b2e5bf2..4609448 100644
 --- a/scanner/src/engine/finish.rs
 +++ b/scanner/src/engine/finish.rs
 @@ -264,7 +264,9 @@ pub fn escape_angles(s: &str) -> String {
@@ -103,34 +103,34 @@ index b2e5bf2..5a7e18e 100644
 +    note("meta.goals", meta.wars.iter().map(|w| w.goals.len()).sum(), f);
 +    note("meta.war side tags", meta.wars.iter().map(|w| w.attackers.len() + w.defenders.len() + w.fighting.len()).sum(), f);
 +    note("meta.battle units", meta.wars.iter().flat_map(|w| w.battles.iter())
-+        .map(|b| b.attacker.iter().chain(b.defender.iter()).map(|s| s.units.len()).sum::<usize>()).sum(), f);
++        .map(|b| b.attacker.iter().chain(b.defender.iter()).map(|s| s.units.0.len()).sum::<usize>()).sum(), f);
 +    if let Some(m) = &meta.market {
 +        note("meta.market.current", m.current.len(), f);
 +        note("meta.market.history", m.history.len(), f);
 +        for (i, s) in m.snapshot.iter().enumerate() {
 +            note(&format!("meta.market.snapshot[{}]", i), s.len(), f);
 +        }
-+        for g in m.current.keys() { word("good", g); }
-+        for (_, g, _) in &m.history { word("good", g); }
++        for g in m.current.keys() { word("good", crate::names::text(*g)); }
++        for (_, g, _) in &m.history { word("good", crate::names::text(*g)); }
 +    }
-+    for (_, o, c) in &meta.province_owner { word("tag(owner/controller)", o); word("tag(owner/controller)", c); }
++    for (_, o, c) in &meta.province_owner { word("tag(owner/controller)", crate::names::text(*o)); word("tag(owner/controller)", crate::names::text(*c)); }
 +    for w in &meta.wars {
-+        word("war: name", &w.name); word("war: tag (original sides, side lists, fighting)", &w.original_attacker);
-+        word("war: tag (original sides, side lists, fighting)", &w.original_defender);
-+        for t in w.attackers.iter().chain(&w.defenders).chain(&w.fighting) { word("war: tag (original sides, side lists, fighting)", t); }
-+        word("war: date", &w.start); word("war: date", &w.end);
-+        for (d, t, _) in w.joins.iter().chain(&w.leaves) { word("war: date", d); word("war: tag (original sides, side lists, fighting)", t); }
-+        for g in &w.goals { word("war: casus belli", &g.casus_belli); word("war: date", &g.added); }
++        word("war: name", crate::names::text(w.name)); word("war: tag (original sides, side lists, fighting)", crate::names::text(w.original_attacker));
++        word("war: tag (original sides, side lists, fighting)", crate::names::text(w.original_defender));
++        for t in w.attackers.iter().chain(&w.defenders).chain(&w.fighting) { word("war: tag (original sides, side lists, fighting)", crate::names::text(*t)); }
++        word("war: date", crate::names::text(w.start)); word("war: date", crate::names::text(w.end));
++        for (d, t, _) in w.joins.iter().chain(&w.leaves) { word("war: date", crate::names::text(*d)); word("war: tag (original sides, side lists, fighting)", crate::names::text(*t)); }
++        for g in &w.goals { word("war: casus belli", crate::names::text(g.casus_belli)); word("war: date", crate::names::text(g.added)); }
 +        for b in &w.battles {
-+            word("war: battle name", &b.name);
-+            if let Some(d) = &b.date { word("war: date", d); }
++            word("war: battle name", crate::names::text(b.name));
++            if let Some(d) = &b.date { word("war: date", crate::names::text(*d)); }
 +            for sd in b.attacker.iter().chain(b.defender.iter()) {
-+                word("war: leader", &sd.leader); word("war: tag (original sides, side lists, fighting)", &sd.country);
-+                for (k, _) in sd.units.iter() { word("war: battle unit kind", k); }
++                word("war: leader", crate::names::text(sd.leader)); word("war: tag (original sides, side lists, fighting)", crate::names::text(sd.country));
++                for (k, _) in sd.units.iter() { word("war: battle unit kind", crate::names::text(*k)); }
 +            }
 +        }
 +    }
-+    if let Some(m) = &meta.market { for (st, _, _) in &m.history { word("market: stamp", st); } }
++    if let Some(m) = &meta.market { for (st, _, _) in &m.history { word("market: stamp", crate::names::text(*st)); } }
 +    for (key, n) in keys.iter().zip(nations) {
 +        let kept = spec.keeps(key, n);
 +        let nn = |f: &str, v: usize| note(f, v, kept);
@@ -206,8 +206,8 @@ index b2e5bf2..5a7e18e 100644
 +        if on("war.goals") { rev(&mut w.goals); }
 +        if on("war.units") {
 +            for b in w.battles.iter_mut() {
-+                if let Some(s) = b.attacker.as_mut() { s.units.reverse(); }
-+                if let Some(s) = b.defender.as_mut() { s.units.reverse(); }
++                if let Some(s) = b.attacker.as_mut() { s.units.0.reverse(); }
++                if let Some(s) = b.defender.as_mut() { s.units.0.reverse(); }
 +            }
 +        }
 +    }
@@ -285,7 +285,7 @@ index b2e5bf2..5a7e18e 100644
 +    }
 +}
 diff --git a/scanner/src/engine/mod.rs b/scanner/src/engine/mod.rs
-index 105844b..082621a 100644
+index 8a4c3cf..f27ba1e 100644
 --- a/scanner/src/engine/mod.rs
 +++ b/scanner/src/engine/mod.rs
 @@ -36,6 +36,7 @@ pub mod rules;
@@ -418,10 +418,10 @@ index 105844b..082621a 100644
      out::release();
      if run.cross_part {
 diff --git a/scanner/src/engine/report.rs b/scanner/src/engine/report.rs
-index 17c985a..59942a6 100644
+index 1087f4f..6011029 100644
 --- a/scanner/src/engine/report.rs
 +++ b/scanner/src/engine/report.rs
-@@ -39,6 +39,7 @@ use std::io::Write;
+@@ -40,6 +40,7 @@ use std::io::Write;
  
  
  /// A save as the rest of the run keeps it: `(meta, nations)` trimmed.
@@ -429,7 +429,7 @@ index 17c985a..59942a6 100644
  pub struct Kept1 {
      pub meta: Meta,
      pub nations: Vec<Kept>,
-@@ -78,13 +79,23 @@ fn walk(mut spent: Vec<Spent>) -> Campaign {
+@@ -79,18 +80,23 @@ fn walk(mut spent: Vec<Spent>) -> Campaign {
          spent.iter_mut().map(|s| std::mem::take(&mut s.meta.wars)).collect();
      std::thread::scope(|scope| {
          let book = scope.spawn(move || {
@@ -437,6 +437,11 @@ index 17c985a..59942a6 100644
 -            for w in &wars {
 -                book.fold_save(w);
 -            }
+-            // Nothing needs the records once they are folded, and freeing
+-            // them (millions of small allocations) is slower than the rest
+-            // of the walk: a thread nothing joins does it, and the process
+-            // may end first, which only skips the work.
+-            std::thread::spawn(move || drop(wars));
 +            let book = crate::probe::staged("W1 walk: the wars folded into the Book (own thread)", || {
 +                let mut book = Book::default();
 +                for w in &wars {
@@ -444,11 +449,11 @@ index 17c985a..59942a6 100644
 +                }
 +                book
 +            });
-+            crate::probe::staged("W1b walk: the saves' war records dropped (own thread)", || {
++            crate::probe::staged("W1b walk: the saves' war records handed on (own thread)", || {
 +                match std::env::var("VIC2_WARDROP").as_deref() {
 +                    Ok("forget") => std::mem::forget(wars),
-+                    Ok("thread") => { std::thread::spawn(move || drop(wars)); }
-+                    _ => drop(wars),
++                    Ok("inline") => drop(wars),
++                    _ => { std::thread::spawn(move || drop(wars)); }
 +                }
 +            });
              book
@@ -458,7 +463,7 @@ index 17c985a..59942a6 100644
          c.book = book.join().unwrap();
          c
      })
-@@ -928,6 +939,31 @@ pub struct CrossPart {
+@@ -940,6 +946,31 @@ pub struct CrossPart {
  pub fn run(run: &Run, m: &Mod, live: &FxSet<String>, spent: Vec<Spent>) -> Outcome {
      let c = walk(spent);
      crate::engine::phase("walked");
@@ -514,18 +519,18 @@ index 7aa34f0..d4a9d98 100644
      live
  }
 diff --git a/scanner/src/engine/wars.rs b/scanner/src/engine/wars.rs
-index 202248b..a2db5d6 100644
+index 1ca399d..0ec401a 100644
 --- a/scanner/src/engine/wars.rs
 +++ b/scanner/src/engine/wars.rs
-@@ -20,6 +20,7 @@ pub type Key = (String, String, String, usize);
- type BattleKey = (String, i64, i64, i64, usize);
+@@ -21,6 +21,7 @@ pub type Key = (Sym, Sym, Sym, usize);
+ type BattleKey = (Sym, i64, i64, i64, usize);
  
  /// One war as the book holds it.
 +#[derive(Clone)]
  pub struct Held {
-     pub name: String,
-     pub original_attacker: String,
-@@ -36,7 +37,7 @@ pub struct Held {
+     pub name: Sym,
+     pub original_attacker: Sym,
+@@ -37,7 +38,7 @@ pub struct Held {
      pub battles: OMap<BattleKey, Battle>,
  }
  
@@ -535,12 +540,12 @@ index 202248b..a2db5d6 100644
      pub wars: FxMap<Key, Held>,
      pub order: Vec<Key>,
 diff --git a/scanner/src/main.rs b/scanner/src/main.rs
-index fce5f54..fcf2ccf 100644
+index 0437c05..bfaa6b1 100644
 --- a/scanner/src/main.rs
 +++ b/scanner/src/main.rs
-@@ -31,6 +31,9 @@ mod fx;
- mod jsonr;
+@@ -32,6 +32,9 @@ mod jsonr;
  mod md5;
+ mod names;
  mod omap;
 +mod probe;
 +#[global_allocator]
