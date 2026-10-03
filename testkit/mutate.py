@@ -410,8 +410,7 @@ def r13():
           "that save against itself, and reads 'none taken'", "edges.py")
 def r12():
     patch("scanner/src/engine/wars.rs",
-          "        if !end.is_empty() && !ledger_dates.is_empty()
-"
+          "        if !end.is_empty() && !ledger_dates.is_empty()\n"
           "            && ledger_dates[0] >= year_fraction(names::text(end)) {",
           "        if false {")
 
@@ -715,11 +714,8 @@ def m87():
           "enginecheck.py", "saves-and-mod")
 def m88():
     patch("scanner/src/engine/wars.rs",
-          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();
-",
-          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();
-    v.reverse();
-")
+          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();\n",
+          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();\n    v.reverse();\n")
 
 
 @mutation("war-battles-reversed",
@@ -728,12 +724,9 @@ def m88():
           "enginecheck.py", "saves-and-mod")
 def m89():
     patch("scanner/src/engine/wars.rs",
-          "        let mut battles: Vec<&Battle> = war.battles.values().collect();
-",
-          "        let mut battles: Vec<&Battle> = war.battles.values().collect();
-"
-          "        battles.reverse();
-")
+          "        let mut battles: Vec<&Battle> = war.battles.values().collect();\n",
+          "        let mut battles: Vec<&Battle> = war.battles.values().collect();\n"
+          "        battles.reverse();\n")
 
 
 def main():
