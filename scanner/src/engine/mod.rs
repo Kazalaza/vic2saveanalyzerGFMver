@@ -903,7 +903,12 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
     // for the saves it had not read under this reading.
     let marks: Vec<Option<String>> =
         run.files.iter().map(|f| run.store.read_marker(f, &run.reading_context)).collect();
-    let todo = marks.iter().filter(|m| m.as_ref().is_none_or(|m| !std::path::Path::new(m).is_file())).count();
+    // Which saves had no marker when the run began: only those are marked
+    // after (a marker that is there is empty, and writing it again only costs
+    // a file operation a save, on the one thread that is waiting).
+    let unmarked: Vec<bool> = marks.iter()
+        .map(|m| m.as_ref().is_none_or(|m| !std::path::Path::new(m).is_file())).collect();
+    let todo = unmarked.iter().filter(|&&u| u).count();
     let campaign = run.store.campaign_marker(&run.files, &run.reading_context);
     let campaign_read = campaign.as_ref().is_some_and(|c| std::path::Path::new(c).is_file());
     let say_each = verbose && !campaign_read;
@@ -1004,7 +1009,7 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
     // The saves that were read, and where they sit among the files.
     let kept: Vec<usize> = (0..n).filter(|&i| pres[i].is_some()).collect();
     for &i in &kept {
-        if let Some(m) = &marks[i] {
+        if let (Some(m), true) = (&marks[i], unmarked[i]) {
             run.store.mark(m);
         }
     }

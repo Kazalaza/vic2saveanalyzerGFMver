@@ -103,7 +103,7 @@ index b2e5bf2..4609448 100644
 +    note("meta.goals", meta.wars.iter().map(|w| w.goals.len()).sum(), f);
 +    note("meta.war side tags", meta.wars.iter().map(|w| w.attackers.len() + w.defenders.len() + w.fighting.len()).sum(), f);
 +    note("meta.battle units", meta.wars.iter().flat_map(|w| w.battles.iter())
-+        .map(|b| b.attacker.iter().chain(b.defender.iter()).map(|s| s.units.0.len()).sum::<usize>()).sum(), f);
++        .map(|b| b.attacker.iter().chain(b.defender.iter()).map(|s| s.units.len()).sum::<usize>()).sum(), f);
 +    if let Some(m) = &meta.market {
 +        note("meta.market.current", m.current.len(), f);
 +        note("meta.market.history", m.history.len(), f);
@@ -206,8 +206,8 @@ index b2e5bf2..4609448 100644
 +        if on("war.goals") { rev(&mut w.goals); }
 +        if on("war.units") {
 +            for b in w.battles.iter_mut() {
-+                if let Some(s) = b.attacker.as_mut() { s.units.0.reverse(); }
-+                if let Some(s) = b.defender.as_mut() { s.units.0.reverse(); }
++                if let Some(s) = b.attacker.as_mut() { s.units.reverse(); }
++                if let Some(s) = b.defender.as_mut() { s.units.reverse(); }
 +            }
 +        }
 +    }
