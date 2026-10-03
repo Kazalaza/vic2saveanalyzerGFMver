@@ -729,6 +729,27 @@ def m89():
           "        battles.reverse();\n")
 
 
+@mutation("culture-ties-broken-by-name",
+          "two cultures of the same size are listed alphabetically, not in the "
+          "order the save first named them",
+          "enginecheck.py", "saves-and-mod")
+def m90():
+    patch("scanner/src/engine/finish.rs",
+          "        cultures.sort_by(|a, b| b.1.cmp(a.1));\n",
+          "        cultures.sort_by(|a, b| b.1.cmp(a.1).then(names::cmp(*a.0, *b.0)));\n")
+
+
+@mutation("group-types-reversed",
+          "a state's pop types are numbered in the opposite order to the one the "
+          "save met them in, so the state chunk's words and layouts change",
+          "enginecheck.py", "saves-and-mod")
+def m91():
+    patch("scanner/src/engine/model.rs",
+          "Group { group: *group, size: st.total, literate: st.literate, types: pairs(&st.types),",
+          "Group { group: *group, size: st.total, literate: st.literate, "
+          "types: { let mut v = pairs(&st.types); v.reverse(); v },")
+
+
 def main():
     global TREE, SAVES, MOD
     ap = argparse.ArgumentParser(description=__doc__.strip().split("\n")[0])
