@@ -410,7 +410,9 @@ def r13():
           "that save against itself, and reads 'none taken'", "edges.py")
 def r12():
     patch("scanner/src/engine/wars.rs",
-          "        if !end.is_empty() && !ledger_dates.is_empty() && ledger_dates[0] >= year_fraction(&end) {",
+          "        if !end.is_empty() && !ledger_dates.is_empty()
+"
+          "            && ledger_dates[0] >= year_fraction(names::text(end)) {",
           "        if false {")
 
 
@@ -705,6 +707,33 @@ def m87():
     patch("scanner/src/engine/market.rs",
           "        goods.sort_by(|a, b| names::cmp(*a, *b));\n        for good in goods {",
           "        goods.sort_by_key(|g| names::id(*g));\n        for good in goods {")
+
+
+@mutation("war-side-units-reversed",
+          "a battle's unit kinds are listed in the opposite order to the file's, "
+          "which shows where two kinds have as many men",
+          "enginecheck.py", "saves-and-mod")
+def m88():
+    patch("scanner/src/engine/wars.rs",
+          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();
+",
+          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();
+    v.reverse();
+")
+
+
+@mutation("war-battles-reversed",
+          "a war's battles are held in the opposite order to the file's, which "
+          "shows where two battles share a date and a name",
+          "enginecheck.py", "saves-and-mod")
+def m89():
+    patch("scanner/src/engine/wars.rs",
+          "        let mut battles: Vec<&Battle> = war.battles.values().collect();
+",
+          "        let mut battles: Vec<&Battle> = war.battles.values().collect();
+"
+          "        battles.reverse();
+")
 
 
 def main():
