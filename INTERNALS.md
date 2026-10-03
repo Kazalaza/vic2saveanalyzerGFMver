@@ -504,6 +504,58 @@ occupied; only that third one took anything.
 
 ## Speed
 
+### The wars on `Sym`, and what a warm pass one costs, 2026-10-03
+
+**The wars.** `War`, `Goal`, `FirstGoal`, `Battle` and `Side` hold every name,
+tag and date as a `Sym`; a side's units are an `OMap<Sym, i64>`; the war
+`Book` (`Held`, its keys, `join_dates`, `goalbook`), `wars::build`,
+`rules::save_world` and the cache's records follow. Containers and their order
+are as they were: the wars, a war's battles and goals, a side's units reach the
+page in the order the file gave them. Every sort and every date parse works on
+the text (`names::cmp`, `year_fraction(names::text(..))`); `sorted_names` in
+`model.rs` still sorts the bytes, which orders latin-1 names as their text is
+ordered. `War` is still compared whole by the `Book`, and the comparison is
+now a few integers a record. `save_world`'s `at_war` is a set of `Sym`, asked
+with `names::intern_str(&nat.tag)`. `explain.rs` needed nothing: it only calls
+`save_world`.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 7.15 M | 3.95 M |
+| what `Meta.wars` holds | 4.14 M allocations | 1.02 M |
+| a warm load, allocations a save | 28,922 | 17,167 |
+| warm pass one | 0.205 s | 0.141 s |
+| warm rebuild | 0.980 s | 0.897 s |
+| empty-cache run | 2.406 s | 2.287 s |
+
+(Alternating rounds against the build before this stage, medians. The raw
+numbers and the expected figures are in `speed/MODEL.md` 4.4.)
+
+**The first version of this was slower.** With only the wars on `Sym` the warm
+pass one went from 0.205 s to 0.337 s although it made four million fewer
+allocations. On the `windows-gnu` target a `thread_local!` access calls
+`std::sys::thread_local::guard::windows::enable`, which does three locked
+operations on one counter every thread shares; the name table's per-thread
+cache was reached that way about 5.5 M times on 31 workers, and 110 of 160
+sampled threads were in it. The cache is now behind a `TlsAlloc` slot read
+with `TlsGetValue` (`names.rs`; other targets keep `thread_local!`). **Any
+thread-local on a hot path needs the same, on Windows.**
+
+**A serial 35 ms.** After the workers, pass one wrote an empty marker file for
+each of 265 saves on the thread the workers hand to, whether or not it was
+there. Only the saves that had no marker are marked: warm pass one 0.178 s to
+0.149 s.
+
+**What a warm pass one is now:** 0.024 s of one thread's setup (a stat and a
+hash a file), then about 0.12 s with all 31 workers busy to the end. What is
+left in the workers is not the allocator, the page faults, the name table or
+an imbalance (each tried, `MODEL.md` 4.4); a load repeated by the same worker
+costs a quarter of its first. It is the open question.
+
+**Tried and dropped:** `Side.units` as one `Vec` (0.4 M fewer allocations;
+pass one 0.171 s to 0.169 s). A name table that gives a thread every name added
+since it last looked (6 ms, noise). Neither is in the tree.
+
 ### The name table, the owners and the market, 2026-10-03
 
 **The war records are freed on a thread nothing waits for.** The walk's
