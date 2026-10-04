@@ -1,8 +1,8 @@
 diff --git a/scanner/src/engine/finish.rs b/scanner/src/engine/finish.rs
-index ad74481..ee50733 100644
+index db29893..00273e4 100644
 --- a/scanner/src/engine/finish.rs
 +++ b/scanner/src/engine/finish.rs
-@@ -263,7 +263,9 @@ pub fn escape_angles(s: &str) -> String {
+@@ -264,7 +264,9 @@ pub fn escape_angles(s: &str) -> String {
  // ------------------------------------------------------------- pass one
  
  /// Everything about one save that does not wait for the inventions.
@@ -13,7 +13,7 @@ index ad74481..ee50733 100644
      let pairs: Vec<(String, Nation)> = keys.into_iter().zip(nations).collect();
      let playing = players(&meta, &pairs, &spec.player_nations);
      let mut snapshot = Snapshot::default();
-@@ -304,7 +306,9 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
+@@ -305,7 +307,9 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
          pre.nat = nat;
          out.push(pre);
      }
@@ -24,7 +24,7 @@ index ad74481..ee50733 100644
  }
  
  // ------------------------------------------------------------- pass two
-@@ -355,6 +359,7 @@ impl Val<'_> {
+@@ -356,6 +360,7 @@ impl Val<'_> {
  
  
  /// A finished nation's row of the main table: `spending.save_rows`'s dict.
@@ -32,7 +32,7 @@ index ad74481..ee50733 100644
  pub struct Row {
      /// The key the save's dict holds the nation under.
      pub key: String,
-@@ -389,6 +394,7 @@ pub struct Row {
+@@ -390,6 +395,7 @@ pub struct Row {
  
  /// What `Row::get` reads of a finished nation, and nothing else: the rest of
  /// the `Nation` is let go when the row is made.
@@ -40,14 +40,14 @@ index ad74481..ee50733 100644
  pub struct RowFacts {
      pub tag: String,
      pub primary_culture: Sym,
-@@ -558,6 +564,7 @@ pub struct PerNation {
+@@ -559,6 +565,7 @@ pub struct PerNation {
  }
  
  /// What survives of a nation for the rest of the run (`KEEP_NATION`).
 +#[derive(Clone)]
  pub struct Kept {
      pub tag: String,
-     pub units_at: OMap<i64, OMap<String, i64>>,
+     pub units_at: Vec<Stack>,
 @@ -627,8 +634,12 @@ fn csv_line(out: &mut String, vals: &[Val]) {
  
  /// The rest of finishing, and `save_rows`: one prepared save spent.
@@ -80,7 +80,7 @@ index ad74481..ee50733 100644
              let floor = trunc_int(match m.define("MIN_MOBILIZE_LIMIT") {
                  Some(v) => v,
                  None => 3.0,
-@@ -729,7 +740,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
+@@ -726,7 +737,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
              tables.crews.push((tag.clone(), crew_of));
          }
          if nat.ships != 0 {
@@ -89,7 +89,7 @@ index ad74481..ee50733 100644
              naval.push((tag.clone(), profile_key(&profile), profile));
          }
          for (good, amount) in nat.goods_supply.iter() {
-@@ -839,3 +850,198 @@ fn trim(tag: &str, nat: &mut Nation) -> Kept {
+@@ -836,3 +847,198 @@ fn trim(tag: &str, nat: &mut Nation) -> Kept {
      }
  }
  
@@ -144,12 +144,9 @@ index ad74481..ee50733 100644
 +        let nn = |f: &str, v: usize| note(f, v, kept);
 +        nn("nation.accepted_cultures", n.accepted_cultures.len());
 +        nn("nation.ships_by_type", n.ships_by_type.len());
-+        nn("nation.ship_crew", n.ship_crew.len());
 +        nn("nation.regiments_by_type", n.regiments_by_type.len());
-+        nn("nation.units_at (provinces)", n.units_at.len());
-+        nn("nation.units_at (inner entries)", n.units_at.values().map(|m| m.len()).sum());
-+        nn("nation.men_at (provinces)", n.men_at.len());
-+        nn("nation.men_at (inner entries)", n.men_at.values().map(|m| m.len()).sum());
++        nn("nation.units_at (provinces)", crate::country::Stack::provinces(&n.units_at).count());
++        nn("nation.units_at (entries)", n.units_at.len());
 +        nn("nation.tech_list", n.tech_list.len());
 +        nn("nation.invention_ids", n.invention_ids.len());
 +        nn("nation.modifiers", n.modifiers.len());
@@ -179,11 +176,10 @@ index ad74481..ee50733 100644
 +        }
 +        for (t, _) in n.pop_by_type.iter() { word("poptype", crate::names::text(*t)); }
 +        for (k, c, _, _) in &n.mobilizable_pops { word("poptype", crate::names::text(*k)); word("culture", crate::names::text(*c)); }
-+        for (t, _) in n.ships_by_type.iter() { word("shiptype", t); }
-+        for (t, _) in n.ship_crew.iter() { word("shiptype", t); }
-+        for (t, _) in n.regiments_by_type.iter() { word("regtype", t); }
-+        for m in n.units_at.values().chain(n.men_at.values()) {
-+            for (t, _) in m.iter() { word("unit kind (units_at/men_at)", t); }
++        for s in n.ships_by_type.iter() { word("shiptype", names::text(s.kind)); }
++        for (t, _) in n.regiments_by_type.iter() { word("regtype", names::text(*t)); }
++        for s in n.units_at.iter() {
++            word("unit kind (units_at)", names::text(s.kind));
 +        }
 +        for t in &n.tech_list { word("tech", crate::names::text(*t)); }
 +        for t in &n.modifiers { word("modifier", crate::names::text(*t)); }
@@ -227,12 +223,18 @@ index ad74481..ee50733 100644
 +    for n in nations.iter_mut() {
 +        if on("accepted_cultures") { rev(&mut n.accepted_cultures); }
 +        if on("ships_by_type") { n.ships_by_type.reverse(); }
-+        if on("ship_crew") { n.ship_crew.reverse(); }
 +        if on("regiments_by_type") { n.regiments_by_type.reverse(); }
-+        if on("units_at") { n.units_at.reverse(); }
-+        if on("units_at.inner") { for m in n.units_at.values_mut() { m.reverse(); } }
-+        if on("men_at") { n.men_at.reverse(); }
-+        if on("men_at.inner") { for m in n.men_at.values_mut() { m.reverse(); } }
++        if on("units_at") {
++            // the provinces reversed, each province's kinds as they were
++            let mut groups: Vec<Vec<crate::country::Stack>> = crate::country::Stack::provinces(&n.units_at).map(|g| g.to_vec()).collect();
++            groups.reverse();
++            n.units_at = groups.concat();
++        }
++        if on("units_at.inner") {
++            let mut groups: Vec<Vec<crate::country::Stack>> = crate::country::Stack::provinces(&n.units_at).map(|g| g.to_vec()).collect();
++            for g in groups.iter_mut() { g.reverse(); }
++            n.units_at = groups.concat();
++        }
 +        if on("tech_list") { rev(&mut n.tech_list); }
 +        if on("invention_ids") { rev(&mut n.invention_ids); }
 +        if on("modifiers") { rev(&mut n.modifiers); }
@@ -274,10 +276,8 @@ index ad74481..ee50733 100644
 +          nat.capital.clone(), nat.nationalvalue.clone()), |v| Box::new(v.clone()));
 +        h("nat.accepted_cultures", &nat.accepted_cultures, |v| Box::new(v.clone()));
 +        h("nat.ships_by_type", &nat.ships_by_type, |v| Box::new(v.clone()));
-+        h("nat.ship_crew", &nat.ship_crew, |v| Box::new(v.clone()));
 +        h("nat.regiments_by_type", &nat.regiments_by_type, |v| Box::new(v.clone()));
 +        h("nat.units_at", &nat.units_at, |v| Box::new(v.clone()));
-+        h("nat.men_at", &nat.men_at, |v| Box::new(v.clone()));
 +        h("nat.tech_list", &nat.tech_list, |v| Box::new(v.clone()));
 +        h("nat.invention_ids", &nat.invention_ids, |v| Box::new(v.clone()));
 +        h("nat.modifiers", &nat.modifiers, |v| Box::new(v.clone()));
@@ -422,10 +422,10 @@ index 68a229a..0bf353c 100644
      out::release();
      if run.cross_part {
 diff --git a/scanner/src/engine/report.rs b/scanner/src/engine/report.rs
-index 8d5ad39..6c0d26e 100644
+index 4913b51..6c0f178 100644
 --- a/scanner/src/engine/report.rs
 +++ b/scanner/src/engine/report.rs
-@@ -40,6 +40,7 @@ use std::io::Write;
+@@ -41,6 +41,7 @@ use std::io::Write;
  
  
  /// A save as the rest of the run keeps it: `(meta, nations)` trimmed.
@@ -433,7 +433,7 @@ index 8d5ad39..6c0d26e 100644
  pub struct Kept1 {
      pub meta: Meta,
      pub nations: Vec<Kept>,
-@@ -79,18 +80,23 @@ fn walk(mut spent: Vec<Spent>) -> Campaign {
+@@ -80,18 +81,23 @@ fn walk(mut spent: Vec<Spent>) -> Campaign {
          spent.iter_mut().map(|s| std::mem::take(&mut s.meta.wars)).collect();
      std::thread::scope(|scope| {
          let book = scope.spawn(move || {
@@ -467,7 +467,7 @@ index 8d5ad39..6c0d26e 100644
          c.book = book.join().unwrap();
          c
      })
-@@ -940,6 +946,31 @@ pub struct CrossPart {
+@@ -941,6 +947,31 @@ pub struct CrossPart {
  pub fn run(run: &Run, m: &Mod, live: &FxSet<String>, spent: Vec<Spent>) -> Outcome {
      let c = walk(spent);
      crate::engine::phase("walked");
