@@ -822,7 +822,7 @@ def m98():
 def m99():
     patch("scanner/src/engine/finish.rs",
           "        units_at: std::mem::take(&mut nat.units_at),\n",
-          "        units_at: OMap::new(),\n")
+          "        units_at: Vec::new(),\n")
 
 
 @mutation("invention-trigger-inverted",
@@ -832,6 +832,59 @@ def m100():
     patch("scanner/src/engine/rules.rs",
           ".as_ref().map(|held| held.contains(text)));",
           ".as_ref().map(|held| !held.contains(text)));")
+
+
+@mutation("army-kinds-tie-reversed",
+          "two kinds with as many regiments in a province change places on the page's "
+          "armies, as if the province's kinds were read last first",
+          "enginecheck.py", "saves-and-mod")
+def m101():
+    patch("scanner/src/engine/report.rs",
+          "                let mut ranked: Vec<&Stack> = types.iter().collect();",
+          "                let mut ranked: Vec<&Stack> = types.iter().rev().collect();")
+
+
+@mutation("army-provinces-reversed",
+          "a nation's armies come out on the page with its provinces in the order "
+          "last met first",
+          "enginecheck.py", "saves-and-mod")
+def m102():
+    patch("scanner/src/country.rs",
+          "        None => {\n            stacks.push(stack);\n            return;\n        }",
+          "        None => {\n            stacks.insert(0, stack);\n            return;\n        }")
+
+
+@mutation("ship-types-by-id",
+          "ships_by_type.csv lists a nation's ships in the order the run met the "
+          "names, not by name",
+          "enginecheck.py", "saves-and-mod")
+def m103():
+    patch("scanner/src/names.rs", "/// Order by what the names say",
+          "pub fn id(s: Sym) -> u32 {\n    s.0\n}\n\n/// Order by what the names say")
+    patch("scanner/src/engine/finish.rs",
+          "        ship_types.sort_by(|a, b| names::cmp(a.kind, b.kind));",
+          "        ship_types.sort_by_key(|s| names::id(s.kind));")
+
+
+@mutation("regiment-types-by-id",
+          "brigades_by_type.csv lists a nation's regiments in the order the run met "
+          "the names, not by name",
+          "enginecheck.py", "saves-and-mod")
+def m104():
+    patch("scanner/src/names.rs", "/// Order by what the names say",
+          "pub fn id(s: Sym) -> u32 {\n    s.0\n}\n\n/// Order by what the names say")
+    patch("scanner/src/engine/finish.rs",
+          "        regiments.sort_by(|a, b| names::cmp(a.0, b.0));",
+          "        regiments.sort_by_key(|r| names::id(r.0));")
+
+
+@mutation("ship-crew-dropped",
+          "a ship's crew is not counted, so every fleet reads as crewed by its hull count",
+          "enginecheck.py", "saves-and-mod")
+def m105():
+    patch("scanner/src/engine/finish.rs",
+          "            let effective = Num::F(round(ship.crew, 3));",
+          "            let effective = Num::I(ship.count);")
 
 
 def main():
