@@ -750,6 +750,90 @@ def m91():
           "types: { let mut v = pairs(&st.types); v.reverse(); v },")
 
 
+@mutation("techs-ordered-by-name-number",
+          "a nation's technologies are written in the order their names were first met "
+          "in the run, not alphabetically, so technologies.csv and the page's lists change",
+          "enginecheck.py", "saves-and-mod")
+def m92():
+    patch("scanner/src/engine/finish.rs",
+          "        techs.sort_by(|a, b| names::cmp(*a, *b));\n",
+          "        techs.sort_by_key(|t| t.index());\n")
+
+
+@mutation("reform-mob-key-swapped",
+          "a reform's mobilisation size is looked up with the option and the reform the "
+          "wrong way round, so no reform grants any",
+          "enginecheck.py", "saves-and-mod")
+def m93():
+    patch("scanner/src/engine/rules.rs",
+          "        let v = d.reform_mob(*reform, *option);\n",
+          "        let v = d.reform_mob(*option, *reform);\n")
+
+
+@mutation("national-value-ignored",
+          "a nation's national value grants no mobilisation size",
+          "enginecheck.py", "saves-and-mod")
+def m94():
+    patch("scanner/src/engine/rules.rs",
+          "    let v = d.nv_mob(nat.nationalvalue);\n",
+          "    let v = 0.0 * d.nv_mob(nat.nationalvalue);\n")
+
+
+@mutation("modifier-impacts-ignored",
+          "a nation's event modifiers add nothing to its mobilisation cap",
+          "enginecheck.py", "saves-and-mod")
+def m95():
+    patch("scanner/src/engine/rules.rs",
+          "        total += d.modifier_impact(*name);\n",
+          "        total += 0.0 * d.modifier_impact(*name);\n")
+
+
+@mutation("techs-without-branch",
+          "every technology is filed under 'other' in technologies.csv and the page",
+          "enginecheck.py", "saves-and-mod")
+def m96():
+    patch("scanner/src/engine/finish.rs",
+          "dense.tech_group(*tech).unwrap_or((\"other\", \"Other\"))",
+          "dense.tech_group(*tech).filter(|_| false).unwrap_or((\"other\", \"Other\"))")
+
+
+@mutation("cross-names-never-built",
+          "a --cross run has no government names for its nations, so every label is the tag",
+          "enginecheck.py", "saves-and-mod")
+def m97():
+    patch("scanner/src/engine/mod.rs",
+          "    let held_names: Vec<(String, String)> = if run.cross_part {",
+          "    let held_names: Vec<(String, String)> = if false && run.cross_part {")
+
+
+@mutation("row-facts-pop-types-dropped",
+          "the pop_<type> columns of the main table read nought, as if the row had kept no "
+          "pop types",
+          "enginecheck.py", "saves-and-mod")
+def m98():
+    patch("scanner/src/engine/finish.rs",
+          "            pop_by_type: std::mem::take(&mut nat.pop_by_type),\n",
+          "            pop_by_type: OMap::new(),\n")
+
+
+@mutation("kept-units-left-behind",
+          "a kept nation's units are not carried to the page, so no army is drawn",
+          "enginecheck.py", "saves-and-mod")
+def m99():
+    patch("scanner/src/engine/finish.rs",
+          "        units_at: std::mem::take(&mut nat.units_at),\n",
+          "        units_at: OMap::new(),\n")
+
+
+@mutation("invention-trigger-inverted",
+          "a trigger that asks whether a nation holds an invention is answered the other way",
+          "enginecheck.py", "saves-and-mod")
+def m100():
+    patch("scanner/src/engine/rules.rs",
+          ".as_ref().map(|held| held.contains(text)));",
+          ".as_ref().map(|held| !held.contains(text)));")
+
+
 def main():
     global TREE, SAVES, MOD
     ap = argparse.ArgumentParser(description=__doc__.strip().split("\n")[0])
