@@ -1088,3 +1088,100 @@ were brought to the new numbers.
   rank above both 10 and 11 for the empty-cache run. `naval_profile`'s
   clones are a 20-line change if wanted. Not pushed; bundle
   `~/vic2saveanalyzer-backup-<hash>.bundle` named for this notes commit.
+
+## 2026-10-04, task 10 done on the Windows PC (units and ships)
+
+- **Made on the Windows PC** (Ryzen 9 7950X, 31 workers). Commits, not pushed:
+  `939db8d` ships, regiments and units on `Sym` (containers as they were);
+  `ee04466` the flattening (`Vec<Ship>`, `Vec<(Sym, i64)>`, one `Vec<Stack>`, one
+  shared `Units` for both readers); `efb99bc` five mutations and one re-aim;
+  `596fe96` the probe diff rebased; the exe and the notes commits follow.
+  INTERNALS.md: "Units and ships, flat, 2026-10-04". MODEL.md has a new section
+  4.7 with every number. Both halves are done; nothing is left of 10.
+- **Verification** of each code commit (`939db8d`, `ee04466`): suite 28 of 28; the
+  real campaign against `speed/runs/11e1f21` (`cmpruns.py --payload`: IDENTICAL);
+  the same with `VIC2_ENGINE_NAMES_SHIFT=7` (IDENTICAL); `warmshift.py` clean;
+  `cargo test` 10 of 10. Each was timed before it was committed. The cache is
+  unchanged in format: entries written by the build before and the build after
+  are the same size to the byte (52,920,436 bytes over 265), and differ only in
+  the key's few bytes; `V2ENGC02` is not bumped, an entry from either side
+  reads on the other.
+
+| | expected (estimate) | measured |
+|---|---|---|
+| live after pass one | about 0.8 M fewer | 2,526,822 to 1,670,060 (-0.857 M; part one -0.42 M, part two -0.44 M), 346.5 to 291.5 MB |
+| warm pass one | about 0.02 s quicker | 0.117 s to 0.106 s (part one alone 0.119 to 0.112) |
+| warm rebuild | | 0.805 s to 0.807 s (part one alone 0.775 to 0.758) |
+| empty-cache run | 0.02-0.03 s | 2.222 s to 2.219 s for the flattening; part one 2.040 to 2.006 s |
+| `read_countries`, allocations a save | | 33,785 to 28,589 |
+| warm cache load, allocations a save | | 11,780 to 8,539 |
+| a whole `PreNation` held | | 1.44 M to 0.58 M allocations; `Kept` 825,603 to 47,029 |
+
+  (Six alternating rounds, eight for the warm pair of part two, medians,
+  `abwarm.py`; `--empty` for the empty-cache runs. Each pair was taken together.
+  A pair of empty rounds taken at a noisy hour, other programs using 40% of the
+  PC, read 3.0 s for both builds and was thrown away and retaken.)
+- **Expected against measured, part by part.** *Part one:* the allocations moved
+  as 5.3 counted (-0.42 M of 0.88 M) and the clocks followed a little (warm pass
+  one -0.007 s, empty run -0.034 s, both about what this PC drifts by in an hour,
+  so I would not call either a gain). *Part two:* the other -0.44 M, warm pass one
+  -0.011 s, the warm wall and the empty-cache run unchanged. So warm pass one
+  gained about 0.013 s over both parts against 0.02 s expected, and the empty-cache
+  run gained what the noise allows, against 0.02-0.03 s: **the allocations went
+  as estimated and the empty-cache clock did not follow**, as 09 predicted (10 ms
+  a million at best). The reader the allocations were in is 13 ms a save of
+  thread time and `build` 1 ms.
+- **Tried and dropped / not done:** nothing was dropped after being built. I did
+  not time part two's three-lookups-to-one change apart from the flattening (one
+  commit). `naval_profile` (793,000 allocations, 50-70 ms of thread time) is not
+  fixed: its cost is strings and `Changes` clones, not ships, so the ship change
+  did not make it cheap; a separate 20-line change if wanted. `goods_supply`,
+  `country_flags` and the scalar names are untouched.
+- **Mutations**: all 79 on the tree at `efb99bc` (clean worktree
+  `~/vic2speed/rw/mut10`, `logs/mut-10.out`; its sources are `ee04466`'s): 78
+  caught, 1 BLIND, 0 did not apply, 0 untested. The blind one is
+  `keeper-folder-windows-only`, as in every run on this PC. A dry run first (each
+  mutation's function called and reverted): all 74 old ones applied; but
+  `kept-units-left-behind` would not have built (`OMap::new()` for a `Vec`), which
+  a dry run does not show, so I re-aimed it (`Vec::new()`). `walk-navy-not-entered`
+  and `walk-colonies-ignored` still apply as written (the `else if key == army ||
+  navy` line and the `is_colonial` line survived) and were caught. Five new ones,
+  each run alone first and caught by `enginecheck.py` with the saves and the mod:
+  `army-kinds-tie-reversed`, `army-provinces-reversed`, `ship-types-by-id`,
+  `regiment-types-by-id`, `ship-crew-dropped`.
+- **Probe**: `speed/model-probe.diff` regenerated against `ee04466` and checked to
+  apply there (`Kept` derives `Clone`; the census counts stacks and provinces; the
+  reversal switches `units_at` and `units_at.inner` rebuild the groups).
+- **Behaviour that is not byte-identical in principle:** a regiment's men are cut to
+  an integer as it is counted; the old tally summed floats and cut the sum. They
+  differ only for a non-finite `strength` (`nan`, `inf`) that shares a stack with
+  others. The game does not write one; the suite and the campaign are identical.
+- **My mistakes:** I ran `probe.sh .` with a relative tree after it had `cd`'d, so
+  its first run on the part-one tree measured the main tree (no probe) and wrote
+  nothing; found at once (no stage file), rerun with an absolute path. I ran
+  `build_exe.py --help` to see its options and it started a build (it wrote
+  `build/`, which is ignored, and was cut off by the pipe; `dist/` is untouched).
+  I wrote the first estimate of the ratio in MODEL.md 4.7 as "the task file's"
+  when it is 5.3's; corrected. The empty-cache pair at a noisy hour was nearly
+  used before I looked at the walls.
+- **exe**: NOT rebuilt yet when this entry was written: an instance of
+  `dist/vic2saveanalyzer.exe` has been running since 16:47 (not started by me), and
+  I do not kill it. See the line below for where it stands.
+- **Not verified:** Linux; a campaign with more nations or armies (the `add_stack`
+  scan is linear in a nation's stacks, at most 142 here); `--cross` beyond the
+  suite; hour-to-hour drift.
+- **Next, re-ranked by the numbers (the maintainer's call; 11 not started).** What
+  is left of a warm rebuild (0.80 s) is not the model: pass one 0.106 s, payload
+  sections 0.17 s, the map 0.14 s, assembly and gzip 0.08 s. Tasks 08 to 10 gained
+  0.078, 0.104 and about 0.01 s of the empty-cache run (09's and 10's numbers
+  above), so what remains of the allocation story is `Meta`'s wars and market
+  (11: half of pass one's allocations, 85,000 a save, but 7.3% of its thread time;
+  expect 0.01-0.03 s by the ratio seen in 08-10). **Task 13's list ranks first for
+  the empty-cache run:** the provinces' reader (37% of a save's thread time,
+  22,000 allocations a save left) and Windows file mapping (reading the file is
+  4.9 s of 18 s of thread time here, 27%, and finding the blocks 1.6 s, 9%).
+  **12** (the cache's own format and the load, 8,539 allocations a save, 0.356 s of
+  thread time warm) is worth doing only if the warm load is still the thing; pass
+  one is now 0.106 s. `naval_profile`'s clones are a small commit by the way. Not
+  pushed; bundle `~/vic2saveanalyzer-backup-<hash>.bundle` named for the last
+  commit.

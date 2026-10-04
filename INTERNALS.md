@@ -504,6 +504,56 @@ occupied; only that third one took anything.
 
 ## Speed
 
+### Units and ships, flat, 2026-10-04
+
+**What changed.**
+- Two commits. First the ships, regiments and units are keyed by `Sym`
+  with the containers as they were; then the flattening.
+- A nation's ships are one `Vec<Ship { kind, count, crew }>` (was
+  `ships_by_type` and `ship_crew`, two maps with the same keys in the same
+  order), its regiments a `Vec<(Sym, i64)>`, and its units one
+  `Vec<Stack { pid, kind, n, men }>` (was `units_at` and `men_at`, a map of
+  maps each): grouped by province in the order the provinces were first met,
+  and by kind inside a province in the order the kinds were first met. Both
+  orders reach the output (the page's armies come out in nation order, then
+  province order; the kinds of one province are a stable sort by count, so
+  ties keep first-seen), so `add_stack` puts a new kind at the end of its
+  province's group and a new province last, and nothing else reorders it.
+  `Stack::provinces` walks the groups.
+- The two readers (`country.rs` and `walk.rs`) count into one `Units` in
+  `country.rs`, interning a name once a regiment or ship and scanning a
+  `Vec` of at most a few kinds, where they hashed the name's bytes three
+  times (`country.rs`) or searched three `String` tallies (`walk.rs`).
+- Ships, regiments and pop types are sorted by `names::cmp` (their text)
+  before output; the ship, crew, brigade and pop tables of `finish` and the
+  `ByTag` tables of the page carry `Sym`s and make text where it is written.
+- The cache writes the bytes the old maps wrote (the ships' counts, then
+  their crews, then the provinces' counts, then their men) and reads them
+  into the flat form, refusing an entry whose halves disagree. The entries
+  are the same size to the byte, `V2ENGC02` is unchanged and an entry from
+  either side of this change reads on the other.
+- A regiment's men are cut to an integer as it is counted; the old tally
+  summed floats and cut the sum. They differ only where a strength is not
+  finite (`nan`, `inf`), which the game does not write.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 2.53 M, 346.5 MB | 1.67 M, 291.5 MB |
+| a whole `PreNation`, held | 1.44 M allocations | 0.58 M |
+| `Kept`, held | 825,603 allocations | 47,029 |
+| `read_countries`, allocations a save | 33,785 | 28,589 |
+| warm cache load, allocations a save | 11,780 | 8,539 |
+| warm pass one | 0.117 s | 0.106 s |
+| warm rebuild, empty-cache run | 0.805 s, 2.222 s | 0.807 s, 2.219 s |
+
+(Alternating rounds, medians, `abwarm.py`; `speed/MODEL.md` 4.7 has every
+number, including part one's alone.) **What did not pan out:** the 0.02-0.03
+s the task file estimated for the empty-cache run: the allocations went but
+the clocks barely moved (the countries' reader is 13 ms a save of thread
+time, `build` 1 ms). **Not done:** `naval_profile`'s 793,000 allocations,
+which are strings and `Changes` clones, not ships, so this change did not
+make them cheap to fix.
+
 ### Carrying less, the tech lists and the rates, 2026-10-04
 
 **What changed.**

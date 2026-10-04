@@ -729,6 +729,74 @@ threads). The empty-cache run gained 0.104 s, of which pass one is 0.030 s
 pass two, one thread: `naval_profile` 50-70 ms and 793,000 allocations, the
 only rate-side cost the stage did not touch.
 
+### 4.7 After task 10 (units and ships)
+
+`ee04466` with the probe rebased on it (`speed/model-probe.diff` applies to
+it), the same probes, against `fa74fc8` with its probe; the part-one tree
+(`939db8d`, the `Sym` change with the containers as they were) is measured
+too. Before is 4.6 above; expected is task 10's file.
+
+**Allocations, `-j 1`, per call and in all** (empty cache, this thread):
+
+| stage | `fa74fc8` | `939db8d` (`Sym`) | `ee04466` (flat) | |
+|---|---|---|---|---|
+| `read_countries`, per save | 33,785 | 32,104 | 28,589 | the tallies' maps, then the Strings; one `Units` for both readers |
+| `model::build`, per save | 10,018 | 8,427 | 6,778 | the folds of `units_at`/`men_at` |
+| `prepare`, `read_provinces` | 2,542, 22,014 | same | same | |
+| `finish`, the whole run | 2,269,282 | 2,121,796 | 2,121,796 | the ship, brigade and pop tables' Strings |
+| `naval_profile`, 5,661 calls | 792,807 | 792,807 | 792,807 | not touched (its cost is not the ships) |
+| warm cache load, per save | 11,780 | 10,188 | 8,539 | |
+
+**Live allocations, whole process:**
+
+| phase | `fa74fc8` | `939db8d` | `ee04466` | expected |
+|---|---|---|---|---|
+| pass one done, empty cache | 2,526,822; 346.5 MB | 2,105,235; 326.3 MB | 1,670,060; 291.5 MB | about 0.8 M fewer |
+| pass one done, warm | 2,519,222; 248.6 MB | 2,097,635; 228.4 MB | 1,662,460; 195.6 MB | |
+| pass two done | 3,343,572; 424.2 MB | 2,826,196; 401.4 MB | 2,417,512; 368.5 MB | |
+| walked | 2,347,334; 315.0 MB | 1,829,958; 292.3 MB | 1,421,274; 259.4 MB | |
+
+-0.857 M after pass one in all: -0.42 M for the `Sym` change (5.3's count said about -0.42 M of 0.88 M) and -0.44 M for the flattening.
+
+**What is held:** `nat.units_at` + `nat.men_at` 809,220 allocations
+(37.1 MB) to `nat.units_at` 20,077 (6.2 MB); `nat.ships_by_type` +
+`ship_crew` 68,740 to 16,230; `nat.regiments_by_type` 56,324 to 20,077; a
+whole `PreNation` 1,439,170 to 582,408 allocations (92.0 to 57.6 MB). `Kept`
+(`parsed[].nations`) 825,603 to 47,029 allocations (38.5 to 7.6 MB). The
+census: 184,945 stacks in 93,711 provinces, 12,479 ship entries, 26,739
+regiment entries, over 10,569 nations (at most 142 stacks, 93 provinces, 7
+ship kinds, 6 regiment kinds a nation).
+
+**The clocks** (alternating rounds, `abwarm.py`, medians; each pair taken
+together, not compared across pairs):
+
+| | before | after | expected |
+|---|---|---|---|
+| part one, warm wall (6 rounds) | 0.775 s | 0.758 s | |
+| part one, warm pass one | 0.119 s | 0.112 s | |
+| part one, empty wall (6 rounds) | 2.040 s | 2.006 s | |
+| part two, warm wall (8 rounds) | 0.805 s | 0.807 s | warm pass one about 0.02 s quicker |
+| part two, warm pass one | 0.117 s | 0.106 s | |
+| part two, warm pass two (settled to finished) | 0.043 s | 0.041 s | |
+| part two, empty wall (6 rounds) | 2.222 s | 2.219 s | 0.02-0.03 s |
+| part two, empty pass one | 1.510 s | 1.514 s | |
+
+Another pair of 6 empty rounds taken at a noisy hour (other programs on the
+PC) read 3.0 s for both builds and is not used.
+
+**Read it as:** the counts came out as the design said (-0.857 M against
+about 0.8 M) and the clocks followed them as task 09 said they would, a
+little: warm pass one 0.119 s to 0.106 s over both parts (about 0.013 s,
+against the expected 0.02 s), the warm wall unchanged to the noise, the
+empty-cache run unchanged by the flattening (-0.034 s from part one, which
+is inside what this PC drifts by in an hour). What the empty-cache run does
+not show is the 0.02-0.03 s the task file estimated: the allocations that went were
+made by the countries' reader and `build`, which are 13 ms and 1 ms a save of
+thread time, and the three hash lookups a ship or regiment that the shared
+`Units` no longer makes are not visible at that size (not measured apart). The ships and the units
+were not the cost of the load; the cache's own entries are the same size to
+the byte.
+
 ## 5. The design
 
 ### 5.1 What it does, in one paragraph
