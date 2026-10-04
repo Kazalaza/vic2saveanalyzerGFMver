@@ -16,7 +16,7 @@
 // the field is a `Num`, because the tables print the two differently.
 
 use crate::clause::{self, Tree, V};
-use crate::country::Country;
+use crate::country::{add_count, add_ship, add_stack, Country, Ship, Stack};
 use crate::names::{self, Sym};
 use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
@@ -146,11 +146,9 @@ pub struct Nation {
     pub armies: i64,
     pub ships: i64,
     pub navies: i64,
-    pub ships_by_type: OMap<Sym, i64>,
-    pub ship_crew: OMap<Sym, f64>,
-    pub regiments_by_type: OMap<Sym, i64>,
-    pub units_at: OMap<i64, OMap<Sym, i64>>,
-    pub men_at: OMap<i64, OMap<Sym, i64>>,
+    pub ships_by_type: Vec<Ship>,
+    pub regiments_by_type: Vec<(Sym, i64)>,
+    pub units_at: Vec<Stack>,
     pub mobilized_brigades: i64,
     pub regular_brigades: i64,
     pub mobilizing: i64,
@@ -345,20 +343,16 @@ fn fold_country(nat: &mut Nation, c: &Country) {
     nat.navies += c.navies;
     nat.ships += c.ships;
     for (t, n) in &c.regiments_by_type {
-        *nat.regiments_by_type.entry(*t, || 0) += n;
+        add_count(&mut nat.regiments_by_type, *t, *n);
     }
-    for (t, n) in &c.ships_by_type {
-        *nat.ships_by_type.entry(*t, || 0) += n;
+    for ship in &c.ships_by_type {
+        add_ship(&mut nat.ships_by_type, *ship);
     }
-    for (t, n) in &c.ship_crew {
-        *nat.ship_crew.entry(*t, || 0.0) += n;
-    }
-    for (target, rows) in [(&mut nat.units_at, &c.units_at), (&mut nat.men_at, &c.men_at)] {
-        for (pid, items) in rows {
-            let counter = target.entry(*pid, OMap::new);
-            for (kind, n) in items {
-                *counter.entry(*kind, || 0) += n;
-            }
+    if nat.units_at.is_empty() {
+        nat.units_at.extend_from_slice(&c.units_at);
+    } else {
+        for stack in &c.units_at {
+            add_stack(&mut nat.units_at, *stack);
         }
     }
 }

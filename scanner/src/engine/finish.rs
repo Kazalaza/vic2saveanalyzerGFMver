@@ -19,6 +19,7 @@
 // the cap, the ships -- is finished after (`finish`).
 
 use crate::deflate;
+use crate::country::{Ship, Stack};
 use crate::engine::model::{Meta, Nation};
 use crate::names::{self, Sym};
 use crate::omap::OMap;
@@ -560,8 +561,7 @@ pub struct PerNation {
 /// What survives of a nation for the rest of the run (`KEEP_NATION`).
 pub struct Kept {
     pub tag: String,
-    pub units_at: OMap<i64, OMap<Sym, i64>>,
-    pub men_at: OMap<i64, OMap<Sym, i64>>,
+    pub units_at: Vec<Stack>,
     pub primary_culture: Sym,
     pub accepted_cultures: Vec<Sym>,
     pub government: String,
@@ -706,20 +706,17 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         let head = [Val::S(&date), Val::S(&year), Val::S(&tag)];
 
         // ships_by_type.csv, and the payload's ships and crews.
-        let mut ship_types: Vec<(&Sym, &i64)> = nat.ships_by_type.iter().collect();
-        ship_types.sort_by(|a, b| names::cmp(*a.0, *b.0));
+        let mut ship_types: Vec<&Ship> = nat.ships_by_type.iter().collect();
+        ship_types.sort_by(|a, b| names::cmp(a.kind, b.kind));
         let (mut count_of, mut crew_of) = (Vec::new(), Vec::new());
-        for (stype, count) in ship_types {
-            let effective = match nat.ship_crew.get(stype) {
-                Some(c) => Num::F(round(*c, 3)),
-                None => Num::I(*count),
-            };
-            csv_line(&mut text[1], &[head[0], head[1], head[2], Val::S(names::text(*stype)),
-                                     Val::I(*count), Val::N(effective)]);
-            count_of.push((*stype, *count));
+        for ship in ship_types {
+            let effective = Num::F(round(ship.crew, 3));
+            csv_line(&mut text[1], &[head[0], head[1], head[2], Val::S(names::text(ship.kind)),
+                                     Val::I(ship.count), Val::N(effective)]);
+            count_of.push((ship.kind, ship.count));
             let e = effective.as_f64();
-            if (e - *count as f64).abs() > 0.005 {
-                crew_of.push((*stype, round(e, 2)));
+            if (e - ship.count as f64).abs() > 0.005 {
+                crew_of.push((ship.kind, round(e, 2)));
             }
         }
         if !count_of.is_empty() {
@@ -735,13 +732,13 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         for (good, amount) in nat.goods_supply.iter() {
             supply.push((good.clone(), tag.clone(), *amount));
         }
-        let mut regiments: Vec<(&Sym, &i64)> = nat.regiments_by_type.iter().collect();
-        regiments.sort_by(|a, b| names::cmp(*a.0, *b.0));
+        let mut regiments: Vec<&(Sym, i64)> = nat.regiments_by_type.iter().collect();
+        regiments.sort_by(|a, b| names::cmp(a.0, b.0));
         let mut held = Vec::new();
-        for (rtype, count) in regiments {
-            csv_line(&mut text[2], &[head[0], head[1], head[2], Val::S(names::text(*rtype)),
-                                     Val::I(*count)]);
-            held.push((*rtype, *count));
+        for &(rtype, count) in regiments {
+            csv_line(&mut text[2], &[head[0], head[1], head[2], Val::S(names::text(rtype)),
+                                     Val::I(count)]);
+            held.push((rtype, count));
         }
         if !held.is_empty() {
             tables.brigades.push((tag.clone(), held));
@@ -832,7 +829,6 @@ fn trim(tag: &str, nat: &mut Nation) -> Kept {
     Kept {
         tag: tag.to_string(),
         units_at: std::mem::take(&mut nat.units_at),
-        men_at: std::mem::take(&mut nat.men_at),
         primary_culture: nat.primary_culture,
         accepted_cultures: std::mem::take(&mut nat.accepted_cultures),
         government: std::mem::take(&mut nat.government),

@@ -13,6 +13,7 @@
 // its dicts, rather than built as a tree first: it is thirty megabytes on a
 // long campaign, and the order of every key is part of what is compared.
 
+use crate::country::Stack;
 use crate::engine::dates::{date_key, year_fraction};
 use crate::engine::dump::{int_keyed, obj};
 use crate::engine::{say, Run};
@@ -160,7 +161,7 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
     let full_height = height * scale;
     let garrisoned: FxSet<i64> = parsed.iter()
         .flat_map(|k| k.nations.iter())
-        .flat_map(|n| n.units_at.keys().copied())
+        .flat_map(|n| n.units_at.iter().map(|s| s.pid))
         .filter(|&p| p > 0)
         .collect();
     let mut spots: OMap<i64, [f64; 2]> = OMap::new();
@@ -352,30 +353,30 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         j.push(':');
         let mut here: OMap<i64, String> = OMap::new();
         for nat in &k.nations {
-            for (pid, types) in nat.units_at.iter() {
+            for types in Stack::provinces(&nat.units_at) {
+                let pid = &types[0].pid;
                 if *pid <= 0 {
                     continue;
                 }
-                let total: i64 = types.values().sum();
+                let total: i64 = types.iter().map(|s| s.n).sum();
                 if total == 0 {
                     continue;
                 }
-                let empty = OMap::new();
-                let men = nat.men_at.get(pid).unwrap_or(&empty);
-                let mut ranked: Vec<(&Sym, &i64)> = types.iter().collect();
-                ranked.sort_by(|a, b| b.1.cmp(a.1));
+                let mut ranked: Vec<&Stack> = types.iter().collect();
+                ranked.sort_by(|a, b| b.n.cmp(&a.n));
                 let mut e = String::from("[");
                 push_int(&mut e, index.get(nat.tag.as_str()).map(|i| *i as i64).unwrap_or(-1));
                 e.push(',');
                 push_int(&mut e, total);
                 e.push(',');
-                push_json_str(&mut e, &ranked.iter().map(|(t, n)| format!("{}:{}", names::text(**t), n))
+                push_json_str(&mut e, &ranked.iter()
+                    .map(|s| format!("{}:{}", names::text(s.kind), s.n))
                     .collect::<Vec<_>>().join(";"));
                 e.push(',');
-                push_int(&mut e, men.values().sum());
+                push_int(&mut e, types.iter().map(|s| s.men).sum());
                 e.push(',');
                 push_json_str(&mut e, &ranked.iter()
-                    .map(|(t, _)| format!("{}:{}", names::text(**t), men.get(*t).copied().unwrap_or(0)))
+                    .map(|s| format!("{}:{}", names::text(s.kind), s.men))
                     .collect::<Vec<_>>().join(";"));
                 e.push(']');
                 let slot = here.entry(*pid, String::new);

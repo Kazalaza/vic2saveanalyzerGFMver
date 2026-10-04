@@ -20,11 +20,11 @@
 // what they find goes into the same record the scan fills.
 
 use crate::clause::{unquote, V};
-use crate::country::{Country, Tables};
+use crate::country::{Country, Tables, Units};
 use crate::engine::modread::{block_end, py_float, str_of};
 use crate::fx::{FxMap, FxSet};
 use crate::province::{accumulate, pop_known, Parts, Pop, PopulationRules, Scan};
-use crate::names::Sym;
+use crate::names;
 use crate::pyre::space;
 
 /// `v2parse.Tokens`: a cursor over `TOKEN_RE`, one token of pushback, and a
@@ -332,44 +332,6 @@ fn items_of(v: &V) -> Vec<&V> {
 
 // ----------------------------------------------------------- the units
 
-#[derive(Default)]
-struct Tally {
-    order: Vec<String>,
-    total: Vec<f64>,
-}
-
-impl Tally {
-    fn add(&mut self, name: &str, by: f64) {
-        match self.order.iter().position(|o| o == name) {
-            Some(i) => self.total[i] += by,
-            None => {
-                self.order.push(name.to_string());
-                self.total.push(by);
-            }
-        }
-    }
-    fn ints(&self) -> Vec<(Sym, i64)> {
-        self.order.iter().map(|n| crate::names::intern_str(n))
-            .zip(self.total.iter().map(|v| *v as i64)).collect()
-    }
-    fn floats(&self) -> Vec<(Sym, f64)> {
-        self.order.iter().map(|n| crate::names::intern_str(n)).zip(self.total.iter().copied()).collect()
-    }
-}
-
-#[derive(Default)]
-struct Units {
-    brigades: i64,
-    armies: i64,
-    navies: i64,
-    ships: i64,
-    regiment_pops: Vec<i64>,
-    by_type: Tally,
-    ships_by_type: Tally,
-    ship_crew: Tally,
-    at: Vec<(i64, Tally, Tally)>,
-}
-
 /// `readsave.count_units`.
 fn count_units(node: &V, out: &mut Units, where_: Option<i64>) -> Result<(), String> {
     for (key, value) in pairs(node) {
@@ -386,19 +348,8 @@ fn count_units(node: &V, out: &mut Units, where_: Option<i64>) -> Result<(), Str
                 let raw = text(&get(reg, b"type").map(str_of).unwrap_or_default());
                 let rtype = if py_float(raw.as_bytes()).is_some() { String::new() } else { raw };
                 let rtype = if rtype.is_empty() { "unknown".to_string() } else { rtype };
-                out.by_type.add(&rtype, 1.0);
-                if let Some(w) = where_ {
-                    let i = match out.at.iter().position(|(p, _, _)| *p == w) {
-                        Some(i) => i,
-                        None => {
-                            out.at.push((w, Tally::default(), Tally::default()));
-                            out.at.len() - 1
-                        }
-                    };
-                    out.at[i].1.add(&rtype, 1.0);
-                    let men = (to_float(get(reg, b"strength"), 0.0) * 1000.0).round_ties_even();
-                    out.at[i].2.add(&rtype, men);
-                }
+                let men = (to_float(get(reg, b"strength"), 0.0) * 1000.0).round_ties_even();
+                out.regiment(names::intern_str(&rtype), where_, men);
             }
         } else if key == b"ship" {
             for ship in sub_blocks(value) {
@@ -407,10 +358,9 @@ fn count_units(node: &V, out: &mut Units, where_: Option<i64>) -> Result<(), Str
                     Some(v) => text(&str_of(v)),
                     None => "unknown".to_string(),
                 };
-                out.ships_by_type.add(&kind, 1.0);
                 let strength = to_float(get(ship, b"strength"), 100.0) / 100.0;
                 let experience = (to_float(get(ship, b"experience"), 0.0) / 100.0).clamp(0.0, 0.95);
-                out.ship_crew.add(&kind, strength.max(0.0) / (1.0 - experience));
+                out.ship(names::intern_str(&kind), strength.max(0.0) / (1.0 - experience));
             }
         } else if key == b"army" || key == b"navy" {
             let blocks = sub_blocks(value);
@@ -583,16 +533,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
             }
         }
     }
-    out.brigades = units.brigades;
-    out.armies = units.armies;
-    out.navies = units.navies;
-    out.ships = units.ships;
-    out.regiment_pops = units.regiment_pops;
-    out.regiments_by_type = units.by_type.ints();
-    out.ships_by_type = units.ships_by_type.ints();
-    out.ship_crew = units.ship_crew.floats();
-    out.units_at = units.at.iter().map(|(p, t, _)| (*p, t.ints())).collect();
-    out.men_at = units.at.iter().map(|(p, _, m)| (*p, m.ints())).collect();
+    units.into_country(&mut out);
     Ok(out)
 }
 
