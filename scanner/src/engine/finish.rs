@@ -745,7 +745,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         if !held.is_empty() {
             tables.brigades.push((tag.clone(), held));
         }
-        let mut names: Vec<String> = nat.tech_list.clone();
+        let mut names: Vec<String> = nat.tech_list.iter().map(|t| names::text(*t).to_string()).collect();
         names.sort();
         for tech in &names {
             let (branch, line) = match spec.tech_group.get(tech) {

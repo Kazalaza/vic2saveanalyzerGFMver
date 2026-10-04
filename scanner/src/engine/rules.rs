@@ -469,7 +469,7 @@ impl<'a> Asker<'a> {
             "tag" => return Ok(Some(text == nat.tag)),
             "government" => return Ok(Some(text == nat.government)),
             "primary_culture" => return Ok(Some(text == names::text(nat.primary_culture))),
-            "nationalvalue" => return Ok(Some(text == nat.nationalvalue)),
+            "nationalvalue" => return Ok(Some(text == names::text(nat.nationalvalue))),
             "revanchism" | "badboy" | "prestige" | "war_exhaustion" | "plurality" | "money"
             | "total_pops" => {
                 let have = match key {
@@ -517,16 +517,17 @@ impl<'a> Asker<'a> {
             return Ok(self.inventions.map(|held| held.contains(text)));
         }
         if key == "technology" {
-            return Ok(Some(nat.tech_list.iter().any(|t| t == text)));
+            return Ok(Some(nat.tech_list.iter().any(|t| names::text(*t) == text)));
         }
         if key == "has_country_flag" {
             return Ok(Some(nat.country_flags.contains(text)));
         }
         if key == "has_country_modifier" {
-            return Ok(Some(nat.modifiers.iter().any(|t| t == text)));
+            return Ok(Some(nat.modifiers.iter().any(|t| names::text(*t) == text)));
         }
         if m.reform_names.contains(key) {
-            return Ok(Some(nat.reforms.get(key).map(|s| s.as_str()) == Some(text)));
+            return Ok(Some(nat.reforms.iter().find(|(k, _)| names::text(**k) == key)
+                           .map(|(_, v)| names::text(*v)) == Some(text)));
         }
         Ok(None)
     }
@@ -602,9 +603,10 @@ pub fn breakdown(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opt
                  is_player: bool) -> D<Vec<(&'static str, String, f64)>> {
     let mut parts = Vec::new();
     for tech in &nat.tech_list {
+        let tech = names::text(*tech);
         let v = m.tech_mob.get(tech).copied().unwrap_or(0.0);
         if v != 0.0 {
-            parts.push(("tech", tech.clone(), v));
+            parts.push(("tech", tech.to_string(), v));
         }
     }
     let inventions = held_inventions(nat, m);
@@ -620,7 +622,7 @@ pub fn breakdown(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opt
             }
         }
         None => {
-            let techs: FxSet<String> = nat.tech_list.iter().cloned().collect();
+            let techs: FxSet<String> = nat.tech_list.iter().map(|t| names::text(*t).to_string()).collect();
             for (name, rule) in m.invention_rules.iter() {
                 if let Some(live) = live {
                     if !live.contains(name) {
@@ -637,18 +639,20 @@ pub fn breakdown(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opt
             }
         }
     }
-    let v = m.nv_mob.get(&nat.nationalvalue).copied().unwrap_or(0.0);
+    let v = m.nv_mob.get(names::text(nat.nationalvalue)).copied().unwrap_or(0.0);
     if v != 0.0 {
-        parts.push(("national value", nat.nationalvalue.clone(), v));
+        parts.push(("national value", names::text(nat.nationalvalue).to_string(), v));
     }
     for name in &nat.modifiers {
+        let name = names::text(*name);
         let v = m.event_mob.get(name).copied().unwrap_or(0.0);
         if v != 0.0 {
-            parts.push(("event modifier", name.clone(), v));
+            parts.push(("event modifier", name.to_string(), v));
         }
     }
     for (reform, option) in nat.reforms.iter() {
-        let v = m.reform_mob.get(&(reform.clone(), option.clone())).copied().unwrap_or(0.0);
+        let (reform, option) = (names::text(*reform), names::text(*option));
+        let v = m.reform_mob.get(&(reform.to_string(), option.to_string())).copied().unwrap_or(0.0);
         if v != 0.0 {
             parts.push(("reform", format!("{} = {}", reform, option), v));
         }
@@ -685,7 +689,7 @@ pub fn impact_for(nat: &Nation, m: &Mod, world: Option<&World>, is_player: bool)
     let inventions = held_inventions(nat, m);
     let mut total = 0.0;
     for name in &nat.modifiers {
-        total += m.modifier_impacts.get(name).copied().unwrap_or(0.0);
+        total += m.modifier_impacts.get(names::text(*name)).copied().unwrap_or(0.0);
     }
     let asker = Asker { m, world, inventions: inventions.as_ref(), is_player };
     for t in &m.triggered_mob {
@@ -727,7 +731,7 @@ pub fn naval_profile(nat: &Nation, m: &Mod) -> Vec<(String, [f64; 5], i64)> {
         }
     };
     for tech in &nat.tech_list {
-        if let Some(ch) = m.naval_tech_effects.get(tech) {
+        if let Some(ch) = m.naval_tech_effects.get(names::text(*tech)) {
             apply(&mut out, ch);
         }
     }
@@ -740,7 +744,7 @@ pub fn naval_profile(nat: &Nation, m: &Mod) -> Vec<(String, [f64; 5], i64)> {
                 .collect()
         }
         None => {
-            let techs: FxSet<String> = nat.tech_list.iter().cloned().collect();
+            let techs: FxSet<String> = nat.tech_list.iter().map(|t| names::text(*t).to_string()).collect();
             m.naval_effects.iter()
                 .filter(|(_, r)| subset(&r.techs, &techs)
                         && (r.tags.is_empty() || r.tags.iter().any(|t| *t == nat.tag)))
@@ -815,7 +819,7 @@ pub fn attainable_inventions(m: &Mod, all: &OMap<&str, FxSet<&str>>) -> FxSet<St
 
 /// `_holdings`: each distinct (tag, technologies, ids), counted.
 pub fn holdings<'a>(every: &[&'a PreNation]) -> Vec<(i64, FxSet<&'a str>, &'a str, &'a [i64])> {
-    let mut seen: FxMap<(&str, &[String], &[i64]), i64> = FxMap::default();
+    let mut seen: FxMap<(&str, &[Sym], &[i64]), i64> = FxMap::default();
     for pn in every {
         *seen.entry((pn.nat.tag.as_str(), pn.nat.tech_list.as_slice(),
                      pn.nat.invention_ids.as_slice())).or_insert(0) += 1;
@@ -823,7 +827,7 @@ pub fn holdings<'a>(every: &[&'a PreNation]) -> Vec<(i64, FxSet<&'a str>, &'a st
     // The totals are sums of counts, so the order they are met in is no
     // matter: a hash map where Python kept a dict.
     seen.into_iter().map(|((tag, techs, ids), count)| {
-        (count, techs.iter().map(|t| t.as_str()).collect(), tag, ids)
+        (count, techs.iter().map(|t| names::text(*t)).collect(), tag, ids)
     }).collect()
 }
 
@@ -875,7 +879,7 @@ pub fn settle_campaign(m: &mut Mod, saves: &[&[PreNation]]) -> FxSet<String> {
         for pn in nations.iter() {
             every.push(pn);
             all_techs.entry(pn.tag.as_str(), FxSet::default)
-                .extend(pn.nat.tech_list.iter().map(|t| t.as_str()));
+                .extend(pn.nat.tech_list.iter().map(|t| names::text(*t)));
         }
     }
     let live = attainable_inventions(m, &all_techs);

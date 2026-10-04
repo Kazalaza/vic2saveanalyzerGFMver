@@ -293,7 +293,7 @@ fn index_holdings(pres: &[Pre]) -> Vec<(i64, Vec<FxSet<&str>>)> {
             if h.tech_list.is_empty() {
                 continue;
             }
-            let techs: FxSet<&str> = h.tech_list.iter().map(|s| s.as_str()).collect();
+            let techs: FxSet<&str> = h.tech_list.iter().map(|s| names::text(*s)).collect();
             for idx in &h.invention_ids {
                 let i = *at.entry(*idx).or_insert_with(|| {
                     out.push((*idx, Vec::new()));
@@ -457,7 +457,7 @@ fn inventions(tag: &str, m: &Mod, pres: &[Pre], files: &[String], reading: &Read
                             print.".into()),
     };
     crate::outln!("decoded with base {}\n", base);
-    let techs: FxSet<&str> = nat.tech_list.iter().map(|s| s.as_str()).collect();
+    let techs: FxSet<&str> = nat.tech_list.iter().map(|s| names::text(*s)).collect();
     let mut shown = 0;
     let mut last_file: Option<String> = None;
     for idx in held {

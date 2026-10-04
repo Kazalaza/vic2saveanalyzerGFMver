@@ -337,10 +337,10 @@ pub struct Country {
     pub numerics: Vec<(String, f64)>,
     pub is_mobilized: i64,
     pub human: bool,
-    pub reforms: Vec<(String, String)>,
+    pub reforms: Vec<(Sym, Sym)>,
     pub accepted_cultures: Vec<Sym>,
     pub country_flags: Vec<String>,
-    pub modifiers: Vec<String>,
+    pub modifiers: Vec<Sym>,
     pub goods_supply: Vec<(String, f64)>,
     pub invention_ids: Vec<i64>,
     pub mobilizing: i64,
@@ -351,7 +351,7 @@ pub struct Country {
     pub factory_count: i64,
     pub factory_levels: i64,
     pub techs: i64,
-    pub tech_list: Vec<String>,
+    pub tech_list: Vec<Sym>,
     pub army_techs: i64,
     pub navy_techs: i64,
     // from the units
@@ -566,7 +566,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
             } else if key == b"human" {
                 out.human = clean.eq_ignore_ascii_case(b"yes");
             } else if tables.reform_keys.iter().any(|r| eq_latin1(key, r)) {
-                out.reforms.push((latin1(key), latin1(clean)));
+                out.reforms.push((names::intern(key), names::intern(clean)));
             } else if let Some((_, name)) = SCALARS.iter().find(|(k, _)| *k == key) {
                 // Unquoted: the Python's entry scanner strips the quotes
                 // before the value ever reaches this decision, so a primary
@@ -618,7 +618,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
             b"modifier" => {
                 if let Value::Dict(d) = parse_block(&mut tok, &[]) {
                     if let Some(Value::Text(s)) = d.get(b"modifier") {
-                        out.modifiers.push(latin1(s));
+                        out.modifiers.push(names::intern(s));
                     }
                 }
             }
@@ -712,7 +712,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
                         };
                         if to_int(first) == 1 {
                             out.techs += 1;
-                            out.tech_list.push(latin1(tech));
+                            out.tech_list.push(names::intern(tech));
                             if tables.army_techs.iter().any(|t| eq_latin1(tech, t)) {
                                 out.army_techs += 1;
                             } else if tables.navy_techs.iter().any(|t| eq_latin1(tech, t)) {

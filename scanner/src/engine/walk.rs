@@ -484,7 +484,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                     b"modifier" => {
                         let block = parse_block(&mut sub, &[]);
                         if let Some(m) = get(&block, b"modifier") {
-                            out.modifiers.push(text(unquote(&str_of(m))));
+                            out.modifiers.push(crate::names::intern_str(&text(unquote(&str_of(m)))));
                         }
                     }
                     b"saved_country_supply" => {
@@ -559,7 +559,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                                 } else if tables.navy_techs.iter().any(|t| *t == name) {
                                     out.navy_techs += 1;
                                 }
-                                out.tech_list.push(name);
+                                out.tech_list.push(crate::names::intern_str(&name));
                             }
                         }
                     }
@@ -572,7 +572,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                 } else if key == b"human" {
                     out.human = clean.eq_ignore_ascii_case(b"yes");
                 } else if tables.reform_keys.iter().any(|r| r.as_bytes() == key) {
-                    out.reforms.push((text(key), text(unquote(clean))));
+                    out.reforms.push((crate::names::intern_str(&text(key)), crate::names::intern_str(&text(unquote(clean)))));
                 } else if let Some((_, name)) = SCALARS.iter().find(|(k, _)| *k == key) {
                     out.scalars.push((name.to_string(), text(clean)));
                 } else if let Some((_, name)) = NUMERICS.iter().find(|(k, _)| *k == key) {

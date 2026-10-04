@@ -131,7 +131,7 @@ pub struct Nation {
     pub civilized: String,
     pub government: String,
     pub capital: String,
-    pub nationalvalue: String,
+    pub nationalvalue: Sym,
     pub prestige: f64,
     pub infamy: f64,
     pub treasury: f64,
@@ -155,11 +155,11 @@ pub struct Nation {
     pub regular_brigades: i64,
     pub mobilizing: i64,
     pub is_mobilized: i64,
-    pub tech_list: Vec<String>,
+    pub tech_list: Vec<Sym>,
     pub invention_ids: Vec<i64>,
-    pub modifiers: Vec<String>,
+    pub modifiers: Vec<Sym>,
     pub country_flags: FxSet<String>,
-    pub reforms: OMap<String, String>,
+    pub reforms: OMap<Sym, Sym>,
     pub human: bool,
     pub army_techs: i64,
     pub navy_techs: i64,
@@ -280,7 +280,7 @@ fn fold_country(nat: &mut Nation, c: &Country) {
     for (name, value) in &c.scalars {
         let v = value.clone();
         match name.as_str() {
-            "nationalvalue" => nat.nationalvalue = v,
+            "nationalvalue" => nat.nationalvalue = names::intern_str(&v),
             "primary_culture" => nat.primary_culture = names::intern_str(&v),
             "civilized" => nat.civilized = v,
             "government" => nat.government = v,
@@ -306,7 +306,7 @@ fn fold_country(nat: &mut Nation, c: &Country) {
     nat.is_mobilized = c.is_mobilized;
     nat.human = c.human;
     for (k, v) in &c.reforms {
-        nat.reforms.set(k.clone(), v.clone());
+        nat.reforms.set(*k, *v);
     }
     if !c.accepted_cultures.is_empty() {
         nat.accepted_cultures = c.accepted_cultures.clone();
@@ -314,7 +314,7 @@ fn fold_country(nat: &mut Nation, c: &Country) {
     if !c.country_flags.is_empty() {
         nat.country_flags = c.country_flags.iter().cloned().collect();
     }
-    nat.modifiers.extend(c.modifiers.iter().cloned());
+    nat.modifiers.extend(c.modifiers.iter().copied());
     if !c.goods_supply.is_empty() {
         let mut m = OMap::new();
         for (g, v) in &c.goods_supply {
@@ -337,7 +337,7 @@ fn fold_country(nat: &mut Nation, c: &Country) {
     nat.factory_count += c.factory_count;
     nat.factory_levels += c.factory_levels;
     nat.techs += c.techs;
-    nat.tech_list.extend(c.tech_list.iter().cloned());
+    nat.tech_list.extend(c.tech_list.iter().copied());
     nat.army_techs += c.army_techs;
     nat.navy_techs += c.navy_techs;
     nat.brigades += c.brigades;
