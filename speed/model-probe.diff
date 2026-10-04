@@ -1,8 +1,8 @@
 diff --git a/scanner/src/engine/finish.rs b/scanner/src/engine/finish.rs
-index 3dc95ac..7c55fa4 100644
+index ad74481..ee50733 100644
 --- a/scanner/src/engine/finish.rs
 +++ b/scanner/src/engine/finish.rs
-@@ -265,7 +265,9 @@ pub fn escape_angles(s: &str) -> String {
+@@ -263,7 +263,9 @@ pub fn escape_angles(s: &str) -> String {
  // ------------------------------------------------------------- pass one
  
  /// Everything about one save that does not wait for the inventions.
@@ -13,18 +13,18 @@ index 3dc95ac..7c55fa4 100644
      let pairs: Vec<(String, Nation)> = keys.into_iter().zip(nations).collect();
      let playing = players(&meta, &pairs, &spec.player_nations);
      let mut snapshot = Snapshot::default();
-@@ -310,7 +312,9 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
+@@ -304,7 +306,9 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
          pre.nat = nat;
          out.push(pre);
      }
--    Pre { meta, nations: out, chunk: snapshot.pack(), held }
+-    Pre { meta, nations: out, chunk: snapshot.pack() }
 +    let chunk = snapshot.pack();
-+    probe_held(&meta, &out, &held, &chunk);
-+    Pre { meta, nations: out, chunk, held }
++    probe_held(&meta, &out, &chunk);
++    Pre { meta, nations: out, chunk }
  }
  
  // ------------------------------------------------------------- pass two
-@@ -361,6 +365,7 @@ impl Val<'_> {
+@@ -355,6 +359,7 @@ impl Val<'_> {
  
  
  /// A finished nation's row of the main table: `spending.save_rows`'s dict.
@@ -32,7 +32,15 @@ index 3dc95ac..7c55fa4 100644
  pub struct Row {
      /// The key the save's dict holds the nation under.
      pub key: String,
-@@ -479,6 +484,7 @@ pub struct PerNation {
+@@ -389,6 +394,7 @@ pub struct Row {
+ 
+ /// What `Row::get` reads of a finished nation, and nothing else: the rest of
+ /// the `Nation` is let go when the row is made.
++#[derive(Clone)]
+ pub struct RowFacts {
+     pub tag: String,
+     pub primary_culture: Sym,
+@@ -558,6 +564,7 @@ pub struct PerNation {
  }
  
  /// What survives of a nation for the rest of the run (`KEEP_NATION`).
@@ -40,7 +48,7 @@ index 3dc95ac..7c55fa4 100644
  pub struct Kept {
      pub tag: String,
      pub units_at: OMap<i64, OMap<String, i64>>,
-@@ -548,8 +554,12 @@ fn csv_line(out: &mut String, vals: &[Val]) {
+@@ -627,8 +634,12 @@ fn csv_line(out: &mut String, vals: &[Val]) {
  
  /// The rest of finishing, and `save_rows`: one prepared save spent.
  pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D<Spent> {
@@ -54,8 +62,8 @@ index 3dc95ac..7c55fa4 100644
      let date = meta.date.clone();
      let year = date.split('.').next().unwrap_or("").to_string();
      let mut rows = Vec::new();
-@@ -566,7 +576,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
-             kept_out.push(trim(&tag, &nat));
+@@ -645,7 +656,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
+             kept_out.push(trim(&tag, &mut nat));
              continue;
          }
 -        let rate = rate_for(&nat, m, live, Some(&world), is_player)?;
@@ -63,7 +71,7 @@ index 3dc95ac..7c55fa4 100644
          let ppr = spec.pop_per_regiment;
          // `brigades_from_clusters`.
          let mut brigades = 0i64;
-@@ -602,7 +612,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
+@@ -681,7 +692,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
              policy = m.party_policies[index as usize].clone();
          }
          if let Some(impact) = m.mob_impacts.get(&policy) {
@@ -72,16 +80,16 @@ index 3dc95ac..7c55fa4 100644
              let floor = trunc_int(match m.define("MIN_MOBILIZE_LIMIT") {
                  Some(v) => v,
                  None => 3.0,
-@@ -683,7 +693,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
+@@ -729,7 +740,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
              tables.crews.push((tag.clone(), crew_of));
          }
          if nat.ships != 0 {
--            let profile = naval_profile(nat, m);
-+            let profile = crate::probe::staged("F3 finish: naval_profile", || naval_profile(nat, m));
+-            let profile = naval_profile(&nat, m);
++            let profile = crate::probe::staged("F3 finish: naval_profile", || naval_profile(&nat, m));
              naval.push((tag.clone(), profile_key(&profile), profile));
          }
          for (good, amount) in nat.goods_supply.iter() {
-@@ -759,3 +769,202 @@ fn trim(tag: &str, nat: &Nation) -> Kept {
+@@ -839,3 +850,198 @@ fn trim(tag: &str, nat: &mut Nation) -> Kept {
      }
  }
  
@@ -177,14 +185,14 @@ index 3dc95ac..7c55fa4 100644
 +        for m in n.units_at.values().chain(n.men_at.values()) {
 +            for (t, _) in m.iter() { word("unit kind (units_at/men_at)", t); }
 +        }
-+        for t in &n.tech_list { word("tech", t); }
-+        for t in &n.modifiers { word("modifier", t); }
++        for t in &n.tech_list { word("tech", crate::names::text(*t)); }
++        for t in &n.modifiers { word("modifier", crate::names::text(*t)); }
 +        for t in n.country_flags.iter() { word("flag", t); }
-+        for (k, v) in n.reforms.iter() { word("reform key", k); word("reform value", v); }
++        for (k, v) in n.reforms.iter() { word("reform key", crate::names::text(*k)); word("reform value", crate::names::text(*v)); }
 +        for (g, _) in n.goods_supply.iter() { word("good", g); }
 +        word("tag", key); word("tag", &n.tag);
 +        word("government", &n.government);
-+        word("nationalvalue", &n.nationalvalue);
++        word("nationalvalue", crate::names::text(n.nationalvalue));
 +        word("civilized", &n.civilized);
 +        word("capital", &n.capital);
 +    }
@@ -241,7 +249,7 @@ index 3dc95ac..7c55fa4 100644
 +    }
 +}
 +
-+fn probe_held(meta: &Meta, out: &[PreNation], held: &[Held], chunk: &String) {
++fn probe_held(meta: &Meta, out: &[PreNation], chunk: &String) {
 +    use crate::probe::held as h;
 +    if std::env::var_os("VIC2_STATS").is_none() {
 +        return;
@@ -279,13 +287,9 @@ index 3dc95ac..7c55fa4 100644
 +        h("nat.pop_by_culture", &nat.pop_by_culture, |v| Box::new(v.clone()));
 +        h("nat.goods_supply", &nat.goods_supply, |v| Box::new(v.clone()));
 +    }
-+    for x in held {
-+        h("Held (tag, record_tag, tech_list, invention_ids, government)", x, |v| Box::new((v.tag.clone(),
-+          v.record_tag.clone(), v.tech_list.clone(), v.invention_ids.clone(), v.government.clone())));
-+    }
 +}
 diff --git a/scanner/src/engine/mod.rs b/scanner/src/engine/mod.rs
-index 3771b39..890817f 100644
+index 68a229a..0bf353c 100644
 --- a/scanner/src/engine/mod.rs
 +++ b/scanner/src/engine/mod.rs
 @@ -36,6 +36,7 @@ pub mod rules;
@@ -400,14 +404,14 @@ index 3771b39..890817f 100644
              })
 @@ -1037,7 +1047,7 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
      };
-     let held: Vec<&[rules::Held]> = pres.iter().map(|p| p.held.as_slice()).collect();
+     let held: Vec<&[finish::PreNation]> = pres.iter().map(|p| p.nations.as_slice()).collect();
      phase("mod loaded");
 -    let live = rules::settle_campaign(&mut m, &held);
 +    let live = probe::staged("S settle_campaign (the whole)", || rules::settle_campaign(&mut m, &held));
+     m.dense = Some(rules::Dense::build(&m, &run.spec.tech_group));
      phase("inventions settled");
      if verbose {
-         crate::engine::report::say_mod(&m, &live, &held, &files);
-@@ -1093,6 +1103,9 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
+@@ -1095,6 +1105,9 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
      }
      let spent: Vec<Spent> = spent.into_iter().map(|s| s.unwrap()).collect();
      phase("pass two: saves finished");
@@ -418,7 +422,7 @@ index 3771b39..890817f 100644
      out::release();
      if run.cross_part {
 diff --git a/scanner/src/engine/report.rs b/scanner/src/engine/report.rs
-index 91aaf88..7cd9b1d 100644
+index 8d5ad39..6c0d26e 100644
 --- a/scanner/src/engine/report.rs
 +++ b/scanner/src/engine/report.rs
 @@ -40,6 +40,7 @@ use std::io::Write;
@@ -473,7 +477,7 @@ index 91aaf88..7cd9b1d 100644
 +    if std::env::var_os("VIC2_STATS").is_some() {
 +        use crate::probe::held as h;
 +        h("walk: Campaign.rows (Vec<Row>)", &c.rows, |v| Box::new(v.clone()));
-+        h("walk: rows[].nat only", &c.rows.iter().map(|r| r.nat.clone()).collect::<Vec<_>>(), |v| Box::new(v.clone()));
++        h("walk: rows[].facts only", &c.rows.iter().map(|r| r.facts.clone()).collect::<Vec<_>>(), |v| Box::new(v.clone()));
 +        h("walk: ships+crews+brigades+techs+pops+cultures (ByTag)", &(&c.ships, &c.crews, &c.brigades, &c.techs, &c.pops, &c.cultures), |v| Box::new((v.0.clone(), v.1.clone(), v.2.clone(), v.3.clone(), v.4.clone(), v.5.clone())));
 +        h("walk:   ships", &c.ships, |v| Box::new(v.clone()));
 +        h("walk:   techs", &c.techs, |v| Box::new(v.clone()));
@@ -496,19 +500,19 @@ index 91aaf88..7cd9b1d 100644
      let prices = market::merge_prices(&metas, &run.tables);
      let snaps = market::snapshot_rows(&metas, &run.tables);
 diff --git a/scanner/src/engine/rules.rs b/scanner/src/engine/rules.rs
-index 2bfe998..1bd9ddd 100644
+index ab4ee8e..6c1f7fa 100644
 --- a/scanner/src/engine/rules.rs
 +++ b/scanner/src/engine/rules.rs
-@@ -880,6 +880,7 @@ pub fn index_base_for(m: &Mod, every: &[&Held]) -> Option<i64> {
- pub fn settle_campaign(m: &mut Mod, saves: &[&[Held]]) -> FxSet<String> {
+@@ -975,6 +975,7 @@ pub fn index_base_for(m: &Mod, every: &[&PreNation]) -> Option<i64> {
+ pub fn settle_campaign(m: &mut Mod, saves: &[&[PreNation]]) -> FxSet<String> {
      let mut all_techs: OMap<&str, FxSet<&str>> = OMap::new();
-     let mut every: Vec<&Held> = Vec::new();
+     let mut every: Vec<&PreNation> = Vec::new();
 +    crate::probe::staged("S1 settle: all_techs sets", || {
      for nations in saves {
-         for nat in nations.iter() {
-             every.push(nat);
-@@ -887,7 +888,8 @@ pub fn settle_campaign(m: &mut Mod, saves: &[&[Held]]) -> FxSet<String> {
-                 .extend(nat.tech_list.iter().map(|t| t.as_str()));
+         for pn in nations.iter() {
+             every.push(pn);
+@@ -982,7 +983,8 @@ pub fn settle_campaign(m: &mut Mod, saves: &[&[PreNation]]) -> FxSet<String> {
+                 .extend(pn.nat.tech_list.iter().map(|t| names::text(*t)));
          }
      }
 -    let live = attainable_inventions(m, &all_techs);

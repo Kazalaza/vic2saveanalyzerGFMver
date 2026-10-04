@@ -990,3 +990,101 @@ were brought to the new numbers.
   warm rebuild is what matters. Task 09 is not started. Not pushed; bundle
   `~/vic2saveanalyzer-backup-<hash>.bundle` named for this notes commit, the one
   after `5592ba4`.
+
+## 2026-10-04, task 09 done on the Windows PC (carry less, the tech lists, the rates)
+
+- **Made on the Windows PC** (Ryzen 9 7950X, 31 workers). Commits, not pushed:
+  `0e89cf4` carry less (`Held` gone, `Row.nat` slimmed to `RowFacts`, `Kept`
+  moved); `d17047b` `tech_list`, `modifiers`, `reforms`, `nationalvalue` on `Sym`
+  (containers as they were); `a35f955` the dense tables (`rules::Dense`);
+  `fa74fc8` the held inventions made only when a trigger asks; `1e5a60b` nine
+  mutations; `4ac8e2b` the rebuilt exe; the notes commit follows. INTERNALS.md:
+  "Carrying less, the tech lists and the rates, 2026-10-04". MODEL.md has a new
+  section 4.6 with every number. Both halves are done; nothing is left of 09.
+- **Verification** of each code commit (`0e89cf4`, `d17047b`, `a35f955`,
+  `fa74fc8`): suite 28 of 28; the real campaign against `speed/runs/11e1f21`
+  (`cmpruns.py --payload`: IDENTICAL); the same with
+  `VIC2_ENGINE_NAMES_SHIFT=7` (IDENTICAL); `warmshift.py` clean; `cargo test`
+  10 of 10. Each was timed before it was committed.
+- **Cache:** `V2ENGC02` is unchanged but an entry no longer ends with the `Held`
+  copy, so an entry made by an earlier build fails the length check and is
+  rebuilt (once, on the first run after this), and an old build refuses a new
+  entry the same way. Not a format bump; the `caching.py` checks pass.
+
+| | expected (estimate) | measured |
+|---|---|---|
+| settle (warm) | 0.050 s to about 0.02 s | 0.042 s to 0.023 s |
+| live after pass one | 28.5 MB less without `Held` | 394.1 to 346.5 MB (-47.6 MB), 3.53 M to 2.53 M allocations |
+| live after the walk | down by about 2 M | 4.24 M to 2.35 M |
+| warm: `Held` is the settle's 0.040 s | gain in the settle | **no**: the settle was hashing tech names; the first commit made it 0.007 s slower, the `Sym`s halved it |
+| warm: `Row.nat` is the walk's 0.067 s | gain in the walk | **no**: walk 0.072 s to 0.070 s |
+| warm pass two | (the rates: 0.50 s of thread time) | 0.076 s to 0.044 s |
+| warm pass one | not expected | 0.135 s to 0.122 s |
+| warm rebuild | 0.04 s | 0.867 s to 0.796 s (-0.071) |
+| empty-cache run | 0.04 s | 2.149 s to 2.045 s (-0.104; pass one 1.399 to 1.369) |
+
+  (Six alternating rounds, medians, `abwarm.py`, the build before the task
+  against the last code commit; `--empty` for the empty-cache runs; the first
+  run of the new build in a warm set reads an old-format cache and is a 2-4 s
+  outlier the median ignores.) By commit: carry less 0.971 s to 0.923 s in one
+  set and 0.885 to 0.881 in another (noise); the tech lists 0.870 to 0.811;
+  dense tables 0.824 to 0.827; lazy inventions 0.808 to 0.811.
+- **Expected against measured, part by part.** *Part one:* the allocations
+  moved as estimated and the clocks I named did not: the settle and the walk
+  were not gained by `Held` and `Row.nat`. The probe's stage clocks say why for
+  the settle (hashing the tech name Strings of 10,569 nation records:
+  `index_base_for` 40 ms of thread time to 19 ms once they are `Sym`s) and for
+  the walk (the rows' nations are let go in `finish`, in pass two's threads, not
+  in the walk). *Part two:* the settle gained what was expected and pass two
+  gained more than I thought, from an unexpected place: `rate_for` and
+  `impact_for` had 1.91 M allocations and 175 ms of thread time, of which the
+  lookups were little; the Strings made for every part's name and the
+  set of held inventions (one `String` per invention a nation holds, twice) were
+  the cost. The dense tables alone moved nothing (the cost was not the hash).
+- **Tried and dropped / not done:** nothing was dropped after being built;
+  `Row`/`Kept` were not flattened (the counts do not pay). Not done:
+  `naval_profile` (793,000 allocations and 50-70 ms of thread time in 5,661
+  calls, all in strings and `Changes` clones; about 2 ms of wall time),
+  `goods_supply`, `country_flags`, the scalar names (leave: 74,000
+  allocations). `Spec.tech_group` stays as the source `Dense` is built from.
+- **Mutations**: all 74 on `fa74fc8` (clean worktree `~/vic2speed/rw/mut09`,
+  `logs/mut-09.out`): 73 caught, 1 BLIND, 0 did not apply, 0 untested. The blind
+  one is `keeper-folder-windows-only`, as in every run on this PC. None needed
+  re-aiming (a dry run before the real one: all 65 old ones applied at once).
+  Nine new ones, each run alone first and caught by `enginecheck.py` with the
+  saves and the mod: `techs-ordered-by-name-number`, `reform-mob-key-swapped`,
+  `national-value-ignored`, `modifier-impacts-ignored`, `techs-without-branch`,
+  `cross-names-never-built`, `row-facts-pop-types-dropped`,
+  `kept-units-left-behind`, `invention-trigger-inverted`. I did not add the
+  `goods_supply` reversal because `goods_supply` was not done.
+- **Probe**: `speed/model-probe.diff` regenerated against `fa74fc8` and checked
+  to apply there (the `Held` census is gone; `rows[].nat` is `rows[].facts`; new
+  stage names `F1`-`F3` and `S1`-`S3` for the rates and the settle).
+- **exe**: rebuilt (`4ac8e2b`) after the code commits, once; its `--help` matches
+  the source's from "positional arguments" down (105 lines each); a run of it on
+  the campaign is IDENTICAL to the reference. No instance of it was running.
+- **My mistakes:** the first start of my edit script failed in the shell (a
+  heredoc with quotes) before it changed anything; I wrote it to a file. The
+  probe diff did not apply after the change (three hunks rejected; `Held`,
+  `rows[].nat`, the census of the words): fixed by hand and regenerated. I
+  committed the dense tables after seeing they moved nothing, because the task
+  names them and they are correct; the commit message says so. I wrote
+  per-stage allocation figures in a first draft of MODEL.md 4.6 before I had
+  them from the probe; they are replaced by the probe's (checked: the
+  per-save figures there are the stage totals over 265).
+- **Not verified:** Linux; a campaign with more nations; the `--cross` path
+  beyond the suite's checks (`held_names` is now built only for a cross run;
+  `cross-names-never-built` shows the suite sees it); hour-to-hour drift
+  (the baselines moved 0.867 to 0.885 s between hours).
+- **Next, by the numbers (the maintainer's call; 10 not started):** what is left
+  of a warm rebuild (0.796 s) is not the model: pass one 0.122 s, payload
+  sections 0.17 s, the map 0.14 s, assembly and gzip 0.08 s, the process around
+  it. **10** (units and ships) is worth about what the counts say times the
+  ratio seen here (task 07: 10 ms per million; this task gained 0.013 s of pass
+  one for 1.0 M, and the pass two gain came from strings made per call):
+  expect 0.01-0.02 s. **11** stays last. **The provinces' reader and Windows
+  file mapping** (task 13's list) are still the largest first-run costs
+  (provinces 37% and reading the file 20% of a save's thread time) and
+  rank above both 10 and 11 for the empty-cache run. `naval_profile`'s
+  clones are a 20-line change if wanted. Not pushed; bundle
+  `~/vic2saveanalyzer-backup-<hash>.bundle` named for this notes commit.

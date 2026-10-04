@@ -504,6 +504,56 @@ occupied; only that third one took anything.
 
 ## Speed
 
+### Carrying less, the tech lists and the rates, 2026-10-04
+
+**What changed.**
+- `Held` is gone. The invention pass (`rules::settle_campaign`, `holdings`,
+  `index_base_for`), `--explain-mob`'s `index_holdings`, `say_mod` and `--cross`'s
+  nation names read `PreNation` (its `tag`, `nat.tag`, `nat.tech_list`,
+  `nat.invention_ids`, `nat.government`) instead of a second copy of them. An
+  entry in the engine cache no longer ends with the copy: an entry made by an
+  earlier build is refused by the length check (a miss, rebuilt), and the
+  other way about.
+- `Row.nat` is `Row.facts`, a `RowFacts` of what `Row::get` reads (the scalars,
+  the four levels, `civilized`, `tag`, `primary_culture`, `pop_by_type`). `finish`
+  builds the tables from the whole nation, then moves those out and moves
+  `Kept`'s four fields out (`trim` takes them, it no longer clones), and
+  the rest of the nation is let go there, in pass two's threads.
+- `tech_list`, `modifiers`, `reforms` and `nationalvalue` are `Sym`s in both
+  readers (`country.rs`, `walk.rs`), the fold and the cache (written as their
+  text). Order is the order the save gave (`reforms` is an `OMap<Sym, Sym>`).
+  The technologies table sorts on `names::cmp`.
+- The rates' lookups are `rules::Dense`, made in `run_spec` right after the
+  campaign is settled and held in `Mod.dense`: `tech_mob`, `event_mob`,
+  `nv_mob` and the modifiers' impacts are `Vec<f64>`s indexed by `Sym::index()`,
+  `reform_mob` a map on two `Sym`s, the techs' branch and line and the naval tech
+  effects are indexes into small tables. A name interned after the build is
+  past the end and reads as absent, which is what the mod says of it.
+  `Sym::index` is for these tables only; nothing sorts or prints by it.
+- A nation's held inventions (a set of the mod's names) are made on the first
+  `invention` trigger that asks, from the mod's names without copying them.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 3.53 M, 394 MB | 2.53 M, 347 MB |
+| live after the walk | 4.24 M | 2.35 M |
+| `rate_for` + `impact_for` allocations | 1.91 M | 58,000 |
+| warm cache load, allocations a save | 15,565 | 11,780 |
+| settle | 0.042 s | 0.023 s |
+| warm pass two | 0.076 s | 0.044 s |
+| warm rebuild | 0.867 s | 0.796 s |
+| empty-cache run | 2.149 s | 2.045 s |
+
+(Alternating rounds against the build before the task, medians; everything in
+`speed/MODEL.md` 4.6.) **What did not pan out:** the walk (0.072 s to 0.070 s)
+did not gain from `Row.nat` going although it was 2.34 M allocations: it
+does not free them. The dense tables moved nothing on their own; the rates'
+gain was the Strings made for the parts and the invention set. `Held` going
+did not shorten the settle (the first commit made it 0.007 s slower): its
+cost was hashing the tech names, which the `Sym`s halved. **Not done:**
+`naval_profile` (50-70 ms and 793,000 allocations of thread time, 5,661
+calls), `goods_supply`, `country_flags` and the scalar names.
+
 ### Pops and cultures on `Sym`, 2026-10-03
 
 **What changed.** The provinces look a pop's type and culture up in the name

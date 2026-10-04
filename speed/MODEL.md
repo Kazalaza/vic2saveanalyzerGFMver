@@ -661,6 +661,74 @@ are still half of all pass-one allocations (68,992 of 140,300) and 7.5% of the
 time: allocation counts and time are far apart in this reader too, which is
 what section 6's order was built on.
 
+### 4.6 After task 09 (carry less, the tech lists, the rates)
+
+`fa74fc8` with the probe rebased on it (`speed/model-probe.diff` applies to
+it; its `Held` census is gone and `rows[].nat` is `rows[].facts`); the same
+probes, against `c28648c` with its probe. Before is 4.5 above, expected is task
+09's file.
+
+**Allocations, `-j 1`, per call and in all:**
+
+| stage | before | after | |
+|---|---|---|---|
+| `read_countries` (empty cache), per save | 37,520 | 33,785 | -3,700: tech names, modifiers, reforms |
+| `model::build`, per save | 11,811 | 10,018 | |
+| `prepare`, per save | 4,497 | 2,543 | -1,950: the `Held` copy |
+| `finish`, the whole run | 4,923,086 | 2,269,282 | |
+| `rate_for`, 10,569 calls | 982,725 | 58,187 | tech, modifier and reform names; the invention set |
+| `impact_for`, 10,569 calls | 924,538 | 0 | the invention set, made only if a trigger asks |
+| `naval_profile`, 5,661 calls | 792,807 | 792,807 | not touched |
+| warm cache load, per save | 15,565 | 11,780 | |
+
+**Live allocations, whole process:**
+
+| phase | before | after | expected |
+|---|---|---|---|
+| pass one done | 3,529,954; 394.1 MB | 2,526,822; 346.5 MB | 28.5 MB less (`Held`) |
+| pass two done | 5,236,849; 543.2 MB | 3,343,572; 424.2 MB | |
+| walked | 4,240,611; 438.8 MB | 2,347,334; 315.0 MB | down by about 2 M |
+
+**What is held:** `Held` 528,115 allocations, 28.5 MB, gone. A whole
+`PreNation` 1,924,778 to 1,439,170 allocations (110.8 to 92.0 MB); `nat.tech_list`
+486,369 to 20,608; `nat.modifiers` 25,295 to 16,017. `Campaign.rows` 1,962,034
+allocations, 114.3 MB to 89,571, 9.2 MB (`RowFacts` 41,748). `Kept` is moved, so
+`parsed` is unchanged by the count (833,818) but it is no longer a copy.
+
+**The clocks** (alternating rounds of the build before this task against the
+last one, six each, medians; `abwarm.py`; one hour):
+
+| | before | after | expected |
+|---|---|---|---|
+| warm rebuild wall | 0.867 s | 0.796 s (-0.071) | warm 0.04 s |
+| pass one | 0.135 s | 0.122 s | |
+| settle | 0.042 s | 0.023 s | 0.050 s to about 0.02 s |
+| pass two | 0.076 s | 0.044 s | |
+| walk | 0.072 s | 0.070 s | `Row.nat` slimmed: the walk's 0.067 s |
+| empty-cache wall | 2.149 s | 2.045 s (-0.104) | 0.04 s |
+| empty-cache pass one | 1.399 s | 1.369 s | |
+
+Per commit, in the same way: carry less 0.971 s to 0.923 s in one set of rounds
+and 0.885 s to 0.881 s in another (inside the noise; settle 0.049 to 0.057 s and
+0.046 to 0.053 s, the nations read in place of a compact copy); the tech lists on `Sym` 0.870 s to
+0.811 s (settle 0.050 to 0.025, pass two 0.060 to 0.049); the dense tables
+0.824 s to 0.827 s; the lazy inventions 0.808 s to 0.811 s (pass two 0.047 to
+0.043).
+
+**Read it as:** the settle and the rates gained and the model estimate held for
+them: the settle's cost was hashing the tech names of every nation of every save
+(`index_base_for`, 40 ms to 19 ms at `-j 1`), not copying them into `Held`, so
+`Held` going gained nothing of it. Pass two lost 0.032 s, most of it the rates
+(`rate_for` and `impact_for` were 175 ms of thread time with 1.9 M allocations
+and are now 12 ms with 58,000), and of that the invention set and the names'
+Strings, not the lookups: the dense tables themselves moved nothing. **The walk
+did not move** (0.072 to 0.070 s) although `Row.nat` was 2.34 M allocations: the
+walk's cost is not freeing them (they are let go in `finish`, in pass two's
+threads). The empty-cache run gained 0.104 s, of which pass one is 0.030 s
+(`read_countries` made fewer names) and the rest is pass two. What is left in
+pass two, one thread: `naval_profile` 50-70 ms and 793,000 allocations, the
+only rate-side cost the stage did not touch.
+
 ## 5. The design
 
 ### 5.1 What it does, in one paragraph
