@@ -500,7 +500,8 @@ fn capital(nat: &Nation) -> D<i64> {
 pub struct Asker<'a> {
     pub m: &'a Mod,
     pub world: Option<&'a World>,
-    pub inventions: Option<&'a FxSet<String>>,
+    /// The inventions a nation holds, by name; made the first time a trigger asks.
+    pub inventions: std::cell::OnceCell<Option<FxSet<&'a str>>>,
     pub is_player: bool,
 }
 
@@ -613,7 +614,8 @@ impl<'a> Asker<'a> {
                            == Some(text)));
         }
         if key == "invention" {
-            return Ok(self.inventions.map(|held| held.contains(text)));
+            return Ok(self.inventions.get_or_init(|| held_inventions(nat, self.m))
+                          .as_ref().map(|held| held.contains(text)));
         }
         if key == "technology" {
             return Ok(Some(nat.tech_list.iter().any(|t| names::text(*t) == text)));
@@ -680,14 +682,14 @@ impl<'a> Asker<'a> {
 // ------------------------------------------------------------ the rates
 
 /// `held_inventions`: the names a nation's indices decode to, or None.
-pub fn held_inventions(nat: &Nation, m: &Mod) -> Option<FxSet<String>> {
+pub fn held_inventions<'a>(nat: &Nation, m: &'a Mod) -> Option<FxSet<&'a str>> {
     let base = m.index_base?;
     let seq = &m.invention_sequence;
     let mut out = FxSet::default();
     for idx in &nat.invention_ids {
         let j = idx - base;
         if 0 <= j && (j as usize) < seq.len() {
-            out.insert(seq[j as usize].name.clone());
+            out.insert(seq[j as usize].name.as_str());
         }
     }
     Some(out)
@@ -708,7 +710,7 @@ pub fn breakdown(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opt
             parts.push(("tech", names::text(*tech).to_string(), v));
         }
     }
-    let inventions = held_inventions(nat, m);
+    let inventions = std::cell::OnceCell::new();
     match m.index_base {
         Some(base) => {
             let seq = &m.invention_sequence;
@@ -760,7 +762,7 @@ pub fn breakdown(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opt
             parts.push(("uncivilized", "unciv_nation".into(), v));
         }
     }
-    let asker = Asker { m, world, inventions: inventions.as_ref(), is_player };
+    let asker = Asker { m, world, inventions, is_player };
     for t in &m.triggered_mob {
         if t.size == 0.0 {
             continue;
@@ -783,13 +785,13 @@ pub fn rate_for(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opti
 
 /// `impact_for`.
 pub fn impact_for(nat: &Nation, m: &Mod, world: Option<&World>, is_player: bool) -> D<f64> {
-    let inventions = held_inventions(nat, m);
+    let inventions = std::cell::OnceCell::new();
     let mut total = 0.0;
     let d = m.dense();
     for name in &nat.modifiers {
         total += d.modifier_impact(*name);
     }
-    let asker = Asker { m, world, inventions: inventions.as_ref(), is_player };
+    let asker = Asker { m, world, inventions, is_player };
     for t in &m.triggered_mob {
         if t.impact == 0.0 {
             continue;
