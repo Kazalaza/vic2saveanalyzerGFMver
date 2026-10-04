@@ -360,11 +360,11 @@ pub struct Country {
     pub navies: i64,
     pub ships: i64,
     pub regiment_pops: Vec<i64>,
-    pub regiments_by_type: Vec<(String, i64)>,
-    pub ships_by_type: Vec<(String, i64)>,
-    pub ship_crew: Vec<(String, f64)>,
-    pub units_at: Vec<(i64, Vec<(String, i64)>)>,
-    pub men_at: Vec<(i64, Vec<(String, i64)>)>,
+    pub regiments_by_type: Vec<(Sym, i64)>,
+    pub ships_by_type: Vec<(Sym, i64)>,
+    pub ship_crew: Vec<(Sym, f64)>,
+    pub units_at: Vec<(i64, Vec<(Sym, i64)>)>,
+    pub men_at: Vec<(i64, Vec<(Sym, i64)>)>,
 }
 
 /// An ordered counter, so what comes back is in the order the file gave it.
@@ -387,12 +387,12 @@ impl<'a> Tally<'a> {
             }
         }
     }
-    fn ints(&self) -> Vec<(String, i64)> {
-        self.order.iter().map(|n| latin1(n))
+    fn ints(&self) -> Vec<(Sym, i64)> {
+        self.order.iter().map(|n| names::intern(n))
             .zip(self.total.iter().map(|v| *v as i64)).collect()
     }
-    fn floats(&self) -> Vec<(String, f64)> {
-        self.order.iter().map(|n| latin1(n)).zip(self.total.iter().copied()).collect()
+    fn floats(&self) -> Vec<(Sym, f64)> {
+        self.order.iter().map(|n| names::intern(n)).zip(self.total.iter().copied()).collect()
     }
 }
 

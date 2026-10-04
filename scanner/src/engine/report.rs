@@ -52,11 +52,11 @@ type ByTag<V> = OMap<String, OMap<String, V>>;
 /// `walk_campaign`'s answer.
 struct Campaign {
     rows: Vec<Row>,
-    ships: ByTag<Vec<(String, i64)>>,
-    crews: ByTag<Vec<(String, f64)>>,
-    brigades: ByTag<Vec<(String, i64)>>,
+    ships: ByTag<Vec<(Sym, i64)>>,
+    crews: ByTag<Vec<(Sym, f64)>>,
+    brigades: ByTag<Vec<(Sym, i64)>>,
     techs: ByTag<Vec<String>>,
-    pops: ByTag<Vec<(String, i64)>>,
+    pops: ByTag<Vec<(Sym, i64)>>,
     cultures: ByTag<Vec<(String, i64, i64)>>,
     text: [Vec<String>; 6],
     naval_profiles: Vec<Profile>,
@@ -362,20 +362,20 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
                 }
                 let empty = OMap::new();
                 let men = nat.men_at.get(pid).unwrap_or(&empty);
-                let mut ranked: Vec<(&String, &i64)> = types.iter().collect();
+                let mut ranked: Vec<(&Sym, &i64)> = types.iter().collect();
                 ranked.sort_by(|a, b| b.1.cmp(a.1));
                 let mut e = String::from("[");
                 push_int(&mut e, index.get(nat.tag.as_str()).map(|i| *i as i64).unwrap_or(-1));
                 e.push(',');
                 push_int(&mut e, total);
                 e.push(',');
-                push_json_str(&mut e, &ranked.iter().map(|(t, n)| format!("{}:{}", t, n))
+                push_json_str(&mut e, &ranked.iter().map(|(t, n)| format!("{}:{}", names::text(**t), n))
                     .collect::<Vec<_>>().join(";"));
                 e.push(',');
                 push_int(&mut e, men.values().sum());
                 e.push(',');
                 push_json_str(&mut e, &ranked.iter()
-                    .map(|(t, _)| format!("{}:{}", t, men.get(t.as_str()).copied().unwrap_or(0)))
+                    .map(|(t, _)| format!("{}:{}", names::text(**t), men.get(*t).copied().unwrap_or(0)))
                     .collect::<Vec<_>>().join(";"));
                 e.push(']');
                 let slot = here.entry(*pid, String::new);
@@ -1365,10 +1365,10 @@ fn section_tables(run: &Run, c: &Campaign) -> String {
     let t = &run.tables;
     let mut p = String::with_capacity(8 << 20);
     // the per-nation tables
-    let date_map_i = |p: &mut String, t: &ByTag<Vec<(String, i64)>>| {
+    let date_map_i = |p: &mut String, t: &ByTag<Vec<(Sym, i64)>>| {
         obj(p, t.iter().map(|(k, v)| (k.as_str(), v)), |o, by| {
             obj(o, by.iter().map(|(d, v)| (d.as_str(), v)), |o, v| {
-                obj(o, v.iter().map(|(k, n)| (k.as_str(), *n)), |o, n| push_int(o, n))
+                obj(o, v.iter().map(|(k, n)| (names::text(*k), *n)), |o, n| push_int(o, n))
             })
         });
     };
@@ -1377,15 +1377,15 @@ fn section_tables(run: &Run, c: &Campaign) -> String {
     p.push_str(",\"crews\":");
     obj(&mut p, c.crews.iter().map(|(k, v)| (k.as_str(), v)), |o, by| {
         obj(o, by.iter().map(|(d, v)| (d.as_str(), v)), |o, v| {
-            obj(o, v.iter().map(|(k, n)| (k.as_str(), *n)), |o, n| push_json_float(o, n))
+            obj(o, v.iter().map(|(k, n)| (names::text(*k), *n)), |o, n| push_json_float(o, n))
         })
     });
-    let types_of = |t: &ByTag<Vec<(String, i64)>>| -> Vec<String> {
-        let mut v: Vec<String> = t.values().flat_map(|by| by.values())
-            .flat_map(|h| h.iter().map(|(k, _)| k.clone())).collect();
-        v.sort();
+    let types_of = |t: &ByTag<Vec<(Sym, i64)>>| -> Vec<String> {
+        let mut v: Vec<Sym> = t.values().flat_map(|by| by.values())
+            .flat_map(|h| h.iter().map(|(k, _)| *k)).collect();
+        v.sort_by(|a, b| names::cmp(*a, *b));
         v.dedup();
-        v
+        v.into_iter().map(|s| names::text(s).to_string()).collect()
     };
     p.push_str(",\"shipTypes\":");
     str_array(&mut p, types_of(&c.ships).iter());

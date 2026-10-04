@@ -146,11 +146,11 @@ pub struct Nation {
     pub armies: i64,
     pub ships: i64,
     pub navies: i64,
-    pub ships_by_type: OMap<String, i64>,
-    pub ship_crew: OMap<String, f64>,
-    pub regiments_by_type: OMap<String, i64>,
-    pub units_at: OMap<i64, OMap<String, i64>>,
-    pub men_at: OMap<i64, OMap<String, i64>>,
+    pub ships_by_type: OMap<Sym, i64>,
+    pub ship_crew: OMap<Sym, f64>,
+    pub regiments_by_type: OMap<Sym, i64>,
+    pub units_at: OMap<i64, OMap<Sym, i64>>,
+    pub men_at: OMap<i64, OMap<Sym, i64>>,
     pub mobilized_brigades: i64,
     pub regular_brigades: i64,
     pub mobilizing: i64,
@@ -345,19 +345,19 @@ fn fold_country(nat: &mut Nation, c: &Country) {
     nat.navies += c.navies;
     nat.ships += c.ships;
     for (t, n) in &c.regiments_by_type {
-        *nat.regiments_by_type.entry(t.clone(), || 0) += n;
+        *nat.regiments_by_type.entry(*t, || 0) += n;
     }
     for (t, n) in &c.ships_by_type {
-        *nat.ships_by_type.entry(t.clone(), || 0) += n;
+        *nat.ships_by_type.entry(*t, || 0) += n;
     }
     for (t, n) in &c.ship_crew {
-        *nat.ship_crew.entry(t.clone(), || 0.0) += n;
+        *nat.ship_crew.entry(*t, || 0.0) += n;
     }
     for (target, rows) in [(&mut nat.units_at, &c.units_at), (&mut nat.men_at, &c.men_at)] {
         for (pid, items) in rows {
             let counter = target.entry(*pid, OMap::new);
             for (kind, n) in items {
-                *counter.entry(kind.clone(), || 0) += n;
+                *counter.entry(*kind, || 0) += n;
             }
         }
     }

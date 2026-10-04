@@ -24,6 +24,7 @@ use crate::country::{Country, Tables};
 use crate::engine::modread::{block_end, py_float, str_of};
 use crate::fx::{FxMap, FxSet};
 use crate::province::{accumulate, pop_known, Parts, Pop, PopulationRules, Scan};
+use crate::names::Sym;
 use crate::pyre::space;
 
 /// `v2parse.Tokens`: a cursor over `TOKEN_RE`, one token of pushback, and a
@@ -347,11 +348,12 @@ impl Tally {
             }
         }
     }
-    fn ints(&self) -> Vec<(String, i64)> {
-        self.order.iter().cloned().zip(self.total.iter().map(|v| *v as i64)).collect()
+    fn ints(&self) -> Vec<(Sym, i64)> {
+        self.order.iter().map(|n| crate::names::intern_str(n))
+            .zip(self.total.iter().map(|v| *v as i64)).collect()
     }
-    fn floats(&self) -> Vec<(String, f64)> {
-        self.order.iter().cloned().zip(self.total.iter().copied()).collect()
+    fn floats(&self) -> Vec<(Sym, f64)> {
+        self.order.iter().map(|n| crate::names::intern_str(n)).zip(self.total.iter().copied()).collect()
     }
 }
 

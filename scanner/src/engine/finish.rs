@@ -549,19 +549,19 @@ impl Row {
 /// One save's share of the payload's per-nation tables (`PerNation`).
 #[derive(Default)]
 pub struct PerNation {
-    pub ships: Vec<(String, Vec<(String, i64)>)>,
-    pub crews: Vec<(String, Vec<(String, f64)>)>,
-    pub brigades: Vec<(String, Vec<(String, i64)>)>,
+    pub ships: Vec<(String, Vec<(Sym, i64)>)>,
+    pub crews: Vec<(String, Vec<(Sym, f64)>)>,
+    pub brigades: Vec<(String, Vec<(Sym, i64)>)>,
     pub techs: Vec<(String, Vec<String>)>,
-    pub pops: Vec<(String, Vec<(String, i64)>)>,
+    pub pops: Vec<(String, Vec<(Sym, i64)>)>,
     pub cultures: Vec<(String, Vec<(String, i64, i64)>)>,
 }
 
 /// What survives of a nation for the rest of the run (`KEEP_NATION`).
 pub struct Kept {
     pub tag: String,
-    pub units_at: OMap<i64, OMap<String, i64>>,
-    pub men_at: OMap<i64, OMap<String, i64>>,
+    pub units_at: OMap<i64, OMap<Sym, i64>>,
+    pub men_at: OMap<i64, OMap<Sym, i64>>,
     pub primary_culture: Sym,
     pub accepted_cultures: Vec<Sym>,
     pub government: String,
@@ -706,20 +706,20 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         let head = [Val::S(&date), Val::S(&year), Val::S(&tag)];
 
         // ships_by_type.csv, and the payload's ships and crews.
-        let mut ship_types: Vec<(&String, &i64)> = nat.ships_by_type.iter().collect();
-        ship_types.sort();
+        let mut ship_types: Vec<(&Sym, &i64)> = nat.ships_by_type.iter().collect();
+        ship_types.sort_by(|a, b| names::cmp(*a.0, *b.0));
         let (mut count_of, mut crew_of) = (Vec::new(), Vec::new());
         for (stype, count) in ship_types {
-            let effective = match nat.ship_crew.get(stype.as_str()) {
+            let effective = match nat.ship_crew.get(stype) {
                 Some(c) => Num::F(round(*c, 3)),
                 None => Num::I(*count),
             };
-            csv_line(&mut text[1], &[head[0], head[1], head[2], Val::S(stype), Val::I(*count),
-                                     Val::N(effective)]);
-            count_of.push((stype.clone(), *count));
+            csv_line(&mut text[1], &[head[0], head[1], head[2], Val::S(names::text(*stype)),
+                                     Val::I(*count), Val::N(effective)]);
+            count_of.push((*stype, *count));
             let e = effective.as_f64();
             if (e - *count as f64).abs() > 0.005 {
-                crew_of.push((stype.clone(), round(e, 2)));
+                crew_of.push((*stype, round(e, 2)));
             }
         }
         if !count_of.is_empty() {
@@ -735,12 +735,13 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         for (good, amount) in nat.goods_supply.iter() {
             supply.push((good.clone(), tag.clone(), *amount));
         }
-        let mut regiments: Vec<(&String, &i64)> = nat.regiments_by_type.iter().collect();
-        regiments.sort();
+        let mut regiments: Vec<(&Sym, &i64)> = nat.regiments_by_type.iter().collect();
+        regiments.sort_by(|a, b| names::cmp(*a.0, *b.0));
         let mut held = Vec::new();
         for (rtype, count) in regiments {
-            csv_line(&mut text[2], &[head[0], head[1], head[2], Val::S(rtype), Val::I(*count)]);
-            held.push((rtype.clone(), *count));
+            csv_line(&mut text[2], &[head[0], head[1], head[2], Val::S(names::text(*rtype)),
+                                     Val::I(*count)]);
+            held.push((*rtype, *count));
         }
         if !held.is_empty() {
             tables.brigades.push((tag.clone(), held));
@@ -763,9 +764,9 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         pops.sort_by(|a, b| names::cmp(*a.0, *b.0));
         let mut held = Vec::new();
         for (ptype, size) in pops {
-            let ptype = names::text(*ptype);
-            csv_line(&mut text[4], &[head[0], head[1], head[2], Val::S(ptype), Val::I(*size)]);
-            held.push((ptype.to_string(), *size));
+            csv_line(&mut text[4], &[head[0], head[1], head[2], Val::S(names::text(*ptype)),
+                                     Val::I(*size)]);
+            held.push((*ptype, *size));
         }
         if !held.is_empty() {
             tables.pops.push((tag.clone(), held));
