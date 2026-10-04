@@ -1164,9 +1164,10 @@ were brought to the new numbers.
   I wrote the first estimate of the ratio in MODEL.md 4.7 as "the task file's"
   when it is 5.3's; corrected. The empty-cache pair at a noisy hour was nearly
   used before I looked at the walls.
-- **exe**: NOT rebuilt yet when this entry was written: an instance of
-  `dist/vic2saveanalyzer.exe` has been running since 16:47 (not started by me), and
-  I do not kill it. See the line below for where it stands.
+- **exe**: rebuilt (`e9b879a`) after the code commits, once, after the maintainer closed the
+  instance that was running (I did not kill it); its `--help` matches the source's
+  from "positional arguments" down (105 lines each); a run of it on the campaign is
+  IDENTICAL to the reference.
 - **Not verified:** Linux; a campaign with more nations or armies (the `add_stack`
   scan is linear in a nation's stacks, at most 142 here); `--cross` beyond the
   suite; hour-to-hour drift.
