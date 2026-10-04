@@ -122,6 +122,104 @@ pub struct Mod {
     pub index_base: Option<i64>,
     /// The map's bitmap as (width, height, runs), when it was decoded ahead.
     pub raster: Option<(i64, i64, Vec<(i64, i64)>)>,
+    /// The rates' lookups as tables indexed by name, made once the campaign
+    /// is settled (`Dense::build`); None until then.
+    pub dense: Option<Dense>,
+}
+
+impl Mod {
+    /// The dense tables. A run makes them before anything asks for a rate.
+    pub fn dense(&self) -> &Dense {
+        self.dense.as_ref().expect("the mod's dense tables are made after the campaign is settled")
+    }
+}
+
+/// What the rates look up per nation, as vectors indexed by `Sym::index`.
+/// A name interned after the build is past the end: the mod does not name it.
+pub struct Dense {
+    tech_mob: Vec<f64>,
+    event_mob: Vec<f64>,
+    nv_mob: Vec<f64>,
+    modifier_impact: Vec<f64>,
+    reform_mob: FxMap<(Sym, Sym), f64>,
+    /// Per tech, 1 + the index into `groups`; 0 when it has none.
+    tech_group: Vec<u32>,
+    groups: Vec<(String, String)>,
+    /// Per tech, 1 + the index into `naval_changes`.
+    naval_tech: Vec<u32>,
+    naval_changes: Vec<Changes>,
+}
+
+fn dense_floats(map: &FxMap<String, f64>) -> Vec<f64> {
+    let at: Vec<(usize, f64)> = map.iter().map(|(k, v)| (names::intern_str(k).index(), *v)).collect();
+    let mut out = vec![0.0; names::len()];
+    for (i, v) in at {
+        out[i] = v;
+    }
+    out
+}
+
+fn dense_at(v: &[f64], s: Sym) -> f64 {
+    v.get(s.index()).copied().unwrap_or(0.0)
+}
+
+impl Dense {
+    /// `tech_group` is the run's tech -> (branch, line).
+    pub fn build(m: &Mod, tech_group: &FxMap<String, (String, String)>) -> Dense {
+        let mut groups: Vec<(String, String)> = Vec::new();
+        let mut group_at: Vec<(usize, u32)> = Vec::new();
+        for (tech, g) in tech_group {
+            let k = match groups.iter().position(|x| x == g) {
+                Some(k) => k,
+                None => { groups.push(g.clone()); groups.len() - 1 }
+            };
+            group_at.push((names::intern_str(tech).index(), k as u32 + 1));
+        }
+        let mut naval_changes: Vec<Changes> = Vec::new();
+        let mut naval_at: Vec<(usize, u32)> = Vec::new();
+        for (tech, changes) in &m.naval_tech_effects {
+            naval_changes.push(changes.clone());
+            naval_at.push((names::intern_str(tech).index(), naval_changes.len() as u32));
+        }
+        let reform_mob: FxMap<(Sym, Sym), f64> = m.reform_mob.iter()
+            .map(|((r, o), v)| ((names::intern_str(r), names::intern_str(o)), *v)).collect();
+        let (tech_mob, event_mob, nv_mob, modifier_impact) = (
+            dense_floats(&m.tech_mob), dense_floats(&m.event_mob), dense_floats(&m.nv_mob),
+            dense_floats(&m.modifier_impacts));
+        let mut tech_group_dense = vec![0u32; names::len()];
+        for (i, k) in group_at {
+            tech_group_dense[i] = k;
+        }
+        let mut naval_tech = vec![0u32; names::len()];
+        for (i, k) in naval_at {
+            naval_tech[i] = k;
+        }
+        Dense { tech_mob, event_mob, nv_mob, modifier_impact, reform_mob,
+                tech_group: tech_group_dense, groups, naval_tech, naval_changes }
+    }
+
+    pub fn tech_mob(&self, s: Sym) -> f64 { dense_at(&self.tech_mob, s) }
+    pub fn event_mob(&self, s: Sym) -> f64 { dense_at(&self.event_mob, s) }
+    pub fn nv_mob(&self, s: Sym) -> f64 { dense_at(&self.nv_mob, s) }
+    pub fn modifier_impact(&self, s: Sym) -> f64 { dense_at(&self.modifier_impact, s) }
+    pub fn reform_mob(&self, reform: Sym, option: Sym) -> f64 {
+        self.reform_mob.get(&(reform, option)).copied().unwrap_or(0.0)
+    }
+
+    /// `tech_groups.TECH_GROUP[tech]`: (branch, line).
+    pub fn tech_group(&self, s: Sym) -> Option<(&str, &str)> {
+        match self.tech_group.get(s.index()).copied().unwrap_or(0) {
+            0 => None,
+            k => { let g = &self.groups[k as usize - 1]; Some((g.0.as_str(), g.1.as_str())) }
+        }
+    }
+
+    pub fn naval_tech(&self, s: Sym) -> Option<&Changes> {
+        match self.naval_tech.get(s.index()).copied().unwrap_or(0) {
+            0 => None,
+            k => Some(&self.naval_changes[k as usize - 1]),
+        }
+    }
 }
 
 fn strings(v: &J) -> Vec<String> {
@@ -248,6 +346,7 @@ impl Mod {
             map_csv: j.at("map_csv").str().to_string(),
             index_base: None,
             raster: None,
+            dense: None,
         };
         Ok(m)
     }
@@ -602,11 +701,11 @@ fn subset(need: &[String], have: &FxSet<String>) -> bool {
 pub fn breakdown(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Option<&World>,
                  is_player: bool) -> D<Vec<(&'static str, String, f64)>> {
     let mut parts = Vec::new();
+    let d = m.dense();
     for tech in &nat.tech_list {
-        let tech = names::text(*tech);
-        let v = m.tech_mob.get(tech).copied().unwrap_or(0.0);
+        let v = d.tech_mob(*tech);
         if v != 0.0 {
-            parts.push(("tech", tech.to_string(), v));
+            parts.push(("tech", names::text(*tech).to_string(), v));
         }
     }
     let inventions = held_inventions(nat, m);
@@ -639,22 +738,20 @@ pub fn breakdown(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opt
             }
         }
     }
-    let v = m.nv_mob.get(names::text(nat.nationalvalue)).copied().unwrap_or(0.0);
+    let v = d.nv_mob(nat.nationalvalue);
     if v != 0.0 {
         parts.push(("national value", names::text(nat.nationalvalue).to_string(), v));
     }
     for name in &nat.modifiers {
-        let name = names::text(*name);
-        let v = m.event_mob.get(name).copied().unwrap_or(0.0);
+        let v = d.event_mob(*name);
         if v != 0.0 {
-            parts.push(("event modifier", name.to_string(), v));
+            parts.push(("event modifier", names::text(*name).to_string(), v));
         }
     }
     for (reform, option) in nat.reforms.iter() {
-        let (reform, option) = (names::text(*reform), names::text(*option));
-        let v = m.reform_mob.get(&(reform.to_string(), option.to_string())).copied().unwrap_or(0.0);
+        let v = d.reform_mob(*reform, *option);
         if v != 0.0 {
-            parts.push(("reform", format!("{} = {}", reform, option), v));
+            parts.push(("reform", format!("{} = {}", names::text(*reform), names::text(*option)), v));
         }
     }
     if nat.civilized.to_lowercase() == "no" {
@@ -688,8 +785,9 @@ pub fn rate_for(nat: &Nation, m: &Mod, live: Option<&FxSet<String>>, world: Opti
 pub fn impact_for(nat: &Nation, m: &Mod, world: Option<&World>, is_player: bool) -> D<f64> {
     let inventions = held_inventions(nat, m);
     let mut total = 0.0;
+    let d = m.dense();
     for name in &nat.modifiers {
-        total += m.modifier_impacts.get(names::text(*name)).copied().unwrap_or(0.0);
+        total += d.modifier_impact(*name);
     }
     let asker = Asker { m, world, inventions: inventions.as_ref(), is_player };
     for t in &m.triggered_mob {
@@ -731,7 +829,7 @@ pub fn naval_profile(nat: &Nation, m: &Mod) -> Vec<(String, [f64; 5], i64)> {
         }
     };
     for tech in &nat.tech_list {
-        if let Some(ch) = m.naval_tech_effects.get(names::text(*tech)) {
+        if let Some(ch) = m.dense().naval_tech(*tech) {
             apply(&mut out, ch);
         }
     }

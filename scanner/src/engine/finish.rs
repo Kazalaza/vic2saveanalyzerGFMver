@@ -745,15 +745,16 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         if !held.is_empty() {
             tables.brigades.push((tag.clone(), held));
         }
-        let mut names: Vec<String> = nat.tech_list.iter().map(|t| names::text(*t).to_string()).collect();
-        names.sort();
-        for tech in &names {
-            let (branch, line) = match spec.tech_group.get(tech) {
-                Some((b, l)) => (b.as_str(), l.as_str()),
-                None => ("other", "Other"),
-            };
+        let mut techs: Vec<Sym> = nat.tech_list.clone();
+        techs.sort_by(|a, b| names::cmp(*a, *b));
+        let dense = m.dense();
+        let mut names: Vec<String> = Vec::with_capacity(techs.len());
+        for tech in &techs {
+            let (branch, line) = dense.tech_group(*tech).unwrap_or(("other", "Other"));
+            let tech = names::text(*tech);
             csv_line(&mut text[3], &[head[0], head[1], head[2], Val::S(tech), Val::S(branch),
                                      Val::S(line)]);
+            names.push(tech.to_string());
         }
         if !names.is_empty() {
             tables.techs.push((tag.clone(), names));

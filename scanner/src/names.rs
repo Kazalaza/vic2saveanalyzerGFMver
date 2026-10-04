@@ -42,6 +42,17 @@ impl Sym {
     pub fn is_empty(self) -> bool {
         self.0 == 0
     }
+
+    /// The id's number, for indexing a dense table built after pass one
+    /// (`rules::Dense`). Never an order: nothing may sort or print by it.
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// How many names there are now, the empty one included.
+pub fn len() -> usize {
+    table().lock().unwrap_or_else(|e| e.into_inner()).texts.len()
 }
 
 impl std::fmt::Debug for Sym {

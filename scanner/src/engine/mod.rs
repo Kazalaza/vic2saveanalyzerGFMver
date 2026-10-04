@@ -1038,6 +1038,7 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
     let held: Vec<&[finish::PreNation]> = pres.iter().map(|p| p.nations.as_slice()).collect();
     phase("mod loaded");
     let live = rules::settle_campaign(&mut m, &held);
+    m.dense = Some(rules::Dense::build(&m, &run.spec.tech_group));
     phase("inventions settled");
     if verbose {
         crate::engine::report::say_mod(&m, &live, &held, &files);
