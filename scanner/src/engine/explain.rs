@@ -288,7 +288,8 @@ fn index_holdings(pres: &[Pre]) -> Vec<(i64, Vec<FxSet<&str>>)> {
     let mut out: Vec<(i64, Vec<FxSet<&str>>)> = Vec::new();
     let mut at: crate::fx::FxMap<i64, usize> = crate::fx::FxMap::default();
     for pre in pres {
-        for h in &pre.held {
+        for pn in &pre.nations {
+            let h = &pn.nat;
             if h.tech_list.is_empty() {
                 continue;
             }

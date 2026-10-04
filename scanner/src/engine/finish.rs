@@ -25,7 +25,7 @@ use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::{floordiv, push_csv_field, push_float, push_int, push_json_float,
                    push_json_str, round, trunc_int, Num};
-use crate::engine::rules::{impact_for, naval_profile, rate_for, save_world, Held, Mod, World, D};
+use crate::engine::rules::{impact_for, naval_profile, rate_for, save_world, Mod, World, D};
 
 /// `finishing.Finish`, and the few things of the run the tables need.
 /// Its `rate` is not here: it is the rate a run with no mod uses, and the
@@ -80,8 +80,6 @@ pub struct Pre {
     pub nations: Vec<PreNation>,
     /// The state snapshot, packed as the page carries it.
     pub chunk: String,
-    /// What the invention pass keeps of each nation.
-    pub held: Vec<Held>,
 }
 
 /// `players_in(meta, nations, told)`.
@@ -269,12 +267,8 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
     let pairs: Vec<(String, Nation)> = keys.into_iter().zip(nations).collect();
     let playing = players(&meta, &pairs, &spec.player_nations);
     let mut snapshot = Snapshot::default();
-    let mut held = Vec::with_capacity(pairs.len());
     let mut out = Vec::with_capacity(pairs.len());
     for (tag, mut nat) in pairs {
-        held.push(Held { tag: tag.clone(), record_tag: nat.tag.clone(),
-                         tech_list: nat.tech_list.clone(), invention_ids: nat.invention_ids.clone(),
-                         government: nat.government.clone() });
         let kept = spec.keeps(&tag, &nat);
         let mut pre = PreNation { tag: tag.clone(), nat: Nation::default(), kept,
                                   is_player: false, buckets: Vec::new(), pool: 0, entries: 0,
@@ -310,7 +304,7 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
         pre.nat = nat;
         out.push(pre);
     }
-    Pre { meta, nations: out, chunk: snapshot.pack(), held }
+    Pre { meta, nations: out, chunk: snapshot.pack() }
 }
 
 // ------------------------------------------------------------- pass two
@@ -367,7 +361,7 @@ pub struct Row {
     pub date: String,
     pub year: String,
     pub is_player: bool,
-    pub nat: Nation,
+    pub facts: RowFacts,
     pub accepted_pop: i64,
     pub accepted_pct: f64,
     pub primary_culture_pop: i64,
@@ -393,10 +387,95 @@ pub struct Row {
     pub accepted_cultures: String,
 }
 
+/// What `Row::get` reads of a finished nation, and nothing else: the rest of
+/// the `Nation` is let go when the row is made.
+pub struct RowFacts {
+    pub tag: String,
+    pub primary_culture: Sym,
+    pub civilized: String,
+    pub provinces: i64,
+    pub states: i64,
+    pub total_pop: i64,
+    pub pop_noncolonial: i64,
+    pub brigades: i64,
+    pub regular_brigades: i64,
+    pub mobilized_brigades: i64,
+    pub mobilizing: i64,
+    pub is_mobilized: i64,
+    pub armies: i64,
+    pub ships: i64,
+    pub navies: i64,
+    pub factory_count: i64,
+    pub factory_levels: i64,
+    pub ports: i64,
+    pub naval_base_levels: Num,
+    pub max_naval_base: Num,
+    pub railroad_levels: Num,
+    pub fort_levels: Num,
+    pub techs: i64,
+    pub army_techs: i64,
+    pub navy_techs: i64,
+    pub prestige: f64,
+    pub infamy: f64,
+    pub treasury: f64,
+    pub tax_base: f64,
+    pub research_points: f64,
+    pub war_exhaustion: f64,
+    pub plurality: f64,
+    pub soldiers_noncolonial: i64,
+    pub life_unmet: i64,
+    pub starving: i64,
+    pub pop_by_type: OMap<Sym, i64>,
+}
+
+impl RowFacts {
+    /// The facts, moved (or copied, for the scalars) out of `nat`.
+    fn take(nat: &mut Nation) -> RowFacts {
+        RowFacts {
+            tag: std::mem::take(&mut nat.tag),
+            primary_culture: nat.primary_culture,
+            civilized: std::mem::take(&mut nat.civilized),
+            provinces: nat.provinces,
+            states: nat.states,
+            total_pop: nat.total_pop,
+            pop_noncolonial: nat.pop_noncolonial,
+            brigades: nat.brigades,
+            regular_brigades: nat.regular_brigades,
+            mobilized_brigades: nat.mobilized_brigades,
+            mobilizing: nat.mobilizing,
+            is_mobilized: nat.is_mobilized,
+            armies: nat.armies,
+            ships: nat.ships,
+            navies: nat.navies,
+            factory_count: nat.factory_count,
+            factory_levels: nat.factory_levels,
+            ports: nat.ports,
+            naval_base_levels: nat.naval_base_levels,
+            max_naval_base: nat.max_naval_base,
+            railroad_levels: nat.railroad_levels,
+            fort_levels: nat.fort_levels,
+            techs: nat.techs,
+            army_techs: nat.army_techs,
+            navy_techs: nat.navy_techs,
+            prestige: nat.prestige,
+            infamy: nat.infamy,
+            treasury: nat.treasury,
+            tax_base: nat.tax_base,
+            research_points: nat.research_points,
+            war_exhaustion: nat.war_exhaustion,
+            plurality: nat.plurality,
+            soldiers_noncolonial: nat.soldiers_noncolonial,
+            life_unmet: nat.life_unmet,
+            starving: nat.starving,
+            pop_by_type: std::mem::take(&mut nat.pop_by_type),
+        }
+    }
+}
+
 impl Row {
     /// `row[col]`, for a column of `spending.BASE_COLUMNS` or a `pop_<type>`.
     pub fn get(&self, col: &str) -> Val<'_> {
-        let n = &self.nat;
+        let n = &self.facts;
         match col {
             "date" => Val::S(&self.date),
             "year" => Val::S(&self.year),
@@ -561,9 +640,9 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
     let columns = &spec.columns;
 
     for pre in nations {
-        let PreNation { tag, nat, kept, is_player, buckets, pool, entries, cap_rule } = pre;
+        let PreNation { tag, mut nat, kept, is_player, buckets, pool, entries, cap_rule } = pre;
         if !kept {
-            kept_out.push(trim(&tag, &nat));
+            kept_out.push(trim(&tag, &mut nat));
             continue;
         }
         let rate = rate_for(&nat, m, live, Some(&world), is_player)?;
@@ -624,39 +703,6 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         };
         let mut accepted: Vec<&str> = nat.accepted_cultures.iter().map(|s| names::text(*s)).collect();
         accepted.sort();
-        let row = Row {
-            key: tag.clone(),
-            date: date.clone(),
-            year: year.clone(),
-            is_player,
-            accepted_pop,
-            accepted_pct: pct(accepted_pop, 2),
-            primary_culture_pop: primary_pop,
-            avg_literacy: if total != 0 { round(nat.literacy_weighted / total as f64, 5) } else { 0.0 },
-            avg_literacy_stated: if nat.pop_noncolonial != 0 {
-                round(nat.literacy_noncolonial / nat.pop_noncolonial as f64, 5)
-            } else { 0.0 },
-            avg_consciousness: if total != 0 { round(nat.con_weighted / total as f64, 4) } else { 0.0 },
-            avg_militancy: if total != 0 { round(nat.mil_weighted / total as f64, 4) } else { 0.0 },
-            brigade_cap: cap_rule.max(nat.regular_brigades),
-            mobilisation_size: round(rate, 5),
-            mobilization_pool: pool,
-            mobilization_pops: entries,
-            mobilization_brigades: brigades,
-            mobilization_cap: cap,
-            mobilization_available: if cap != 0 { brigades.min(cap) } else { brigades },
-            mobilization_remaining: (brigades - nat.mobilized_brigades - nat.mobilizing).max(0),
-            war_policy: policy,
-            pop_poor: stratum("poor"),
-            pop_middle: stratum("middle"),
-            pop_rich: stratum("rich"),
-            soldiers_noncolonial_pct: pct(nat.soldiers_noncolonial, 3),
-            life_unmet_pct: pct(nat.life_unmet, 3),
-            starving_pct: pct(nat.starving, 3),
-            accepted_cultures: accepted.join(";"),
-            nat,
-        };
-        let nat = &row.nat;
         let head = [Val::S(&date), Val::S(&year), Val::S(&tag)];
 
         // ships_by_type.csv, and the payload's ships and crews.
@@ -683,7 +729,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
             tables.crews.push((tag.clone(), crew_of));
         }
         if nat.ships != 0 {
-            let profile = naval_profile(nat, m);
+            let profile = naval_profile(&nat, m);
             naval.push((tag.clone(), profile_key(&profile), profile));
         }
         for (good, amount) in nat.goods_supply.iter() {
@@ -739,23 +785,56 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         if !largest.is_empty() {
             tables.cultures.push((tag.clone(), largest));
         }
+        let row = Row {
+            key: tag.clone(),
+            date: date.clone(),
+            year: year.clone(),
+            is_player,
+            accepted_pop,
+            accepted_pct: pct(accepted_pop, 2),
+            primary_culture_pop: primary_pop,
+            avg_literacy: if total != 0 { round(nat.literacy_weighted / total as f64, 5) } else { 0.0 },
+            avg_literacy_stated: if nat.pop_noncolonial != 0 {
+                round(nat.literacy_noncolonial / nat.pop_noncolonial as f64, 5)
+            } else { 0.0 },
+            avg_consciousness: if total != 0 { round(nat.con_weighted / total as f64, 4) } else { 0.0 },
+            avg_militancy: if total != 0 { round(nat.mil_weighted / total as f64, 4) } else { 0.0 },
+            brigade_cap: cap_rule.max(nat.regular_brigades),
+            mobilisation_size: round(rate, 5),
+            mobilization_pool: pool,
+            mobilization_pops: entries,
+            mobilization_brigades: brigades,
+            mobilization_cap: cap,
+            mobilization_available: if cap != 0 { brigades.min(cap) } else { brigades },
+            mobilization_remaining: (brigades - nat.mobilized_brigades - nat.mobilizing).max(0),
+            war_policy: policy,
+            pop_poor: stratum("poor"),
+            pop_middle: stratum("middle"),
+            pop_rich: stratum("rich"),
+            soldiers_noncolonial_pct: pct(nat.soldiers_noncolonial, 3),
+            life_unmet_pct: pct(nat.life_unmet, 3),
+            starving_pct: pct(nat.starving, 3),
+            accepted_cultures: accepted.join(";"),
+            facts: RowFacts::take(&mut nat),
+        };
         let vals: Vec<Val> = columns.iter().map(|c| row.get(c)).collect();
         csv_line(&mut text[0], &vals);
-        kept_out.push(trim(&tag, &row.nat));
+        kept_out.push(trim(&tag, &mut nat));
         rows.push(row);
     }
     Ok(Spent { meta, nations: kept_out, chunk, rows, tables, naval, supply, text })
 }
 
-fn trim(tag: &str, nat: &Nation) -> Kept {
+/// `nat`'s units, cultures, government and capital, moved out of it.
+fn trim(tag: &str, nat: &mut Nation) -> Kept {
     Kept {
         tag: tag.to_string(),
-        units_at: nat.units_at.clone(),
-        men_at: nat.men_at.clone(),
+        units_at: std::mem::take(&mut nat.units_at),
+        men_at: std::mem::take(&mut nat.men_at),
         primary_culture: nat.primary_culture,
-        accepted_cultures: nat.accepted_cultures.clone(),
-        government: nat.government.clone(),
-        capital: nat.capital.clone(),
+        accepted_cultures: std::mem::take(&mut nat.accepted_cultures),
+        government: std::mem::take(&mut nat.government),
+        capital: std::mem::take(&mut nat.capital),
     }
 }
 

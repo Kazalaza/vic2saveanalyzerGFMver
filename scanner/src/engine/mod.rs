@@ -1035,7 +1035,7 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
             _ => decline(&format!("the mod: {}", d.0.trim_start_matches('\u{1}'))),
         },
     };
-    let held: Vec<&[rules::Held]> = pres.iter().map(|p| p.held.as_slice()).collect();
+    let held: Vec<&[finish::PreNation]> = pres.iter().map(|p| p.nations.as_slice()).collect();
     phase("mod loaded");
     let live = rules::settle_campaign(&mut m, &held);
     phase("inventions settled");
@@ -1068,9 +1068,10 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
 
     // What `--cross` names each nation by: every nation of every save, in
     // order, with its government.
-    let held_names: Vec<(String, String)> = pres.iter()
-        .flat_map(|p| p.held.iter().map(|h| (h.tag.clone(), h.government.clone())))
-        .collect();
+    let held_names: Vec<(String, String)> = if run.cross_part {
+        pres.iter().flat_map(|p| p.nations.iter()
+            .map(|n| (n.tag.clone(), n.nat.government.clone()))).collect()
+    } else { Vec::new() };
 
     // Pass two: every save finished.
     let mut spent: Vec<Option<Spent>> = (0..n).map(|_| None).collect();

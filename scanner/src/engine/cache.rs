@@ -26,7 +26,6 @@
 
 use crate::engine::finish::{Pre, PreNation};
 use crate::engine::model::{Battle, FirstGoal, Goal, Market, Meta, Nation, Side, War};
-use crate::engine::rules::Held;
 use crate::names::{self, Sym};
 use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
@@ -325,7 +324,6 @@ keep_struct!(Goal { casus_belli, actor, receiver, province, added, fulfilled });
 keep_struct!(FirstGoal { casus_belli, actor, receiver, province });
 keep_struct!(War { name, active, start, end, original_attacker, original_defender, attackers,
                    defenders, fighting, joins, leaves, goals, goal, battles });
-keep_struct!(Held { tag, record_tag, tech_list, invention_ids, government });
 
 impl Keep for Market {
     fn put(&self, w: &mut W) {
@@ -407,7 +405,7 @@ impl Keep for Nation {
 }
 
 keep_struct!(PreNation { tag, nat, kept, is_player, buckets, pool, entries, cap_rule });
-keep_struct!(Pre { meta, nations, chunk, held });
+keep_struct!(Pre { meta, nations, chunk });
 
 // ------------------------------------------------------------- the entries
 

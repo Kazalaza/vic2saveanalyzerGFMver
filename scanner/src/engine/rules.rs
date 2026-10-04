@@ -17,6 +17,7 @@
 // places.
 
 use crate::jsonr::J;
+use crate::engine::finish::PreNation;
 use crate::engine::model::{Meta, Nation};
 use crate::names::{self, Sym};
 use crate::omap::OMap;
@@ -765,16 +766,6 @@ pub fn naval_profile(nat: &Nation, m: &Mod) -> Vec<(String, [f64; 5], i64)> {
 
 // ------------------------------------------------------------ settling
 
-/// One nation of one save, as the invention pass keeps it.
-pub struct Held {
-    pub tag: String,
-    pub record_tag: String,
-    pub tech_list: Vec<String>,
-    pub invention_ids: Vec<i64>,
-    /// What `--cross` names a nation by, with the mod's localisation.
-    pub government: String,
-}
-
 /// `attainable_inventions(mod, all_nations)`.
 pub fn attainable_inventions(m: &Mod, all: &OMap<&str, FxSet<&str>>) -> FxSet<String> {
     let rules = &m.invention_rules;
@@ -823,11 +814,11 @@ pub fn attainable_inventions(m: &Mod, all: &OMap<&str, FxSet<&str>>) -> FxSet<St
 }
 
 /// `_holdings`: each distinct (tag, technologies, ids), counted.
-pub fn holdings<'a>(every: &[&'a Held]) -> Vec<(i64, FxSet<&'a str>, &'a str, &'a [i64])> {
+pub fn holdings<'a>(every: &[&'a PreNation]) -> Vec<(i64, FxSet<&'a str>, &'a str, &'a [i64])> {
     let mut seen: FxMap<(&str, &[String], &[i64]), i64> = FxMap::default();
-    for nat in every {
-        *seen.entry((nat.record_tag.as_str(), nat.tech_list.as_slice(),
-                     nat.invention_ids.as_slice())).or_insert(0) += 1;
+    for pn in every {
+        *seen.entry((pn.nat.tag.as_str(), pn.nat.tech_list.as_slice(),
+                     pn.nat.invention_ids.as_slice())).or_insert(0) += 1;
     }
     // The totals are sums of counts, so the order they are met in is no
     // matter: a hash map where Python kept a dict.
@@ -859,7 +850,7 @@ pub fn violations(m: &Mod, holdings: &[(i64, FxSet<&str>, &str, &[i64])], base: 
 }
 
 /// `index_base_for`.
-pub fn index_base_for(m: &Mod, every: &[&Held]) -> Option<i64> {
+pub fn index_base_for(m: &Mod, every: &[&PreNation]) -> Option<i64> {
     let h = holdings(every);
     let (mut best, mut best_rate) = (None, 1.0f64);
     for base in [1i64, 0] {
@@ -877,14 +868,14 @@ pub fn index_base_for(m: &Mod, every: &[&Held]) -> Option<i64> {
 }
 
 /// `settle_campaign`: the live inventions; the base is written onto `m`.
-pub fn settle_campaign(m: &mut Mod, saves: &[&[Held]]) -> FxSet<String> {
+pub fn settle_campaign(m: &mut Mod, saves: &[&[PreNation]]) -> FxSet<String> {
     let mut all_techs: OMap<&str, FxSet<&str>> = OMap::new();
-    let mut every: Vec<&Held> = Vec::new();
+    let mut every: Vec<&PreNation> = Vec::new();
     for nations in saves {
-        for nat in nations.iter() {
-            every.push(nat);
-            all_techs.entry(nat.tag.as_str(), FxSet::default)
-                .extend(nat.tech_list.iter().map(|t| t.as_str()));
+        for pn in nations.iter() {
+            every.push(pn);
+            all_techs.entry(pn.tag.as_str(), FxSet::default)
+                .extend(pn.nat.tech_list.iter().map(|t| t.as_str()));
         }
     }
     let live = attainable_inventions(m, &all_techs);

@@ -748,13 +748,13 @@ fn line(out: &mut String, vals: &[Val]) {
 }
 
 /// `_say_mod`, once the inventions are settled.
-pub fn say_mod(m: &Mod, live: &FxSet<String>, held: &[&[rules::Held]], files: &[String]) {
+pub fn say_mod(m: &Mod, live: &FxSet<String>, held: &[&[crate::engine::finish::PreNation]], files: &[String]) {
     let seq = &m.invention_sequence;
     match m.index_base {
         None => crate::outln!("\nInvention indices could not be decoded from {} inventions; falling back \
                           to requirement matching, which overstates unlucky nations.", seq.len()),
         Some(base) => {
-            let every: Vec<&rules::Held> = held.iter().flat_map(|h| h.iter()).collect();
+            let every: Vec<&crate::engine::finish::PreNation> = held.iter().flat_map(|h| h.iter()).collect();
             let (bad, total) = rules::violations(m, &rules::holdings(&every), base);
             crate::outln!("\nInvention indices decoded against {} inventions (base {}): {} of {} \
                       nation-invention pairs are unreachable ({:.1}%).", seq.len(), base, bad, total,
@@ -765,8 +765,8 @@ pub fn say_mod(m: &Mod, live: &FxSet<String>, held: &[&[rules::Held]], files: &[
             for (nations, file) in held.iter().zip(files) {
                 let mut past: FxSet<i64> = FxSet::default();
                 let mut lost = 0i64;
-                for nat in nations.iter() {
-                    for idx in &nat.invention_ids {
+                for pn in nations.iter() {
+                    for idx in &pn.nat.invention_ids {
                         seen += 1;
                         if *idx > top {
                             past.insert(*idx);
@@ -898,17 +898,17 @@ fn say_summary(c: &Campaign, prices: &[PriceRow], paths: &[String]) {
     }
     let latest = &c.parsed[c.parsed.len() - 1].meta.date;
     let mut latest_rows: Vec<&Row> = c.rows.iter().filter(|r| &r.date == latest).collect();
-    latest_rows.sort_by(|a, b| b.nat.total_pop.cmp(&a.nat.total_pop));
+    latest_rows.sort_by(|a, b| b.facts.total_pop.cmp(&a.facts.total_pop));
     crate::outln!("\nLargest nations at {}:", latest);
     crate::outln!("  {:<5}{:>12}{:>9}{:>7}{:>7}{:>7}", "tag", "pop", "accept%", "lit", "brig", "ships");
     for r in latest_rows.iter().take(8) {
-        crate::outln!("  {:<5}{:>12}{:>9.1}{:>6.1}%{:>7}{:>7}", r.nat.tag, thousands(r.nat.total_pop),
-                 r.accepted_pct, r.avg_literacy * 100.0, r.nat.brigades, r.nat.ships);
+        crate::outln!("  {:<5}{:>12}{:>9.1}{:>6.1}%{:>7}{:>7}", r.facts.tag, thousands(r.facts.total_pop),
+                 r.accepted_pct, r.avg_literacy * 100.0, r.facts.brigades, r.facts.ships);
     }
     crate::outln!("\nComputed mobilisation sizes at {} (check these against the in-game military panel):",
              latest);
     for r in latest_rows.iter().take(10) {
-        crate::outln!("  {}: {:.2}%", r.nat.tag, r.mobilisation_size * 100.0);
+        crate::outln!("  {}: {:.2}%", r.facts.tag, r.mobilisation_size * 100.0);
     }
     crate::outln!("\nWrote:");
     for p in paths {
@@ -1002,7 +1002,7 @@ fn page(run: &Run, m: &Mod, c: &Campaign, prices: &[PriceRow], snaps: &[SnapRow]
         }
     }
     dates.sort_by(|a, b| year_fraction(a).partial_cmp(&year_fraction(b)).unwrap_or(std::cmp::Ordering::Equal));
-    let mut tags: Vec<String> = rows.iter().map(|r| r.nat.tag.clone()).collect();
+    let mut tags: Vec<String> = rows.iter().map(|r| r.facts.tag.clone()).collect();
     tags.sort();
     tags.dedup();
 
@@ -1187,7 +1187,7 @@ fn section_series_facts(run: &Run, rows: &[Row], dates: &[String], tags: &[Strin
     let mut series: FxMap<&str, Vec<OMap<String, f64>>> = tags.iter()
         .map(|t| (t.as_str(), (0..metric_keys.len()).map(|_| OMap::new()).collect())).collect();
     for r in rows {
-        let slot = series.get_mut(r.nat.tag.as_str()).unwrap();
+        let slot = series.get_mut(r.facts.tag.as_str()).unwrap();
         for (i, key) in metric_keys.iter().enumerate() {
             if let Some(v) = r.get(key).float() {
                 slot[i].set(r.date.clone(), v);
@@ -1316,7 +1316,7 @@ fn section_series_facts(run: &Run, rows: &[Row], dates: &[String], tags: &[Strin
         // A tag met twice in one save keeps its first place and its last row.
         let mut per_tag: OMap<&str, &Row> = OMap::new();
         for r in rs {
-            per_tag.set(r.nat.tag.as_str(), r);
+            per_tag.set(r.facts.tag.as_str(), r);
         }
         for (ti, (tag, r)) in per_tag.iter().enumerate() {
             if ti > 0 {
