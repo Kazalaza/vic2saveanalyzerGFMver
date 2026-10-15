@@ -970,8 +970,9 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
   </div>
 
   <footer>
-    Generated from Victoria&nbsp;II save files. Population counts are the sum of
-    pop sizes in owned provinces; literacy, consciousness and militancy are
+    Generated from Victoria&nbsp;II save files. Population counts are actual people:
+    the sum of pop sizes in owned provinces, times four (one Victoria&nbsp;II pop
+    stands for four people); literacy, consciousness and militancy are
     weighted by pop size. Prices come from the rolling monthly buffer each save
     carries, stitched together across saves.
   </footer>
@@ -1060,6 +1061,12 @@ function bootFailed(err) {
    enough that a page of empty tables needs explaining. Hence the delay: the
    notice only ever appears when there is something to wait for. */
 const slow = setTimeout(() => bootNote('Unpacking the campaign\u2026'), 200);
+/* One Victoria II pop stands for this many people. */
+const POP_SCALE = 4;
+/* The measures that are headcounts, and so are scaled. */
+const POP_KEYS = ['total_pop', 'accepted_pop', 'primary_culture_pop',
+  'pop_gain', 'accepted_gain', 'pop_poor', 'pop_middle', 'pop_rich',
+  'life_unmet', 'starving', 'mobilization_pool', 'soldiers_noncolonial'];
 const DATA = PACKED_URL ? await unpackFrom(PACKED_URL) : await unpack(PACKED);
 if (STATE_CHUNKS.length && DATA.map) DATA.map.populationStateChunks = STATE_CHUNKS;
 // Workers pack self-contained state snapshots. Restore the same records the
@@ -1077,9 +1084,9 @@ if (DATA.map && DATA.map.populationStateChunks) {
         const regions = snapshot[tag] = Object.create(null);
         for (const [region, size, literacy, provinces, layout, counts] of rows) {
           const [types, cultures] = layouts[layout];
-          regions[words[region]] = [size, literacy,
-            Object.fromEntries(types.map((t, j) => [words[t], counts[j]])),
-            cultures.map((c, j) => [words[Math.floor(c / 2)], counts[types.length + j], !!(c % 2)]),
+          regions[words[region]] = [size * POP_SCALE, literacy,
+            Object.fromEntries(types.map((t, j) => [words[t], counts[j] * POP_SCALE])),
+            cultures.map((c, j) => [words[Math.floor(c / 2)], counts[types.length + j] * POP_SCALE, !!(c % 2)]),
             provinces];
         }
       }
@@ -1120,6 +1127,53 @@ for (const tag in DATA.series) {
       const date = DATA.dates[i];
       const at = DATA.facts[date] || (DATA.facts[date] = {});
       (at[tag] || (at[tag] = {}))[key] = value;
+    }
+  }
+}
+
+/* Victoria II counts population in pops, and one pop stands for POP_SCALE
+   people. The scanner reports pop sizes as the game stores them, so every
+   headcount is multiplied once, here, right after the payload is unpacked and
+   facts are rebuilt -- everything below reads people, not pops. Percentages,
+   literacy, growth rates and brigade counts are not headcounts and are left
+   alone, so ratios such as a soldier share stay exactly as they were.
+   Set POP_SCALE to 1 to show the game's own pop sizes again. */
+POP_SCALE_APPLY: {
+  if (POP_SCALE === 1) break POP_SCALE_APPLY;
+  // Series and facts hold separate copies of the numbers, so each is scaled
+  // on its own; scaling facts after series would not double anything.
+  for (const tag in DATA.series) {
+    const metrics = DATA.series[tag];
+    for (const key of POP_KEYS) {
+      const column = metrics[key];
+      if (!column) continue;
+      for (let i = 0; i < column.length; i++) {
+        if (column[i] !== null && column[i] !== undefined) column[i] *= POP_SCALE;
+      }
+    }
+  }
+  for (const date in DATA.facts) {
+    for (const tag in DATA.facts[date]) {
+      const f = DATA.facts[date][tag];
+      for (const key of POP_KEYS) {
+        if (typeof f[key] === 'number') f[key] *= POP_SCALE;
+      }
+    }
+  }
+  for (const tag in (DATA.pops || {})) {
+    for (const date in DATA.pops[tag]) {
+      const at = DATA.pops[tag][date];
+      for (const type in at) if (typeof at[type] === 'number') at[type] *= POP_SCALE;
+    }
+  }
+  for (const tag in (DATA.cultures || {})) {
+    for (const date in DATA.cultures[tag]) {
+      for (const row of DATA.cultures[tag][date]) row[1] *= POP_SCALE;
+    }
+  }
+  if (DATA.worldPop) {
+    for (const date in DATA.worldPop) {
+      if (typeof DATA.worldPop[date] === 'number') DATA.worldPop[date] *= POP_SCALE;
     }
   }
 }
@@ -3440,7 +3494,7 @@ function drawCultureTable() {
   }));
   const cols = [
     {key: 'culture', label: 'Culture'},
-    {key: 'size', label: 'Pops', fmt: v => v.toLocaleString()},
+    {key: 'size', label: 'People', fmt: v => v.toLocaleString()},
     {key: 'share', label: 'Share', fmt: v => v.toFixed(1) + '%'},
     {key: 'accepted', label: 'Accepted', fmt: v => v ? 'yes' : '—',
      cls: r => r.accepted ? 'up' : 'down'},
