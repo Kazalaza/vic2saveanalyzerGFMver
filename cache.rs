@@ -24,9 +24,9 @@
 // small -- a campaign's names are a few hundred tags, cultures and goods
 // repeated a hundred thousand times.
 
+use crate::country::{Ship, Stack};
 use crate::engine::finish::{Pre, PreNation};
 use crate::engine::model::{Battle, FirstGoal, Goal, Market, Meta, Nation, Side, War};
-use crate::engine::rules::Held;
 use crate::names::{self, Sym};
 use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
@@ -325,7 +325,6 @@ keep_struct!(Goal { casus_belli, actor, receiver, province, added, fulfilled });
 keep_struct!(FirstGoal { casus_belli, actor, receiver, province });
 keep_struct!(War { name, active, start, end, original_attacker, original_defender, attackers,
                    defenders, fighting, joins, leaves, goals, goal, battles });
-keep_struct!(Held { tag, record_tag, tech_list, invention_ids, government });
 
 impl Keep for Market {
     fn put(&self, w: &mut W) {
@@ -346,6 +345,85 @@ impl Keep for Market {
     }
 }
 
+/// The ships, in the bytes the two maps they were (`ships_by_type`, then
+/// `ship_crew`) wrote: an entry made before the ships were one `Vec` reads
+/// the same, and the other way about.
+fn put_fleet(ships: &[Ship], w: &mut W) {
+    w.u(ships.len() as u64);
+    for s in ships {
+        s.kind.put(w);
+        s.count.put(w);
+    }
+    w.u(ships.len() as u64);
+    for s in ships {
+        s.kind.put(w);
+        s.crew.put(w);
+    }
+}
+
+fn get_fleet(r: &mut R) -> X<Vec<Ship>> {
+    let n = r.len()?;
+    let mut ships = Vec::with_capacity(n.min(4096));
+    for _ in 0..n {
+        ships.push(Ship { kind: Keep::get(r)?, count: Keep::get(r)?, crew: 0.0 });
+    }
+    if r.len()? != n {
+        return Err(());
+    }
+    for s in ships.iter_mut() {
+        if <Sym as Keep>::get(r)? != s.kind {
+            return Err(());
+        }
+        s.crew = Keep::get(r)?;
+    }
+    Ok(ships)
+}
+
+/// The stacks, in the bytes the two maps they were (`units_at`, then
+/// `men_at`: a province, its kinds, each kind's count; the same again with
+/// the men) wrote.
+fn put_stacks(stacks: &[Stack], w: &mut W) {
+    for men in [false, true] {
+        w.u(Stack::provinces(stacks).count() as u64);
+        for group in Stack::provinces(stacks) {
+            group[0].pid.put(w);
+            w.u(group.len() as u64);
+            for s in group {
+                s.kind.put(w);
+                if men { s.men.put(w) } else { s.n.put(w) }
+            }
+        }
+    }
+}
+
+fn get_stacks(r: &mut R) -> X<Vec<Stack>> {
+    let mut stacks: Vec<Stack> = Vec::new();
+    let groups = r.len()?;
+    for _ in 0..groups {
+        let pid = r.i()?;
+        for _ in 0..r.len()? {
+            stacks.push(Stack { pid, kind: Keep::get(r)?, n: Keep::get(r)?, men: 0 });
+        }
+    }
+    let groups = r.len()?;
+    let mut at = 0;
+    for _ in 0..groups {
+        let pid = r.i()?;
+        for _ in 0..r.len()? {
+            let s = stacks.get_mut(at).ok_or(())?;
+            if s.pid != pid || <Sym as Keep>::get(r)? != s.kind {
+                return Err(());
+            }
+            s.men = Keep::get(r)?;
+            at += 1;
+        }
+    }
+    if at != stacks.len() {
+        return Err(());
+    }
+    Ok(stacks)
+}
+
 keep_struct!(Meta { file, date, player, world_pop, province_owner, great_nations, great_tags,
                     wars, market });
 
@@ -359,8 +437,8 @@ impl Keep for Nation {
         n.prestige.put(w); n.infamy.put(w); n.treasury.put(w); n.tax_base.put(w);
         n.war_exhaustion.put(w); n.plurality.put(w); n.research_points.put(w);
         n.revanchism.put(w); n.ruling_party.put(w); n.techs.put(w); n.brigades.put(w);
-        n.armies.put(w); n.ships.put(w); n.navies.put(w); n.ships_by_type.put(w);
-        n.ship_crew.put(w); n.regiments_by_type.put(w); n.units_at.put(w); n.men_at.put(w);
+        n.armies.put(w); n.ships.put(w); n.navies.put(w); put_fleet(&n.ships_by_type, w);
+        n.regiments_by_type.put(w); put_stacks(&n.units_at, w);
         n.mobilized_brigades.put(w); n.regular_brigades.put(w); n.mobilizing.put(w);
         n.is_mobilized.put(w); n.tech_list.put(w); n.invention_ids.put(w); n.modifiers.put(w);
         n.country_flags.put(w); n.reforms.put(w); n.human.put(w); n.army_techs.put(w);
@@ -383,9 +461,9 @@ impl Keep for Nation {
         n.plurality = Keep::get(r)?; n.research_points = Keep::get(r)?;
         n.revanchism = Keep::get(r)?; n.ruling_party = Keep::get(r)?; n.techs = Keep::get(r)?;
         n.brigades = Keep::get(r)?; n.armies = Keep::get(r)?; n.ships = Keep::get(r)?;
-        n.navies = Keep::get(r)?; n.ships_by_type = Keep::get(r)?; n.ship_crew = Keep::get(r)?;
-        n.regiments_by_type = Keep::get(r)?; n.units_at = Keep::get(r)?;
-        n.men_at = Keep::get(r)?; n.mobilized_brigades = Keep::get(r)?;
+        n.navies = Keep::get(r)?; n.ships_by_type = get_fleet(r)?;
+        n.regiments_by_type = Keep::get(r)?; n.units_at = get_stacks(r)?;
+        n.mobilized_brigades = Keep::get(r)?;
         n.regular_brigades = Keep::get(r)?; n.mobilizing = Keep::get(r)?;
         n.is_mobilized = Keep::get(r)?; n.tech_list = Keep::get(r)?;
         n.invention_ids = Keep::get(r)?; n.modifiers = Keep::get(r)?;
@@ -408,7 +486,7 @@ impl Keep for Nation {
 }
 
 keep_struct!(PreNation { tag, nat, kept, is_player, buckets, pool, entries, cap_rule });
-keep_struct!(Pre { meta, nations, chunk, held });
+keep_struct!(Pre { meta, nations, chunk });
 
 // ------------------------------------------------------------- the entries
 
