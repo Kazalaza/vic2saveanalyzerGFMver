@@ -533,8 +533,8 @@ fn flags_for(m: &Mod, parsed: &[Kept1], book: &Book) -> (String, String) {
         let mut row = String::from("[");
         for (i, tag) in picks.iter().enumerate() {
             let gov = k.nations.iter().find(|n| &n.tag == tag).map(|n| n.government.as_str()).unwrap_or("");
-            let suffix = mapflags::flag_suffixes(gov, &m.flag_styles)[0];
-            let key = format!("{}|{}", tag, if suffix.is_empty() { "base" } else { suffix });
+            let suffix = mapflags::flag_suffixes(gov, &m.flag_styles)[0].clone();
+            let key = format!("{}|{}", tag, if suffix.is_empty() { "base" } else { suffix.as_str() });
             if !flags.contains_key(&key) && tried.insert(key.clone()) {
                 if let Some(uri) = mapflags::flag_image(&m.flag_roots, tag, gov, &m.flag_styles) {
                     flags.set(key.clone(), uri);
@@ -559,10 +559,21 @@ fn flags_for(m: &Mod, parsed: &[Kept1], book: &Book) -> (String, String) {
         gp.push_str(&row);
     }
     gp.push('}');
+    // Everyone else flies one flag for the whole report: the one their
+    // government in the last save that holds them calls for, not the plain
+    // flag a nation with no government to ask would get.
+    let mut last_gov: FxMap<&str, &str> = FxMap::default();
+    for k in parsed {
+        for n in &k.nations {
+            last_gov.insert(n.tag.as_str(), n.government.as_str());
+        }
+    }
     for tag in wars::fighters(book) {
         let key = format!("{}|", tag);
         if !flags.contains_key(&key) {
-            if let Some(uri) = mapflags::flag_image(&m.flag_roots, &tag, "", &m.flag_styles) {
+            let name: &str = &tag;
+            let gov = last_gov.get(name).copied().unwrap_or("");
+            if let Some(uri) = mapflags::flag_image(&m.flag_roots, &tag, gov, &m.flag_styles) {
                 flags.set(key, uri);
             }
         }

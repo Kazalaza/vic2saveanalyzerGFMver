@@ -413,6 +413,11 @@ pub struct World {
 
 /// `modrules.great_powers(meta, mod)`.
 pub fn great_powers(meta: &Meta, m: &Mod) -> Vec<String> {
+    // The save's own country order, when the reader could resolve the list
+    // by it: that is the order the game numbers countries in.
+    if !meta.great_tags.is_empty() {
+        return meta.great_tags.clone();
+    }
     let order = &m.country_order;
     meta.great_nations.iter()
         .filter(|&&i| 0 < i && i <= order.len() as i64)

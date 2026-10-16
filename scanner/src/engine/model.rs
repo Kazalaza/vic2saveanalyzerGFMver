@@ -104,6 +104,10 @@ pub struct Meta {
     /// (province, owner, controller), in the order the file lists them.
     pub province_owner: Vec<(i64, Sym, Sym)>,
     pub great_nations: Vec<i64>,
+    /// `great_nations` turned into tags by the save's own country order, which
+    /// is the order the game numbers its countries in. Empty when the save
+    /// gave no way to do that, and then the mod's `countries.txt` is used.
+    pub great_tags: Vec<String>,
     pub wars: Vec<War>,
     pub market: Option<Market>,
 }
@@ -362,6 +366,8 @@ pub struct Rest {
     pub wars: Vec<War>,
     pub market: Option<Market>,
     pub great: Vec<i64>,
+    /// `great`, as tags in the save's own country order (see `Meta`).
+    pub great_tags: Vec<String>,
 }
 
 /// One save, as the engine keeps it: its meta and its nations holding land
@@ -428,6 +434,7 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
         world_pop: scan.world_pop,
         province_owner: scan.owners.clone(),
         great_nations: rest.great,
+        great_tags: rest.great_tags,
         wars: rest.wars,
         market: rest.market,
     };
@@ -693,5 +700,26 @@ pub fn read_rest(text: &[u8], blocks: &[(&[u8], usize, usize)]) -> R<Rest> {
             wars.push(war);
         }
     }
-    Ok(Rest { wars, market, great })
+    // The game numbers its countries in the order the save writes their
+    // blocks, and `great_nations` holds 1-based numbers in that order. That
+    // is not always the order of the mod's `countries.txt`: a mod that stacks
+    // others (GFM) has more countries than that file lists, in another order,
+    // so the numbers must be read against the save itself.
+    let order: Vec<&[u8]> = blocks.iter().map(|(k, _, _)| *k).filter(|k| looks_like_tag(k)).collect();
+    let great_tags: Vec<String> = great.iter()
+        .filter(|&&i| 0 < i && i <= order.len() as i64)
+        .map(|&i| latin1(order[(i - 1) as usize]))
+        .collect();
+    // Every number must land on a country, or the save's order is not what
+    // it was taken to be and the mod's list is the safer answer.
+    let great_tags = if great_tags.len() == great.len() { great_tags } else { Vec::new() };
+    Ok(Rest { wars, market, great, great_tags })
+}
+
+/// A country block's key: three capitals or digits, at least one a capital
+/// (a bare number is a province).
+fn looks_like_tag(key: &[u8]) -> bool {
+    key.len() == 3
+        && key.iter().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        && key.iter().any(|c| c.is_ascii_uppercase())
 }

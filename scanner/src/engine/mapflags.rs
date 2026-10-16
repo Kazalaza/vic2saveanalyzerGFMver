@@ -206,20 +206,25 @@ pub fn province_anchors(width: i64, runs: &[(i64, i64)], wanted: &FxSet<i64>) ->
 
 // ------------------------------------------------------------- flags
 
-/// `flag_suffixes(government, styles)`.
-pub fn flag_suffixes(government: &str, styles: &FxMap<String, (String, bool)>) -> [&'static str; 2] {
-    let (variant, elects) = match styles.get(government) {
-        Some((v, e)) => (v.as_str(), *e),
-        None => ("", true),
+/// `flag_suffixes(government, styles)`: the file endings to try, in order.
+///
+/// The game flies `TAG_<flagType>.tga` for a government's `flagType` when
+/// that file exists, and plain `TAG.tga` when it does not. That is the whole
+/// rule: the variant is not held back for a government that holds elections,
+/// and a `republic` flag type is not passed over for the plain flag. (Mods
+/// that ship all the variants -- GFM's `ENG_monarchy.tga` is the Union Jack
+/// and its `ENG.tga` is something else entirely -- show the difference; a
+/// game that ships few of them does not.) A government the mod does not
+/// describe, or one with no `flagType`, takes the plain flag.
+pub fn flag_suffixes(government: &str, styles: &FxMap<String, (String, bool)>) -> [String; 2] {
+    let variant = match styles.get(government) {
+        Some((v, _)) => v.as_str(),
+        None => "",
     };
-    if variant == "monarchy" && !elects {
-        return ["_monarchy", ""];
+    if variant.is_empty() {
+        return [String::new(), "_republic".to_string()];
     }
-    match variant {
-        "communist" => ["_communist", ""],
-        "fascist" => ["_fascist", ""],
-        _ => ["", "_republic"],
-    }
+    [format!("_{}", variant), String::new()]
 }
 
 /// `_read_tga`: (width, height, rgb) of an uncompressed or run-length TGA
