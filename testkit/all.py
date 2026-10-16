@@ -149,6 +149,8 @@ def main():
                  [os.path.join(KIT, "boots.py"), report]),
                 ("state history decoded in the browser",
                  [os.path.join(KIT, "state_history_ui.py"), report]),
+                ("the war view's layouts and losses",
+                 [os.path.join(KIT, "war_legacy_ui.py"), report]),
                 ("the window", [os.path.join(KIT, "window.py"), args.saves]),
                 ("the report engine against its recorded answers",
                  [os.path.join(KIT, "enginecheck.py"), args.saves]

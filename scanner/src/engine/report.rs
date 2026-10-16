@@ -13,6 +13,7 @@
 // its dicts, rather than built as a tree first: it is thirty megabytes on a
 // long campaign, and the order of every key is part of what is compared.
 
+use crate::country::Stack;
 use crate::engine::dates::{date_key, year_fraction};
 use crate::engine::dump::{int_keyed, obj};
 use crate::engine::{say, Run};
@@ -52,11 +53,11 @@ type ByTag<V> = OMap<String, OMap<String, V>>;
 /// `walk_campaign`'s answer.
 struct Campaign {
     rows: Vec<Row>,
-    ships: ByTag<Vec<(String, i64)>>,
-    crews: ByTag<Vec<(String, f64)>>,
-    brigades: ByTag<Vec<(String, i64)>>,
+    ships: ByTag<Vec<(Sym, i64)>>,
+    crews: ByTag<Vec<(Sym, f64)>>,
+    brigades: ByTag<Vec<(Sym, i64)>>,
     techs: ByTag<Vec<String>>,
-    pops: ByTag<Vec<(String, i64)>>,
+    pops: ByTag<Vec<(Sym, i64)>>,
     cultures: ByTag<Vec<(String, i64, i64)>>,
     text: [Vec<String>; 6],
     naval_profiles: Vec<Profile>,
@@ -160,7 +161,7 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
     let full_height = height * scale;
     let garrisoned: FxSet<i64> = parsed.iter()
         .flat_map(|k| k.nations.iter())
-        .flat_map(|n| n.units_at.keys().copied())
+        .flat_map(|n| n.units_at.iter().map(|s| s.pid))
         .filter(|&p| p > 0)
         .collect();
     let mut spots: OMap<i64, [f64; 2]> = OMap::new();
@@ -352,30 +353,30 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         j.push(':');
         let mut here: OMap<i64, String> = OMap::new();
         for nat in &k.nations {
-            for (pid, types) in nat.units_at.iter() {
+            for types in Stack::provinces(&nat.units_at) {
+                let pid = &types[0].pid;
                 if *pid <= 0 {
                     continue;
                 }
-                let total: i64 = types.values().sum();
+                let total: i64 = types.iter().map(|s| s.n).sum();
                 if total == 0 {
                     continue;
                 }
-                let empty = OMap::new();
-                let men = nat.men_at.get(pid).unwrap_or(&empty);
-                let mut ranked: Vec<(&String, &i64)> = types.iter().collect();
-                ranked.sort_by(|a, b| b.1.cmp(a.1));
+                let mut ranked: Vec<&Stack> = types.iter().collect();
+                ranked.sort_by(|a, b| b.n.cmp(&a.n));
                 let mut e = String::from("[");
                 push_int(&mut e, index.get(nat.tag.as_str()).map(|i| *i as i64).unwrap_or(-1));
                 e.push(',');
                 push_int(&mut e, total);
                 e.push(',');
-                push_json_str(&mut e, &ranked.iter().map(|(t, n)| format!("{}:{}", t, n))
+                push_json_str(&mut e, &ranked.iter()
+                    .map(|s| format!("{}:{}", names::text(s.kind), s.n))
                     .collect::<Vec<_>>().join(";"));
                 e.push(',');
-                push_int(&mut e, men.values().sum());
+                push_int(&mut e, types.iter().map(|s| s.men).sum());
                 e.push(',');
                 push_json_str(&mut e, &ranked.iter()
-                    .map(|(t, _)| format!("{}:{}", t, men.get(t.as_str()).copied().unwrap_or(0)))
+                    .map(|s| format!("{}:{}", names::text(s.kind), s.men))
                     .collect::<Vec<_>>().join(";"));
                 e.push(']');
                 let slot = here.entry(*pid, String::new);
@@ -415,9 +416,9 @@ fn succession(parsed: &[Kept1], m: &Mod) -> String {
         let owners = k.meta.province_owner.iter().map(|(_, o, _)| *o)
             .filter(|o| !o.is_empty()).collect();
         let home = k.nations.iter().map(|n| {
-            let mut acc: FxSet<&str> = n.accepted_cultures.iter().map(|s| s.as_str()).collect();
-            acc.insert(n.primary_culture.as_str());
-            (n.tag.as_str(), (n.primary_culture.as_str(), acc))
+            let mut acc: FxSet<&str> = n.accepted_cultures.iter().map(|s| names::text(*s)).collect();
+            acc.insert(names::text(n.primary_culture));
+            (n.tag.as_str(), (names::text(n.primary_culture), acc))
         }).collect();
         Ledger { date: &k.meta.date, book: &k.meta.province_owner, owners, home }
     }).collect();
@@ -748,13 +749,13 @@ fn line(out: &mut String, vals: &[Val]) {
 }
 
 /// `_say_mod`, once the inventions are settled.
-pub fn say_mod(m: &Mod, live: &FxSet<String>, held: &[&[rules::Held]], files: &[String]) {
+pub fn say_mod(m: &Mod, live: &FxSet<String>, held: &[&[crate::engine::finish::PreNation]], files: &[String]) {
     let seq = &m.invention_sequence;
     match m.index_base {
         None => crate::outln!("\nInvention indices could not be decoded from {} inventions; falling back \
                           to requirement matching, which overstates unlucky nations.", seq.len()),
         Some(base) => {
-            let every: Vec<&rules::Held> = held.iter().flat_map(|h| h.iter()).collect();
+            let every: Vec<&crate::engine::finish::PreNation> = held.iter().flat_map(|h| h.iter()).collect();
             let (bad, total) = rules::violations(m, &rules::holdings(&every), base);
             crate::outln!("\nInvention indices decoded against {} inventions (base {}): {} of {} \
                       nation-invention pairs are unreachable ({:.1}%).", seq.len(), base, bad, total,
@@ -765,8 +766,8 @@ pub fn say_mod(m: &Mod, live: &FxSet<String>, held: &[&[rules::Held]], files: &[
             for (nations, file) in held.iter().zip(files) {
                 let mut past: FxSet<i64> = FxSet::default();
                 let mut lost = 0i64;
-                for nat in nations.iter() {
-                    for idx in &nat.invention_ids {
+                for pn in nations.iter() {
+                    for idx in &pn.nat.invention_ids {
                         seen += 1;
                         if *idx > top {
                             past.insert(*idx);
@@ -898,17 +899,17 @@ fn say_summary(c: &Campaign, prices: &[PriceRow], paths: &[String]) {
     }
     let latest = &c.parsed[c.parsed.len() - 1].meta.date;
     let mut latest_rows: Vec<&Row> = c.rows.iter().filter(|r| &r.date == latest).collect();
-    latest_rows.sort_by(|a, b| b.nat.total_pop.cmp(&a.nat.total_pop));
+    latest_rows.sort_by(|a, b| b.facts.total_pop.cmp(&a.facts.total_pop));
     crate::outln!("\nLargest nations at {}:", latest);
     crate::outln!("  {:<5}{:>12}{:>9}{:>7}{:>7}{:>7}", "tag", "pop", "accept%", "lit", "brig", "ships");
     for r in latest_rows.iter().take(8) {
-        crate::outln!("  {:<5}{:>12}{:>9.1}{:>6.1}%{:>7}{:>7}", r.nat.tag, thousands(r.nat.total_pop),
-                 r.accepted_pct, r.avg_literacy * 100.0, r.nat.brigades, r.nat.ships);
+        crate::outln!("  {:<5}{:>12}{:>9.1}{:>6.1}%{:>7}{:>7}", r.facts.tag, thousands(r.facts.total_pop),
+                 r.accepted_pct, r.avg_literacy * 100.0, r.facts.brigades, r.facts.ships);
     }
     crate::outln!("\nComputed mobilisation sizes at {} (check these against the in-game military panel):",
              latest);
     for r in latest_rows.iter().take(10) {
-        crate::outln!("  {}: {:.2}%", r.nat.tag, r.mobilisation_size * 100.0);
+        crate::outln!("  {}: {:.2}%", r.facts.tag, r.mobilisation_size * 100.0);
     }
     crate::outln!("\nWrote:");
     for p in paths {
@@ -1002,7 +1003,7 @@ fn page(run: &Run, m: &Mod, c: &Campaign, prices: &[PriceRow], snaps: &[SnapRow]
         }
     }
     dates.sort_by(|a, b| year_fraction(a).partial_cmp(&year_fraction(b)).unwrap_or(std::cmp::Ordering::Equal));
-    let mut tags: Vec<String> = rows.iter().map(|r| r.nat.tag.clone()).collect();
+    let mut tags: Vec<String> = rows.iter().map(|r| r.facts.tag.clone()).collect();
     tags.sort();
     tags.dedup();
 
@@ -1187,7 +1188,7 @@ fn section_series_facts(run: &Run, rows: &[Row], dates: &[String], tags: &[Strin
     let mut series: FxMap<&str, Vec<OMap<String, f64>>> = tags.iter()
         .map(|t| (t.as_str(), (0..metric_keys.len()).map(|_| OMap::new()).collect())).collect();
     for r in rows {
-        let slot = series.get_mut(r.nat.tag.as_str()).unwrap();
+        let slot = series.get_mut(r.facts.tag.as_str()).unwrap();
         for (i, key) in metric_keys.iter().enumerate() {
             if let Some(v) = r.get(key).float() {
                 slot[i].set(r.date.clone(), v);
@@ -1316,7 +1317,7 @@ fn section_series_facts(run: &Run, rows: &[Row], dates: &[String], tags: &[Strin
         // A tag met twice in one save keeps its first place and its last row.
         let mut per_tag: OMap<&str, &Row> = OMap::new();
         for r in rs {
-            per_tag.set(r.nat.tag.as_str(), r);
+            per_tag.set(r.facts.tag.as_str(), r);
         }
         for (ti, (tag, r)) in per_tag.iter().enumerate() {
             if ti > 0 {
@@ -1365,10 +1366,10 @@ fn section_tables(run: &Run, c: &Campaign) -> String {
     let t = &run.tables;
     let mut p = String::with_capacity(8 << 20);
     // the per-nation tables
-    let date_map_i = |p: &mut String, t: &ByTag<Vec<(String, i64)>>| {
+    let date_map_i = |p: &mut String, t: &ByTag<Vec<(Sym, i64)>>| {
         obj(p, t.iter().map(|(k, v)| (k.as_str(), v)), |o, by| {
             obj(o, by.iter().map(|(d, v)| (d.as_str(), v)), |o, v| {
-                obj(o, v.iter().map(|(k, n)| (k.as_str(), *n)), |o, n| push_int(o, n))
+                obj(o, v.iter().map(|(k, n)| (names::text(*k), *n)), |o, n| push_int(o, n))
             })
         });
     };
@@ -1377,15 +1378,15 @@ fn section_tables(run: &Run, c: &Campaign) -> String {
     p.push_str(",\"crews\":");
     obj(&mut p, c.crews.iter().map(|(k, v)| (k.as_str(), v)), |o, by| {
         obj(o, by.iter().map(|(d, v)| (d.as_str(), v)), |o, v| {
-            obj(o, v.iter().map(|(k, n)| (k.as_str(), *n)), |o, n| push_json_float(o, n))
+            obj(o, v.iter().map(|(k, n)| (names::text(*k), *n)), |o, n| push_json_float(o, n))
         })
     });
-    let types_of = |t: &ByTag<Vec<(String, i64)>>| -> Vec<String> {
-        let mut v: Vec<String> = t.values().flat_map(|by| by.values())
-            .flat_map(|h| h.iter().map(|(k, _)| k.clone())).collect();
-        v.sort();
+    let types_of = |t: &ByTag<Vec<(Sym, i64)>>| -> Vec<String> {
+        let mut v: Vec<Sym> = t.values().flat_map(|by| by.values())
+            .flat_map(|h| h.iter().map(|(k, _)| *k)).collect();
+        v.sort_by(|a, b| names::cmp(*a, *b));
         v.dedup();
-        v
+        v.into_iter().map(|s| names::text(s).to_string()).collect()
     };
     p.push_str(",\"shipTypes\":");
     str_array(&mut p, types_of(&c.ships).iter());

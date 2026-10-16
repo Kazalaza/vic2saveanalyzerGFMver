@@ -118,7 +118,9 @@ same order, so they can be one field:
 ### 1.3 How the numbers were taken
 
 Everything on `398de81` with `speed/model-probe.diff` applied in a worktree
-(`~/vic2speed/rw/model05`), release build, `-j 1`, scratch `TMPDIR`:
+(`~/vic2speed/rw/model05`; the diff was rebased onto `c12ec7f` in task 06 and
+applies there and after, with `VIC2_WARDROP=forget|inline` for the other two
+ways of ending the walk, the thread being the default now), release build, `-j 1`, scratch `TMPDIR`:
 
 - `VIC2_ALLOC=1`: the live allocation count and bytes at every `phase()` line.
 - `VIC2_STAGES=file`: allocations by stage, counted on the reading thread
@@ -444,6 +446,357 @@ makes the free cheaper at its source (4.1 M allocations to about 1 M); until
 then it is a three-line change that is worth more to a warm rebuild than any
 stage of the model.
 
+### 4.3 After task 06 (names.rs, the owners, the market)
+
+`c12ec7f` with the probe rebased on it; the same probes, the raw output in
+`speed/model-census-task06.txt`. Before is section 4 above.
+
+**Allocations, empty cache, per save** (`-j 1`):
+
+| stage | before | after | |
+|---|---|---|---|
+| `read_provinces` | 45,562 | 40,451 | -5,100: two Vec<u8>s a province became two lookups |
+| `read_rest` | 85,208 | 81,027 | -4,200: the market's good and stamp strings |
+| `model::build` | 35,151 | 30,039 | -5,100: the owners were decoded again to Strings |
+| `read_countries`, `prepare`, store | 38,073, 14,541, 2,361 | unchanged | |
+| read + build | 204,000 | 189,600 | |
+
+**The cache load, warm:** 38,200 allocations a save to 28,922 (10.13 M to 7.66 M),
+thread time 4.92 s to 4.38 s over the campaign.
+
+**Live allocations, whole process:**
+
+| phase | before | after |
+|---|---|---|
+| pass one done, empty cache | 9,614,015; 687.6 MB | 7,145,167; 590.0 MB |
+| pass one done, warm | 9,535,387; 484.3 MB | 7,062,040; 420.5 MB |
+| tables written, empty | 7,876,401; 593.6 MB | 5,406,774; 492.2 MB |
+| tables written, warm | 7,875,474; 483.8 MB | 5,402,271; 420.0 MB |
+| heap peak, empty / warm | 841.9 / 667.7 MB | 744.2 / 603.9 MB |
+
+(`walked` reads higher than before, 8.93 M against 7.18 M, only because the
+saves' war records are now freed by a thread nothing waits for and are not yet
+gone when the line is taken.)
+
+**What is held** (sum over the campaign, clone counts): `Meta.province_owner`
+1,354,887 to 267; `Meta.market` 1,118,229 to 6,627; `Meta` 2,474,174 to 7,952;
+`Kept1` 3,320,114 to 853,892. `Meta` is now the wars and nothing else
+(4.14 M); `Pre.meta` 6.61 M to 4.15 M.
+
+**The clocks** (alternating rounds of the previous commit's build against this
+one, medians; the stage clocks in the raw file ran at a slower hour of the
+machine and are not comparable with section 4.2's):
+
+| | before | after |
+|---|---|---|
+| warm rebuild wall | 1.009 s | 0.951 s (-0.058) |
+| warm pass one | 0.205 s | 0.203 s |
+| warm `map: owners` | 0.043 s | 0.010 s |
+| warm raster and spots / payload sections | 0.125 / 0.127 s | 0.077 / 0.163 s |
+| empty-cache wall | 2.336 s | 2.193 s (-0.143) |
+| empty pass one | 1.492 s | 1.434 s (-0.058) |
+| empty `map: owners` | 0.049 s | 0.009 s |
+
+**Read it as:** the counts fell as the estimate said (live 9.49 M to about 7.0 M:
+7.15 M), the owners phase fell by more than estimated (0.044 s to 0.010 s), and
+**the warm cache load did not follow its allocations**: 24% fewer allocations,
+11% less thread time, 0.002 s of wall. That is the gate's question (section 6)
+answered early, with only half of `Meta` converted: what the load costs is
+not mostly the allocator calls. The other 0.04-0.06 s of the gain sits
+between the raster phase (-0.048 s) and the payload sections (+0.036 s),
+which share a heap with the thread that frees the war records; it is real
+(the wall moved by it) but I cannot say which of the two phases it belongs to.
+
+### 4.4 After task 07 (the wars)
+
+`05940f3` with the probe rebased on it (`speed/model-probe.diff` applies to
+it); the same probes. Before is 4.3 above, expected is task 07's file.
+
+**Allocations, empty cache, per save** (`-j 1`):
+
+| stage | before | after | |
+|---|---|---|---|
+| `read_rest` (wars, market) | 81,027 | 68,992 | -12,000: every name, tag and date of a war record |
+| `read_countries`, `read_provinces`, `build`, `prepare`, store | | unchanged | |
+| read + build | 189,600 | 177,600 | |
+
+**The cache load, warm:** 28,922 allocations a save to 17,167 (7.66 M to
+4.55 M); thread time at `-j 1` with the counting allocator 641 ms to 469 ms,
+388 ms without it.
+
+**Live allocations, whole process:**
+
+| phase | before | after | expected |
+|---|---|---|---|
+| pass one done, empty cache | 7,145,167; 590.0 MB | 3,953,770; 413.4 MB | about 4 M |
+| pass one done, warm | 7,062,040; 420.5 MB | 3,947,098; 311.1 MB | |
+| tables written, empty / warm | 5,406,774 / 5,402,271 | 5,377,300 / 5,370,627 | |
+| heap peak, empty / warm | 744.2 / 603.9 MB | 675.5 / 603.1 MB | |
+
+(The end state does not move: after the walk the wars are gone either way.)
+
+**What is held:** `Meta.wars` 4,138,516 to 1,021,667 allocations (70.3 MB);
+`Pre.meta` 4.15 M to 1.03 M; the `Book` 44,098 to 10,279 (`book.wars` 5,300).
+What is left of the wars is the two `OMap<Sym, i64>` of every battle's sides
+(about 80% of it) and a handful of `Vec`s a war. Flattening the units into one
+`Vec` was tried: 0.4 M fewer allocations, pass one 0.171 s to 0.169 s: dropped.
+
+**The clocks** (alternating rounds of the build before task 07, `c13f2ce`,
+against `05940f3`, six each, medians, taken together):
+
+| | before | after | expected |
+|---|---|---|---|
+| warm rebuild wall | 0.980 s | 0.897 s (-0.083) | 0.07-0.10 quicker |
+| warm pass one | 0.205 s | 0.141 s | about 0.13 s |
+| empty-cache wall | 2.406 s | 2.287 s (-0.119) | 0.01-0.03 quicker |
+| empty pass one | 1.534 s | 1.505 s | |
+| walk's `Book` fold (probe, `W1`) | 0.066 s (task 05) | 0.017 s | about half |
+| walk's free of the war records | 0.131 s | gone (task 06's thread) | about 0.03 s |
+
+**Read it as, and read the order of the commits with it.** The wars on
+`Sym` made the warm pass one *slower*, 0.205 s to 0.337 s, with 4 M fewer
+allocations (`b4dfbdd`, A/B taken at the time). Two things that are not the
+model were in the way, and `1e6d606` and `05940f3` took them out:
+
+1. On the `windows-gnu` target std's `thread_local!` calls
+   `guard::enable` on every access, three locked operations on one counter
+   all threads share. A warm load makes about 5.5 M `names::intern_str` calls
+   on 31 workers; gdb samples of the load had 110 of 160 threads inside it.
+   The name table's per-thread cache is now reached through a `TlsAlloc` slot
+   (`names.rs`). It cost task 06 too: its owners and market were the first
+   names read this way, which is the likeliest reason its warm pass one did
+   not move with 24% fewer allocations.
+2. After the workers, the main thread wrote an empty marker file for each of
+   the 265 saves, markers that were already there: 35 ms of a 0.18 s pass
+   one. Only a save that had none is marked now.
+
+Pass one with the wars on `Sym` and the first fix alone: 0.213 s to 0.182 s,
+**-0.031 s against the -0.084 s expected: under half**. With the second,
+0.178 s to 0.149 s more. Section 6's gate is answered there.
+
+**What a warm pass one is now (0.14-0.15 s, 31 workers):**
+
+- 0.024 s serial before any worker starts: `store.slot` for every file 0.010,
+  the read markers 0.005, the campaign marker 0.009 (a stat and a hash a save,
+  one thread).
+- About 0.12 s in the workers: 265 loads, every worker busy from first to last
+  (115-120 ms each, no tail), the median load 11.7 ms against 1.7 ms alone
+  (7 times, on 16 cores of two threads). A load repeated on the same worker
+  with warm caches takes 0.03 s of the whole pass, so the first load of each
+  worker costs four times its steady state.
+- What the first-load cost is not, by experiment: page faults (leaking 265 MB
+  of touched memory in the loads moved nothing; a warm pass one makes 104,000
+  faults), the shared name table (a version that took every new name in one
+  visit moved pass one 6 ms, noise), the allocator (steady loads make the same
+  4.5 M calls), imbalance (above).
+- It is not explained. It sits between the cache's bytes and the cores.
+
+**What this does to section 6's estimates** (the allocations removed per
+millisecond of pass one, from this stage: about 3.2 M live allocations for
+0.031 s, 10 ms a million, after the TLS fix): the live allocations left are
+Nations 2.34 M, the wars 1.02 M, `Held` 0.53 M, so tasks 08-10 together can
+buy about 0.03 s of a warm rebuild's 0.9 s; the estimates in the table
+(0.01, 0.04, 0.02 s) were of that order but their sum assumed the counts were
+the cost. For the empty-cache run the model stages are still where the churn is
+(08 especially). The re-ranking is in `STATUS.md`.
+
+### 4.5 After task 08 (pops and cultures)
+
+`c28648c` with the probe rebased on it (`speed/model-probe.diff` applies to
+it); the same probes. Before is 4.4 above; expected is task 08's file.
+
+**Allocations, empty cache, per save** (`-j 1`):
+
+| stage | before | after | |
+|---|---|---|---|
+| `read_provinces` | 40,451 | 22,014 | -18,400: a pop's type and culture were looked up and copied into four Counters |
+| `model::build` | 30,039 | 11,811 | -18,200: the Group and mobilizable-pop Strings |
+| `prepare` | 14,541 | 4,497 | -10,000: the snapshot's `word` made a String a call |
+| `read_countries` | 38,073 | 37,520 | -550: accepted cultures |
+| `read_rest`, store | 68,992, 2,361 | unchanged | |
+| read + build | 177,600 | 140,300 | |
+
+**The cache load, warm:** 17,167 allocations a save to 15,565 (4.55 M to
+4.12 M).
+
+**Live allocations, whole process:**
+
+| phase | before | after |
+|---|---|---|
+| pass one done, empty cache | 3,953,770; 413.4 MB | 3,529,954; 394.1 MB |
+| pass one done, warm | 3,947,098; 311.1 MB | 3,522,499; 295.9 MB |
+
+**What is held:** `nat.pop_by_culture` 343,712 to 35,104 allocations (7.0 MB),
+`nat.pop_by_type` 127,324 to 31,177, `accepted_cultures` 25,621 to 16,116, the
+nation's seven names 84,552 to 73,983; a whole `PreNation` 2.35 M to 1.92 M
+(123.7 to 110.8 MB). What is left of the pops is 66,000 allocations in two
+`OMap`s and the per-state counters; flattening them would take about 2,500 of
+the 140,000 a save. **No container was flattened**: the counts do not pay for
+it. The dense tables for `strata` and `culture_groups` were not made either:
+a row looks a stratum up 27 times (285,000 string lookups in the campaign, about
+11 ms of thread time of a finish that takes 400), and `culture_groups` is asked
+once a trigger.
+
+**The clocks** (alternating rounds of the build before this stage against this
+one, six each, medians; the stage clocks are one thread's time with the probe,
+two rounds each, in the hour the 07 numbers were taken):
+
+| | before | after | expected |
+|---|---|---|---|
+| empty-cache pass one | 1.457 s | 1.379 s (-0.078) | 1.47 s to 1.30-1.40 s |
+| empty-cache wall | 2.216 s | 2.150 s (-0.066) | |
+| warm rebuild wall | 0.862 s | 0.861 s | hardly changes |
+| warm pass one | 0.140 s | 0.134 s | |
+| `model::build`, one thread's time | 575 ms | 300 ms | |
+| `prepare` | 1,288 ms | 1,052 ms | |
+| `read_provinces` | 5,344 ms | 4,862 ms | |
+
+**Read it as:** the first run gained 0.078 s, inside the expected range, and
+the warm rebuild did not move, as expected. `build` halved and the
+provinces' stage lost a tenth, which is the churn the task file named;
+`read_provinces` is still 18.3 ms of a save's 49 (37%), countries 10.6 (22%),
+reading the file and finding its blocks 5.0 + 4.9 (20%), `prepare` 4.0 (8%),
+the wars and market 3.7 (7.5%), the store 1.6, `build` 1.1. The wars and market
+are still half of all pass-one allocations (68,992 of 140,300) and 7.5% of the
+time: allocation counts and time are far apart in this reader too, which is
+what section 6's order was built on.
+
+### 4.6 After task 09 (carry less, the tech lists, the rates)
+
+`fa74fc8` with the probe rebased on it (`speed/model-probe.diff` applies to
+it; its `Held` census is gone and `rows[].nat` is `rows[].facts`); the same
+probes, against `c28648c` with its probe. Before is 4.5 above, expected is task
+09's file.
+
+**Allocations, `-j 1`, per call and in all:**
+
+| stage | before | after | |
+|---|---|---|---|
+| `read_countries` (empty cache), per save | 37,520 | 33,785 | -3,700: tech names, modifiers, reforms |
+| `model::build`, per save | 11,811 | 10,018 | |
+| `prepare`, per save | 4,497 | 2,543 | -1,950: the `Held` copy |
+| `finish`, the whole run | 4,923,086 | 2,269,282 | |
+| `rate_for`, 10,569 calls | 982,725 | 58,187 | tech, modifier and reform names; the invention set |
+| `impact_for`, 10,569 calls | 924,538 | 0 | the invention set, made only if a trigger asks |
+| `naval_profile`, 5,661 calls | 792,807 | 792,807 | not touched |
+| warm cache load, per save | 15,565 | 11,780 | |
+
+**Live allocations, whole process:**
+
+| phase | before | after | expected |
+|---|---|---|---|
+| pass one done | 3,529,954; 394.1 MB | 2,526,822; 346.5 MB | 28.5 MB less (`Held`) |
+| pass two done | 5,236,849; 543.2 MB | 3,343,572; 424.2 MB | |
+| walked | 4,240,611; 438.8 MB | 2,347,334; 315.0 MB | down by about 2 M |
+
+**What is held:** `Held` 528,115 allocations, 28.5 MB, gone. A whole
+`PreNation` 1,924,778 to 1,439,170 allocations (110.8 to 92.0 MB); `nat.tech_list`
+486,369 to 20,608; `nat.modifiers` 25,295 to 16,017. `Campaign.rows` 1,962,034
+allocations, 114.3 MB to 89,571, 9.2 MB (`RowFacts` 41,748). `Kept` is moved, so
+`parsed` is unchanged by the count (833,818) but it is no longer a copy.
+
+**The clocks** (alternating rounds of the build before this task against the
+last one, six each, medians; `abwarm.py`; one hour):
+
+| | before | after | expected |
+|---|---|---|---|
+| warm rebuild wall | 0.867 s | 0.796 s (-0.071) | warm 0.04 s |
+| pass one | 0.135 s | 0.122 s | |
+| settle | 0.042 s | 0.023 s | 0.050 s to about 0.02 s |
+| pass two | 0.076 s | 0.044 s | |
+| walk | 0.072 s | 0.070 s | `Row.nat` slimmed: the walk's 0.067 s |
+| empty-cache wall | 2.149 s | 2.045 s (-0.104) | 0.04 s |
+| empty-cache pass one | 1.399 s | 1.369 s | |
+
+Per commit, in the same way: carry less 0.971 s to 0.923 s in one set of rounds
+and 0.885 s to 0.881 s in another (inside the noise; settle 0.049 to 0.057 s and
+0.046 to 0.053 s, the nations read in place of a compact copy); the tech lists on `Sym` 0.870 s to
+0.811 s (settle 0.050 to 0.025, pass two 0.060 to 0.049); the dense tables
+0.824 s to 0.827 s; the lazy inventions 0.808 s to 0.811 s (pass two 0.047 to
+0.043).
+
+**Read it as:** the settle and the rates gained and the model estimate held for
+them: the settle's cost was hashing the tech names of every nation of every save
+(`index_base_for`, 40 ms to 19 ms at `-j 1`), not copying them into `Held`, so
+`Held` going gained nothing of it. Pass two lost 0.032 s, most of it the rates
+(`rate_for` and `impact_for` were 175 ms of thread time with 1.9 M allocations
+and are now 12 ms with 58,000), and of that the invention set and the names'
+Strings, not the lookups: the dense tables themselves moved nothing. **The walk
+did not move** (0.072 to 0.070 s) although `Row.nat` was 2.34 M allocations: the
+walk's cost is not freeing them (they are let go in `finish`, in pass two's
+threads). The empty-cache run gained 0.104 s, of which pass one is 0.030 s
+(`read_countries` made fewer names) and the rest is pass two. What is left in
+pass two, one thread: `naval_profile` 50-70 ms and 793,000 allocations, the
+only rate-side cost the stage did not touch.
+
+### 4.7 After task 10 (units and ships)
+
+`ee04466` with the probe rebased on it (`speed/model-probe.diff` applies to
+it), the same probes, against `fa74fc8` with its probe; the part-one tree
+(`939db8d`, the `Sym` change with the containers as they were) is measured
+too. Before is 4.6 above; expected is task 10's file.
+
+**Allocations, `-j 1`, per call and in all** (empty cache, this thread):
+
+| stage | `fa74fc8` | `939db8d` (`Sym`) | `ee04466` (flat) | |
+|---|---|---|---|---|
+| `read_countries`, per save | 33,785 | 32,104 | 28,589 | the tallies' maps, then the Strings; one `Units` for both readers |
+| `model::build`, per save | 10,018 | 8,427 | 6,778 | the folds of `units_at`/`men_at` |
+| `prepare`, `read_provinces` | 2,542, 22,014 | same | same | |
+| `finish`, the whole run | 2,269,282 | 2,121,796 | 2,121,796 | the ship, brigade and pop tables' Strings |
+| `naval_profile`, 5,661 calls | 792,807 | 792,807 | 792,807 | not touched (its cost is not the ships) |
+| warm cache load, per save | 11,780 | 10,188 | 8,539 | |
+
+**Live allocations, whole process:**
+
+| phase | `fa74fc8` | `939db8d` | `ee04466` | expected |
+|---|---|---|---|---|
+| pass one done, empty cache | 2,526,822; 346.5 MB | 2,105,235; 326.3 MB | 1,670,060; 291.5 MB | about 0.8 M fewer |
+| pass one done, warm | 2,519,222; 248.6 MB | 2,097,635; 228.4 MB | 1,662,460; 195.6 MB | |
+| pass two done | 3,343,572; 424.2 MB | 2,826,196; 401.4 MB | 2,417,512; 368.5 MB | |
+| walked | 2,347,334; 315.0 MB | 1,829,958; 292.3 MB | 1,421,274; 259.4 MB | |
+
+-0.857 M after pass one in all: -0.42 M for the `Sym` change (5.3's count said about -0.42 M of 0.88 M) and -0.44 M for the flattening.
+
+**What is held:** `nat.units_at` + `nat.men_at` 809,220 allocations
+(37.1 MB) to `nat.units_at` 20,077 (6.2 MB); `nat.ships_by_type` +
+`ship_crew` 68,740 to 16,230; `nat.regiments_by_type` 56,324 to 20,077; a
+whole `PreNation` 1,439,170 to 582,408 allocations (92.0 to 57.6 MB). `Kept`
+(`parsed[].nations`) 825,603 to 47,029 allocations (38.5 to 7.6 MB). The
+census: 184,945 stacks in 93,711 provinces, 12,479 ship entries, 26,739
+regiment entries, over 10,569 nations (at most 142 stacks, 93 provinces, 7
+ship kinds, 6 regiment kinds a nation).
+
+**The clocks** (alternating rounds, `abwarm.py`, medians; each pair taken
+together, not compared across pairs):
+
+| | before | after | expected |
+|---|---|---|---|
+| part one, warm wall (6 rounds) | 0.775 s | 0.758 s | |
+| part one, warm pass one | 0.119 s | 0.112 s | |
+| part one, empty wall (6 rounds) | 2.040 s | 2.006 s | |
+| part two, warm wall (8 rounds) | 0.805 s | 0.807 s | warm pass one about 0.02 s quicker |
+| part two, warm pass one | 0.117 s | 0.106 s | |
+| part two, warm pass two (settled to finished) | 0.043 s | 0.041 s | |
+| part two, empty wall (6 rounds) | 2.222 s | 2.219 s | 0.02-0.03 s |
+| part two, empty pass one | 1.510 s | 1.514 s | |
+
+Another pair of 6 empty rounds taken at a noisy hour (other programs on the
+PC) read 3.0 s for both builds and is not used.
+
+**Read it as:** the counts came out as the design said (-0.857 M against
+about 0.8 M) and the clocks followed them as task 09 said they would, a
+little: warm pass one 0.119 s to 0.106 s over both parts (about 0.013 s,
+against the expected 0.02 s), the warm wall unchanged to the noise, the
+empty-cache run unchanged by the flattening (-0.034 s from part one, which
+is inside what this PC drifts by in an hour). What the empty-cache run does
+not show is the 0.02-0.03 s the task file estimated: the allocations that went were
+made by the countries' reader and `build`, which are 13 ms and 1 ms a save of
+thread time, and the three hash lookups a ship or regiment that the shared
+`Units` no longer makes are not visible at that size (not measured apart). The ships and the units
+were not the cost of the load; the cache's own entries are the same size to
+the byte.
+
 ## 5. The design
 
 ### 5.1 What it does, in one paragraph
@@ -486,7 +839,9 @@ pub fn cmp(a: Sym, b: Sym) -> std::cmp::Ordering;   // by text
 - The table is a `Mutex` over `Vec<&'static str>` and `FxMap<&'static str,
   u32>`. Strings are leaked: the process ends by forgetting the campaign
   (task 02) and a `--cross` run is a few campaigns, so nothing is lost by it.
-- Each thread has a cache `FxMap<Vec<u8>, Sym>` (bytes to id) and a mirror
+- Each thread has a cache `FxMap<Vec<u8>, Sym>` (bytes to id), a second
+  `FxMap<&'static str, Sym>` for `intern_str` (text to id; added in task 06,
+  where this draft had only the first) and a mirror
   `Vec<&'static str>` of the table. `intern` is a hash and a compare on a hit,
   with no lock, no allocation and no copy of the save's bytes; a miss takes
   the lock once, and the name is then in that thread's cache for good.
@@ -566,7 +921,12 @@ each sorts by `names::cmp`. The two stable sorts that depend on ties
 Finished in task 12; tasks 06-11 change the cache only as far as their
 fields need, writing what they hold the way the old format would, with a
 `Sym` written by its text through the entry's own string table (the
-`W::s` table already in `cache.rs:75-86`).
+`W::s` table already in `cache.rs:75-86`). **Done in task 06:** `Keep for Sym`
+writes `names::text` through `W::s`, which is the byte stream a `String`
+made, so an entry is byte for byte what it was and `V2ENGC02` is unchanged;
+`R::sym` reads it back with `intern_str` (no copy of the text when the entry's
+table has it). A cache made before task 06 is read as it is, and the other
+way about.
 
 The new format:
 
@@ -660,7 +1020,7 @@ data-model plan was drawn around the nation fields; the counts say `Meta` is
 | (06's first commit) | the walk stops waiting for the saves' war records to be freed | | measured: warm 1.172 s to 1.042 s |
 | **06** names, owners, market | `names.rs`, the cache's `Sym`, the shift knob; `Scan.owners` and `Meta.province_owner`; `Market`; `report.rs`, `market.rs` | 2.47 M | warm 0.05-0.07 s quicker; empty 0.03-0.05 s |
 | **07** wars | `War`, `Goal`, `Battle`, `Side`, `wars::Held`, `Book`, `save_world`, `wars::build`, `explain.rs` | 4.14 M | warm 0.07-0.10 s beyond the first commit above (the cache load, the Book's fold); empty 0.01-0.03 s |
-| *gate* | measure the warm rebuild's pass one (0.214 s; about 0.13 s expected). If it is above 0.17 s, the allocations are not what the load costs: re-profile before 08-10 | | |
+| *gate* | measure the warm rebuild's pass one (0.214 s; about 0.13 s expected). If it is above 0.17 s, the allocations are not what the load costs: re-profile before 08-10  **Measured after 07 (4.4): 0.182 s with the wars on `Sym` and the TLS fix, 0.141 s with the marker fix; the stage gained under half of what was expected, so 08-10 are re-ranked in `STATUS.md`.** | | |
 | **08** pops and cultures | `Interner` and `Counter` in `province.rs`; `pop_by_type`, `pop_by_culture`, `accepted_cultures`, `primary_culture`; `Group`; `mobilizable_pops`; `Snapshot`; `Spec.mob_types`; `PopulationRules`; dense `strata` and `culture_groups` | 0.475 M, and about 50,000 a save of pass-one churn | warm 0.01 s; empty 0.08-0.18 s |
 | **09** techs, `Held`, the rates | **`Held` gone, `Row.nat` slimmed, `Kept` moved**; `tech_list`, `modifiers`, `reforms`, `nationalvalue`; dense `tech_mob`, `event_mob`, `nv_mob`, `reform_mob`, `tech_group`; (optional: `goods_supply`, `country_flags`, the scalars) | 1.52 M, and 2.34 M carried | settle 0.050 s to about 0.02 s in both; warm 0.04 s, empty 0.04 s |
 | **10** units and ships | `Ship`, `Stack`; `country.rs` and `walk.rs`; `finish.rs`, `report.rs:345` | 0.88 M | warm 0.02 s; empty 0.02-0.03 s |

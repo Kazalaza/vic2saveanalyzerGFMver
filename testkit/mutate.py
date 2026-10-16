@@ -226,6 +226,59 @@ def m56():
           "  const opening = warOpening(w.unset.start);\n")
 
 
+# ---- casualties credited to the nation leading each battle, as its own
+
+
+@mutation("war-casualties-by-nation",
+          "the infobox lists what each nation lost, summed from the battles it "
+          "led, which credits an ally's dead to whoever led the army",
+          "war_legacy_ui.py")
+def m106():
+    patch("template.py",
+          "  const column = side => `<div class=\"ibtotal\"><div class=\"ibwho\">Total</div>`\n",
+          "  const by = {1: new Map(), '-1': new Map()};\n"
+          "  for (const b of w.battles) sides.battle(b).forEach((m, k) => {\n"
+          "    const s = k ? b.d : b.a;\n"
+          "    if (m) by[m].set(s[0], (by[m].get(s[0]) || 0) + s[2]);\n"
+          "  });\n"
+          "  const column = side => [...by[side]].map(([t, n]) => `<div class=\"ibnat\">${ibFlag(t)}`\n"
+          "      + `<div class=\"ibwho\">${nameOf(t)}</div><span class=\"ibnum\">${n}</span></div>`).join('')\n"
+          "    + `<div class=\"ibtotal\"><div class=\"ibwho\">Total</div>`\n")
+
+
+@mutation("legacy-losses-by-country",
+          "the legacy layout's country tables have the old window's Losses "
+          "column back, each nation's losses summed from the battles it led",
+          "war_legacy_ui.py")
+def m107():
+    patch("template.py", "    + `<th class=\"num\">Ended</th></tr></thead><tbody>`\n",
+          "    + `<th class=\"num\">Ended</th><th class=\"num\">Losses</th></tr></thead><tbody>`\n")
+    patch("template.py",
+          "        + `<td class=\"num\">${p.joined || '—'}</td><td class=\"num\">${ended(p)}</td></tr>`)\n",
+          "        + `<td class=\"num\">${p.joined || '—'}</td><td class=\"num\">${ended(p)}</td>`\n"
+          "        + `<td class=\"num\">${w.battles.reduce((n, b) => n + (b.a[0] === p.tag ? b.a[2] : 0)\n"
+          "            + (b.d[0] === p.tag ? b.d[2] : 0), 0).toLocaleString()}</td></tr>`)\n")
+
+
+@mutation("legacy-side-totals-swapped",
+          "the legacy layout puts the defenders' losses in the attackers' panel "
+          "and theirs in the defenders'",
+          "war_legacy_ui.py")
+def m108():
+    patch("template.py", "    + legacySide(w, 'attacker', lost, 1)\n",
+          "    + legacySide(w, 'attacker', lost, -1)\n")
+    patch("template.py", "    + legacySide(w, 'defender', lost, -1)\n",
+          "    + legacySide(w, 'defender', lost, 1)\n")
+
+
+@mutation("legacy-layout-forgotten",
+          "the layout chosen for one war is not kept for the next one opened",
+          "war_legacy_ui.py")
+def m109():
+    patch("template.py", "document.getElementById('warback').onclick = () => {\n",
+          "document.getElementById('warback').onclick = () => {\n  warView = 'infobox';\n")
+
+
 # ---- publishing: the token followed redirects, and failures came out raw
 
 
@@ -410,7 +463,8 @@ def r13():
           "that save against itself, and reads 'none taken'", "edges.py")
 def r12():
     patch("scanner/src/engine/wars.rs",
-          "        if !end.is_empty() && !ledger_dates.is_empty() && ledger_dates[0] >= year_fraction(&end) {",
+          "        if !end.is_empty() && !ledger_dates.is_empty()\n"
+          "            && ledger_dates[0] >= year_fraction(names::text(end)) {",
           "        if false {")
 
 
@@ -705,6 +759,185 @@ def m87():
     patch("scanner/src/engine/market.rs",
           "        goods.sort_by(|a, b| names::cmp(*a, *b));\n        for good in goods {",
           "        goods.sort_by_key(|g| names::id(*g));\n        for good in goods {")
+
+
+@mutation("war-side-units-reversed",
+          "a battle's unit kinds are listed in the opposite order to the file's, "
+          "which shows where two kinds have as many men",
+          "enginecheck.py", "saves-and-mod")
+def m88():
+    patch("scanner/src/engine/wars.rs",
+          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();\n",
+          "    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();\n    v.reverse();\n")
+
+
+@mutation("war-battles-reversed",
+          "a war's battles are held in the opposite order to the file's, which "
+          "shows where two battles share a date and a name",
+          "enginecheck.py", "saves-and-mod")
+def m89():
+    patch("scanner/src/engine/wars.rs",
+          "        let mut battles: Vec<&Battle> = war.battles.values().collect();\n",
+          "        let mut battles: Vec<&Battle> = war.battles.values().collect();\n"
+          "        battles.reverse();\n")
+
+
+@mutation("culture-ties-broken-by-name",
+          "two cultures of the same size are listed alphabetically, not in the "
+          "order the save first named them",
+          "enginecheck.py", "saves-and-mod")
+def m90():
+    patch("scanner/src/engine/finish.rs",
+          "        cultures.sort_by(|a, b| b.1.cmp(a.1));\n",
+          "        cultures.sort_by(|a, b| b.1.cmp(a.1).then(names::cmp(*a.0, *b.0)));\n")
+
+
+@mutation("group-types-reversed",
+          "a state's pop types are numbered in the opposite order to the one the "
+          "save met them in, so the state chunk's words and layouts change",
+          "enginecheck.py", "saves-and-mod")
+def m91():
+    patch("scanner/src/engine/model.rs",
+          "Group { group: *group, size: st.total, literate: st.literate, types: pairs(&st.types),",
+          "Group { group: *group, size: st.total, literate: st.literate, "
+          "types: { let mut v = pairs(&st.types); v.reverse(); v },")
+
+
+@mutation("techs-ordered-by-name-number",
+          "a nation's technologies are written in the order their names were first met "
+          "in the run, not alphabetically, so technologies.csv and the page's lists change",
+          "enginecheck.py", "saves-and-mod")
+def m92():
+    patch("scanner/src/engine/finish.rs",
+          "        techs.sort_by(|a, b| names::cmp(*a, *b));\n",
+          "        techs.sort_by_key(|t| t.index());\n")
+
+
+@mutation("reform-mob-key-swapped",
+          "a reform's mobilisation size is looked up with the option and the reform the "
+          "wrong way round, so no reform grants any",
+          "enginecheck.py", "saves-and-mod")
+def m93():
+    patch("scanner/src/engine/rules.rs",
+          "        let v = d.reform_mob(*reform, *option);\n",
+          "        let v = d.reform_mob(*option, *reform);\n")
+
+
+@mutation("national-value-ignored",
+          "a nation's national value grants no mobilisation size",
+          "enginecheck.py", "saves-and-mod")
+def m94():
+    patch("scanner/src/engine/rules.rs",
+          "    let v = d.nv_mob(nat.nationalvalue);\n",
+          "    let v = 0.0 * d.nv_mob(nat.nationalvalue);\n")
+
+
+@mutation("modifier-impacts-ignored",
+          "a nation's event modifiers add nothing to its mobilisation cap",
+          "enginecheck.py", "saves-and-mod")
+def m95():
+    patch("scanner/src/engine/rules.rs",
+          "        total += d.modifier_impact(*name);\n",
+          "        total += 0.0 * d.modifier_impact(*name);\n")
+
+
+@mutation("techs-without-branch",
+          "every technology is filed under 'other' in technologies.csv and the page",
+          "enginecheck.py", "saves-and-mod")
+def m96():
+    patch("scanner/src/engine/finish.rs",
+          "dense.tech_group(*tech).unwrap_or((\"other\", \"Other\"))",
+          "dense.tech_group(*tech).filter(|_| false).unwrap_or((\"other\", \"Other\"))")
+
+
+@mutation("cross-names-never-built",
+          "a --cross run has no government names for its nations, so every label is the tag",
+          "enginecheck.py", "saves-and-mod")
+def m97():
+    patch("scanner/src/engine/mod.rs",
+          "    let held_names: Vec<(String, String)> = if run.cross_part {",
+          "    let held_names: Vec<(String, String)> = if false && run.cross_part {")
+
+
+@mutation("row-facts-pop-types-dropped",
+          "the pop_<type> columns of the main table read nought, as if the row had kept no "
+          "pop types",
+          "enginecheck.py", "saves-and-mod")
+def m98():
+    patch("scanner/src/engine/finish.rs",
+          "            pop_by_type: std::mem::take(&mut nat.pop_by_type),\n",
+          "            pop_by_type: OMap::new(),\n")
+
+
+@mutation("kept-units-left-behind",
+          "a kept nation's units are not carried to the page, so no army is drawn",
+          "enginecheck.py", "saves-and-mod")
+def m99():
+    patch("scanner/src/engine/finish.rs",
+          "        units_at: std::mem::take(&mut nat.units_at),\n",
+          "        units_at: Vec::new(),\n")
+
+
+@mutation("invention-trigger-inverted",
+          "a trigger that asks whether a nation holds an invention is answered the other way",
+          "enginecheck.py", "saves-and-mod")
+def m100():
+    patch("scanner/src/engine/rules.rs",
+          ".as_ref().map(|held| held.contains(text)));",
+          ".as_ref().map(|held| !held.contains(text)));")
+
+
+@mutation("army-kinds-tie-reversed",
+          "two kinds with as many regiments in a province change places on the page's "
+          "armies, as if the province's kinds were read last first",
+          "enginecheck.py", "saves-and-mod")
+def m101():
+    patch("scanner/src/engine/report.rs",
+          "                let mut ranked: Vec<&Stack> = types.iter().collect();",
+          "                let mut ranked: Vec<&Stack> = types.iter().rev().collect();")
+
+
+@mutation("army-provinces-reversed",
+          "a nation's armies come out on the page with its provinces in the order "
+          "last met first",
+          "enginecheck.py", "saves-and-mod")
+def m102():
+    patch("scanner/src/country.rs",
+          "        None => {\n            stacks.push(stack);\n            return;\n        }",
+          "        None => {\n            stacks.insert(0, stack);\n            return;\n        }")
+
+
+@mutation("ship-types-by-id",
+          "ships_by_type.csv lists a nation's ships in the order the run met the "
+          "names, not by name",
+          "enginecheck.py", "saves-and-mod")
+def m103():
+    patch("scanner/src/names.rs", "/// Order by what the names say",
+          "pub fn id(s: Sym) -> u32 {\n    s.0\n}\n\n/// Order by what the names say")
+    patch("scanner/src/engine/finish.rs",
+          "        ship_types.sort_by(|a, b| names::cmp(a.kind, b.kind));",
+          "        ship_types.sort_by_key(|s| names::id(s.kind));")
+
+
+@mutation("regiment-types-by-id",
+          "brigades_by_type.csv lists a nation's regiments in the order the run met "
+          "the names, not by name",
+          "enginecheck.py", "saves-and-mod")
+def m104():
+    patch("scanner/src/names.rs", "/// Order by what the names say",
+          "pub fn id(s: Sym) -> u32 {\n    s.0\n}\n\n/// Order by what the names say")
+    patch("scanner/src/engine/finish.rs",
+          "        regiments.sort_by(|a, b| names::cmp(a.0, b.0));",
+          "        regiments.sort_by_key(|r| names::id(r.0));")
+
+
+@mutation("ship-crew-dropped",
+          "a ship's crew is not counted, so every fleet reads as crewed by its hull count",
+          "enginecheck.py", "saves-and-mod")
+def m105():
+    patch("scanner/src/engine/finish.rs",
+          "            let effective = Num::F(round(ship.crew, 3));",
+          "            let effective = Num::I(ship.count);")
 
 
 def main():

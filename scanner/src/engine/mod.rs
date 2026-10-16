@@ -41,7 +41,7 @@ use finish::{Pre, Spec, Spent};
 use crate::jsonr::{self, J};
 use model::Save;
 use crate::fx::{FxMap, FxSet};
-use crate::province::{read_province, top_level_blocks, Interner, PopulationRules, Scan};
+use crate::province::{read_province, top_level_blocks, PopulationRules, Scan};
 use rules::{Decline, Mod, D};
 use crate::text::{latin1, tag_bytes, to_int_b, trim_b, unquote_b};
 use std::io::{Read, Write};
@@ -186,7 +186,7 @@ fn parse_run(j: &J) -> Run {
         spec: Spec {
 
             pop_per_regiment: f.at("pop_per_regiment").int(),
-            mob_types: string_list(f.at("mob_types")).into_iter().collect(),
+            mob_types: string_list(f.at("mob_types")).iter().map(|s| crate::names::intern_str(s)).collect(),
             include_occupied: f.at("include_occupied").truthy(),
             player_nations: if f.at("player_nations").is_null() { None }
                             else { Some(string_list(f.at("player_nations"))) },
@@ -562,7 +562,6 @@ fn read_bytes(path: &str, reading: &Reading, raw: &[u8],
         nations: FxMap::default(),
         pop_ids: Vec::new(),
         pop_kinds: Vec::new(),
-        words: Interner::default(),
         seen: Vec::new(),
     };
     let tables = Tables {
@@ -624,11 +623,10 @@ fn read_flat(text: &[u8], blocks: &[(&[u8], usize, usize)], reading: &Reading, t
             let tag = latin1(key);
             let country = read_country(chunk, 0, chunk.len(), &tag, tables);
             let rule = rules.entry(key.to_vec()).or_default();
-            let bytes = |s: &str| s.chars().map(|c| c as u8).collect::<Vec<_>>();
-            rule.accepted.extend(country.accepted_cultures.iter().map(|s| bytes(s)));
+            rule.accepted.extend(country.accepted_cultures.iter().copied());
             for (name, value) in &country.scalars {
                 if name == "primary_culture" && !value.is_empty() {
-                    rule.accepted.insert(bytes(value));
+                    rule.accepted.insert(crate::names::intern_str(value));
                 }
             }
             rule.colonial.extend(&country.colonial_provinces);
@@ -852,7 +850,7 @@ pub fn bench(args: &[String]) {
                 let chunk = &raw[*at..(*stop).min(raw.len())];
                 let country = read_country(chunk, 0, chunk.len(), &latin1(key), &tables);
                 let rule = rules.entry(key.to_vec()).or_default();
-                rule.accepted.extend(country.accepted_cultures.iter().map(|s| s.as_bytes().to_vec()));
+                rule.accepted.extend(country.accepted_cultures.iter().copied());
                 rule.colonial.extend(&country.colonial_provinces);
                 referenced.extend(&country.regiment_pops);
                 countries.push(country);
@@ -861,8 +859,7 @@ pub fn bench(args: &[String]) {
         t[2] += c.elapsed().as_secs_f64();
         let c = std::time::Instant::now();
         let mut scan = Scan { world_pop: 0, owners: Vec::new(), nations: FxMap::default(),
-                              pop_ids: Vec::new(), pop_kinds: Vec::new(),
-                              words: Interner::default(), seen: Vec::new() };
+                              pop_ids: Vec::new(), pop_kinds: Vec::new(), seen: Vec::new() };
         for (key, at, stop) in &blocks {
             if !key.is_empty() && key.iter().all(|c| c.is_ascii_digit()) {
                 read_province(&raw, *at, *stop, to_int_b(key), &run.reading.pop_types,
@@ -903,7 +900,12 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
     // for the saves it had not read under this reading.
     let marks: Vec<Option<String>> =
         run.files.iter().map(|f| run.store.read_marker(f, &run.reading_context)).collect();
-    let todo = marks.iter().filter(|m| m.as_ref().is_none_or(|m| !std::path::Path::new(m).is_file())).count();
+    // Which saves had no marker when the run began: only those are marked
+    // after (a marker that is there is empty, and writing it again only costs
+    // a file operation a save, on the one thread that is waiting).
+    let unmarked: Vec<bool> = marks.iter()
+        .map(|m| m.as_ref().is_none_or(|m| !std::path::Path::new(m).is_file())).collect();
+    let todo = unmarked.iter().filter(|&&u| u).count();
     let campaign = run.store.campaign_marker(&run.files, &run.reading_context);
     let campaign_read = campaign.as_ref().is_some_and(|c| std::path::Path::new(c).is_file());
     let say_each = verbose && !campaign_read;
@@ -1004,7 +1006,7 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
     // The saves that were read, and where they sit among the files.
     let kept: Vec<usize> = (0..n).filter(|&i| pres[i].is_some()).collect();
     for &i in &kept {
-        if let Some(m) = &marks[i] {
+        if let (Some(m), true) = (&marks[i], unmarked[i]) {
             run.store.mark(m);
         }
     }
@@ -1033,9 +1035,10 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
             _ => decline(&format!("the mod: {}", d.0.trim_start_matches('\u{1}'))),
         },
     };
-    let held: Vec<&[rules::Held]> = pres.iter().map(|p| p.held.as_slice()).collect();
+    let held: Vec<&[finish::PreNation]> = pres.iter().map(|p| p.nations.as_slice()).collect();
     phase("mod loaded");
     let live = rules::settle_campaign(&mut m, &held);
+    m.dense = Some(rules::Dense::build(&m, &run.spec.tech_group));
     phase("inventions settled");
     if verbose {
         crate::engine::report::say_mod(&m, &live, &held, &files);
@@ -1066,9 +1069,10 @@ pub fn run_spec(spec_j: &J) -> report::Outcome {
 
     // What `--cross` names each nation by: every nation of every save, in
     // order, with its government.
-    let held_names: Vec<(String, String)> = pres.iter()
-        .flat_map(|p| p.held.iter().map(|h| (h.tag.clone(), h.government.clone())))
-        .collect();
+    let held_names: Vec<(String, String)> = if run.cross_part {
+        pres.iter().flat_map(|p| p.nations.iter()
+            .map(|n| (n.tag.clone(), n.nat.government.clone()))).collect()
+    } else { Vec::new() };
 
     // Pass two: every save finished.
     let mut spent: Vec<Option<Spent>> = (0..n).map(|_| None).collect();

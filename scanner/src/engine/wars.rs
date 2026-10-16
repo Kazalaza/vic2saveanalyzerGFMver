@@ -16,24 +16,24 @@ use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::{push_int, push_json_str};
 
-type Name = (String, String, String);
-pub type Key = (String, String, String, usize);
-type BattleKey = (String, i64, i64, i64, usize);
+type Name = (Sym, Sym, Sym);
+pub type Key = (Sym, Sym, Sym, usize);
+type BattleKey = (Sym, i64, i64, i64, usize);
 
 /// One war as the book holds it.
 pub struct Held {
-    pub name: String,
-    pub original_attacker: String,
-    pub original_defender: String,
+    pub name: Sym,
+    pub original_attacker: Sym,
+    pub original_defender: Sym,
     pub active: bool,
-    pub start: String,
-    pub end: String,
-    pub attackers: Vec<String>,
-    pub defenders: Vec<String>,
+    pub start: Sym,
+    pub end: Sym,
+    pub attackers: Vec<Sym>,
+    pub defenders: Vec<Sym>,
     pub goal: FirstGoal,
-    pub join_dates: OMap<(String, bool), String>,
-    pub leave_dates: OMap<(String, bool), String>,
-    pub goalbook: OMap<(String, String, i64, String), Goal>,
+    pub join_dates: OMap<(Sym, bool), Sym>,
+    pub leave_dates: OMap<(Sym, bool), Sym>,
+    pub goalbook: OMap<(Sym, Sym, i64, Sym), Goal>,
     pub battles: OMap<BattleKey, Battle>,
 }
 
@@ -47,7 +47,7 @@ pub struct Book {
 }
 
 fn war_name(w: &War) -> Name {
-    (w.name.clone(), w.original_attacker.clone(), w.original_defender.clone())
+    (w.name, w.original_attacker, w.original_defender)
 }
 
 /// `_war_span`: (first, last), last infinite while the war is being fought.
@@ -55,17 +55,17 @@ fn span(w: &War) -> Option<(f64, f64)> {
     if w.start.is_empty() {
         return None;
     }
-    let first = year_fraction(&w.start);
+    let first = year_fraction(names::text(w.start));
     if w.active {
         return Some((first, f64::INFINITY));
     }
-    let last = if !w.end.is_empty() { year_fraction(&w.end) } else { first };
+    let last = if !w.end.is_empty() { year_fraction(names::text(w.end)) } else { first };
     Some((first, if last > first { last } else { first }))
 }
 
-fn sorted_union(a: &[String], b: &[String]) -> Vec<String> {
-    let mut v: Vec<String> = a.iter().chain(b.iter()).cloned().collect();
-    v.sort();
+fn sorted_union(a: &[Sym], b: &[Sym]) -> Vec<Sym> {
+    let mut v: Vec<Sym> = a.iter().chain(b.iter()).copied().collect();
+    v.sort_by(|x, y| names::cmp(*x, *y));
     v.dedup();
     v
 }
@@ -88,7 +88,7 @@ impl Book {
     fn fold(&mut self, war: &War) {
         let name = war_name(war);
         let sp = span(war);
-        let slot = self.index.entry(name.clone()).or_default();
+        let slot = self.index.entry(name).or_default();
         let mut found: Option<usize> = None;
         for (i, entry) in slot.iter().enumerate() {
             let top = entry.2.unwrap_or(f64::INFINITY);
@@ -103,14 +103,14 @@ impl Book {
         }
         let at = match found {
             None => {
-                let key: Key = (name.0.clone(), name.1.clone(), name.2.clone(), slot.len());
-                self.wars.insert(key.clone(), Held {
-                    name: war.name.clone(),
-                    original_attacker: war.original_attacker.clone(),
-                    original_defender: war.original_defender.clone(),
+                let key: Key = (name.0, name.1, name.2, slot.len());
+                self.wars.insert(key, Held {
+                    name: war.name,
+                    original_attacker: war.original_attacker,
+                    original_defender: war.original_defender,
                     active: war.active,
-                    start: war.start.clone(),
-                    end: war.end.clone(),
+                    start: war.start,
+                    end: war.end,
                     attackers: war.attackers.clone(),
                     defenders: war.defenders.clone(),
                     goal: war.goal.clone(),
@@ -119,7 +119,7 @@ impl Book {
                     goalbook: OMap::new(),
                     battles: OMap::new(),
                 });
-                self.order.push(key.clone());
+                self.order.push(key);
                 let last = match sp {
                     Some((_, b)) if b != f64::INFINITY => Some(b),
                     _ => None,
@@ -140,14 +140,15 @@ impl Book {
                 i
             }
         };
-        let key = slot[at].0.clone();
+        let key = slot[at].0;
         let held = self.wars.get_mut(&key).unwrap();
         if !war.end.is_empty() && held.end.is_empty() {
-            held.end = war.end.clone();
+            held.end = war.end;
         }
         if !war.start.is_empty()
-            && (held.start.is_empty() || year_fraction(&war.start) < year_fraction(&held.start)) {
-            held.start = war.start.clone();
+            && (held.start.is_empty()
+                || year_fraction(names::text(war.start)) < year_fraction(names::text(held.start))) {
+            held.start = war.start;
         }
         if !war.active {
             held.active = false;
@@ -158,47 +159,47 @@ impl Book {
             if d.is_empty() {
                 continue;
             }
-            let k = (w.clone(), *a);
+            let k = (*w, *a);
             let replace = match held.join_dates.get(&k) {
                 None => true,
-                Some(old) => year_fraction(d) < year_fraction(old),
+                Some(old) => year_fraction(names::text(*d)) < year_fraction(names::text(*old)),
             };
             if replace {
-                held.join_dates.set(k, d.clone());
+                held.join_dates.set(k, *d);
             }
         }
         for (d, w, a) in &war.leaves {
             if d.is_empty() {
                 continue;
             }
-            let k = (w.clone(), *a);
+            let k = (*w, *a);
             let replace = match held.leave_dates.get(&k) {
                 None => true,
-                Some(old) => year_fraction(d) > year_fraction(old),
+                Some(old) => year_fraction(names::text(*d)) > year_fraction(names::text(*old)),
             };
             if replace {
-                held.leave_dates.set(k, d.clone());
+                held.leave_dates.set(k, *d);
             }
         }
         for g in &war.goals {
-            let gk = (g.actor.clone(), g.receiver.clone(), g.province, g.casus_belli.clone());
+            let gk = (g.actor, g.receiver, g.province, g.casus_belli);
             if !held.goalbook.contains_key(&gk) || g.fulfilled {
                 held.goalbook.set(gk, g.clone());
             }
         }
-        let mut seen: FxMap<(String, i64, i64, i64), usize> = FxMap::default();
+        let mut seen: FxMap<(Sym, i64, i64, i64), usize> = FxMap::default();
         for b in &war.battles {
-            let base = (b.name.clone(), b.location,
+            let base = (b.name, b.location,
                         b.attacker.as_ref().map_or(0, |s| s.losses),
                         b.defender.as_ref().map_or(0, |s| s.losses));
-            let n = seen.entry(base.clone()).or_insert(0);
+            let n = seen.entry(base).or_insert(0);
             *n += 1;
             let bk: BattleKey = (base.0, base.1, base.2, base.3, *n);
             match held.battles.get_mut(&bk) {
                 None => held.battles.set(bk, b.clone()),
                 Some(there) => {
                     if b.date.is_some() && there.date.is_none() {
-                        there.date = b.date.clone();
+                        there.date = b.date;
                     }
                 }
             }
@@ -210,12 +211,12 @@ impl Book {
 
 /// A goal as `build_wars` reads it: one caught by a save, or the war's
 /// first, which has no `added` and no `fulfilled`.
-struct AnyGoal<'a> {
-    casus_belli: &'a str,
-    actor: &'a str,
-    receiver: &'a str,
+struct AnyGoal {
+    casus_belli: Sym,
+    actor: Sym,
+    receiver: Sym,
     province: i64,
-    added: &'a str,
+    added: Sym,
     fulfilled: Option<bool>,
 }
 
@@ -247,16 +248,16 @@ fn units(side: &Option<Side>) -> String {
         Some(s) if !s.units.is_empty() => s,
         _ => return String::new(),
     };
-    let mut v: Vec<(&String, &i64)> = s.units.iter().collect();
+    let mut v: Vec<(&Sym, &i64)> = s.units.iter().collect();
     v.sort_by(|a, b| b.1.cmp(a.1));
-    v.iter().map(|(k, n)| format!("{}:{}", k, n)).collect::<Vec<_>>().join(";")
+    v.iter().map(|(k, n)| format!("{}:{}", names::text(**k), n)).collect::<Vec<_>>().join(";")
 }
 
 fn at_sea(b: &Battle, kinds: &FxMap<String, String>) -> bool {
     for side in [&b.attacker, &b.defender] {
         if let Some(s) = side {
             for (unit, _) in s.units.iter() {
-                match kinds.get(unit).map(|k| k.as_str()) {
+                match kinds.get(names::text(*unit)).map(|k| k.as_str()) {
                     Some("naval") => return true,
                     Some("land") => return false,
                     _ => {}
@@ -284,19 +285,19 @@ fn ledger_at<'a>(books: &'a [(String, FxMap<i64, Sym>)], when_each: &[f64], date
     }
 }
 
-fn which(tag: &str, att: &FxSet<&str>, dfd: &FxSet<&str>) -> i64 {
-    let (here, there) = (att.contains(tag), dfd.contains(tag));
+fn which(tag: Sym, att: &FxSet<Sym>, dfd: &FxSet<Sym>) -> i64 {
+    let (here, there) = (att.contains(&tag), dfd.contains(&tag));
     if here && !there { 1 } else if there && !here { -1 } else { 0 }
 }
 
-fn side_losses(battles: &[&Battle], attackers: &[String], defenders: &[String]) -> [i64; 3] {
-    let att: FxSet<&str> = attackers.iter().map(|s| s.as_str()).collect();
-    let dfd: FxSet<&str> = defenders.iter().map(|s| s.as_str()).collect();
+fn side_losses(battles: &[&Battle], attackers: &[Sym], defenders: &[Sym]) -> [i64; 3] {
+    let att: FxSet<Sym> = attackers.iter().copied().collect();
+    let dfd: FxSet<Sym> = defenders.iter().copied().collect();
     let mut totals = [0i64; 3];
     for b in battles {
         let pair = [&b.attacker, &b.defender];
-        let country = |s: &Option<Side>| s.as_ref().map(|x| x.country.clone()).unwrap_or_default();
-        let mut marks = [which(&country(pair[0]), &att, &dfd), which(&country(pair[1]), &att, &dfd)];
+        let country = |s: &Option<Side>| s.as_ref().map(|x| x.country).unwrap_or_default();
+        let mut marks = [which(country(pair[0]), &att, &dfd), which(country(pair[1]), &att, &dfd)];
         if marks[0] == 0 && marks[1] != 0 {
             marks[0] = -marks[1];
         }
@@ -312,40 +313,43 @@ fn side_losses(battles: &[&Battle], attackers: &[String], defenders: &[String]) 
 }
 
 struct Party {
-    tag: String,
-    joined: String,
+    tag: Sym,
+    joined: Sym,
     original: bool,
     leads: bool,
-    left: Option<String>,
+    left: Option<Sym>,
 }
 
-fn participants(tags: &[String], join_dates: &OMap<(String, bool), String>, attacking: bool,
-                original_tag: &str, start: &str, leave_dates: &OMap<(String, bool), String>,
-                end: &str) -> Vec<Party> {
-    let cutoff = if start.is_empty() { None } else { Some(year_fraction(start) + 1.0 / 12.0) };
+fn participants(tags: &[Sym], join_dates: &OMap<(Sym, bool), Sym>, attacking: bool,
+                original_tag: Sym, start: Sym, leave_dates: &OMap<(Sym, bool), Sym>,
+                end: Sym) -> Vec<Party> {
+    let cutoff = if start.is_empty() { None }
+                 else { Some(year_fraction(names::text(start)) + 1.0 / 12.0) };
     let mut out = Vec::new();
-    for tag in tags {
-        let key = (tag.clone(), attacking);
-        let joined = join_dates.get(&key).cloned().unwrap_or_default();
+    for &tag in tags {
+        let key = (tag, attacking);
+        let joined = join_dates.get(&key).copied().unwrap_or_default();
         let original = tag == original_tag || joined.is_empty() || cutoff.is_none()
-            || year_fraction(&joined) <= cutoff.unwrap();
-        let gone = leave_dates.get(&key).cloned().unwrap_or_default();
+            || year_fraction(names::text(joined)) <= cutoff.unwrap();
+        let gone = leave_dates.get(&key).copied().unwrap_or_default();
         let mut left = None;
         if !gone.is_empty() && gone != end {
-            let after_start = joined.is_empty() || year_fraction(&gone) >= year_fraction(&joined);
-            let before_end = end.is_empty() || year_fraction(&gone) < year_fraction(end);
+            let after_start = joined.is_empty()
+                || year_fraction(names::text(gone)) >= year_fraction(names::text(joined));
+            let before_end = end.is_empty()
+                || year_fraction(names::text(gone)) < year_fraction(names::text(end));
             if after_start && before_end {
                 left = Some(gone);
             }
         }
-        out.push(Party { tag: tag.clone(), joined, original, leads: tag == original_tag, left });
+        out.push(Party { tag, joined, original, leads: tag == original_tag, left });
     }
     out.sort_by(|a, b| {
-        let ka = (!a.original, if a.joined.is_empty() { 0.0 } else { year_fraction(&a.joined) });
-        let kb = (!b.original, if b.joined.is_empty() { 0.0 } else { year_fraction(&b.joined) });
+        let jy = |p: &Party| if p.joined.is_empty() { 0.0 } else { year_fraction(names::text(p.joined)) };
+        let (ka, kb) = ((!a.original, jy(a)), (!b.original, jy(b)));
         ka.0.cmp(&kb.0)
             .then(ka.1.partial_cmp(&kb.1).unwrap_or(std::cmp::Ordering::Equal))
-            .then(a.tag.cmp(&b.tag))
+            .then(names::cmp(a.tag, b.tag))
     });
     out
 }
@@ -357,9 +361,9 @@ fn push_parties(out: &mut String, parties: &[Party]) {
             out.push(',');
         }
         out.push_str("{\"tag\":");
-        push_json_str(out, &p.tag);
+        push_json_str(out, names::text(p.tag));
         out.push_str(",\"joined\":");
-        push_json_str(out, &p.joined);
+        push_json_str(out, names::text(p.joined));
         out.push_str(",\"original\":");
         out.push_str(if p.original { "true" } else { "false" });
         if p.leads {
@@ -367,20 +371,20 @@ fn push_parties(out: &mut String, parties: &[Party]) {
         }
         if let Some(l) = &p.left {
             out.push_str(",\"left\":");
-            push_json_str(out, l);
+            push_json_str(out, names::text(*l));
         }
         out.push('}');
     }
     out.push(']');
 }
 
-fn push_strs(out: &mut String, v: &[String]) {
+fn push_strs(out: &mut String, v: &[Sym]) {
     out.push('[');
     for (i, s) in v.iter().enumerate() {
         if i > 0 {
             out.push(',');
         }
-        push_json_str(out, s);
+        push_json_str(out, names::text(*s));
     }
     out.push(']');
 }
@@ -389,7 +393,7 @@ fn push_strs(out: &mut String, v: &[String]) {
 pub struct Built {
     pub start_key: f64,
     pub json: String,
-    pub tags: Vec<String>,
+    pub tags: Vec<Sym>,
 }
 
 /// `build_wars`: every war in the campaign, as the Wars tab's JSON objects,
@@ -412,63 +416,64 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
     for key in &book.order {
         let war = &book.wars[key];
         let mut battles: Vec<&Battle> = war.battles.values().collect();
-        let bkey = |b: &Battle| match &b.date {
-            Some(d) if !d.is_empty() => year_fraction(d),
+        let bkey = |b: &Battle| match b.date {
+            Some(d) if !d.is_empty() => year_fraction(names::text(d)),
             _ => 9999.0,
         };
         battles.sort_by(|a, b| bkey(a).partial_cmp(&bkey(b)).unwrap_or(std::cmp::Ordering::Equal)
-            .then(a.name.cmp(&b.name)));
+            .then(names::cmp(a.name, b.name)));
         // `max(..., key=year_fraction, default="")`: the first of equals.
-        let mut last_battle = String::new();
+        let mut last_battle = Sym::default();
         let mut best = f64::NEG_INFINITY;
         for b in &battles {
-            if let Some(d) = &b.date {
+            if let Some(d) = b.date {
                 if d.is_empty() {
                     continue;
                 }
-                let y = year_fraction(d);
+                let y = year_fraction(names::text(d));
                 if last_battle.is_empty() && best == f64::NEG_INFINITY || y > best {
                     best = y;
-                    last_battle = d.clone();
+                    last_battle = d;
                 }
             }
         }
-        let mut end = war.end.clone();
+        let mut end = war.end;
         if !end.is_empty() && !last_battle.is_empty()
-            && year_fraction(&last_battle) > year_fraction(&end) {
-            end = last_battle.clone();
+            && year_fraction(names::text(last_battle)) > year_fraction(names::text(end)) {
+            end = last_battle;
         }
         let atk: i64 = battles.iter().map(|b| b.attacker.as_ref().map_or(0, |s| s.losses)).sum();
         let dfd: i64 = battles.iter().map(|b| b.defender.as_ref().map_or(0, |s| s.losses)).sum();
-        let attackers = if war.attackers.is_empty() { vec![war.original_attacker.clone()] }
+        let attackers = if war.attackers.is_empty() { vec![war.original_attacker] }
                         else { war.attackers.clone() };
-        let defenders = if war.defenders.is_empty() { vec![war.original_defender.clone()] }
+        let defenders = if war.defenders.is_empty() { vec![war.original_defender] }
                         else { war.defenders.clone() };
         let by_side = side_losses(&battles, &attackers, &defenders);
         let mut listed: Vec<AnyGoal> = war.goalbook.values().map(|g| AnyGoal {
-            casus_belli: &g.casus_belli, actor: &g.actor, receiver: &g.receiver,
-            province: g.province, added: &g.added, fulfilled: Some(g.fulfilled),
+            casus_belli: g.casus_belli, actor: g.actor, receiver: g.receiver,
+            province: g.province, added: g.added, fulfilled: Some(g.fulfilled),
         }).collect();
         if listed.is_empty() && !war.goal.actor.is_empty() {
-            listed.push(AnyGoal { casus_belli: &war.goal.casus_belli, actor: &war.goal.actor,
-                                  receiver: &war.goal.receiver, province: war.goal.province,
-                                  added: "", fulfilled: None });
+            listed.push(AnyGoal { casus_belli: war.goal.casus_belli, actor: war.goal.actor,
+                                  receiver: war.goal.receiver, province: war.goal.province,
+                                  added: Sym::default(), fulfilled: None });
         }
         let has_start = !war.start.is_empty();
         let mut before: &FxMap<i64, Sym> = if has_start {
-            ledger_at(&books, &ledger_dates, &war.start, true).unwrap_or(&empty)
+            ledger_at(&books, &ledger_dates, names::text(war.start), true).unwrap_or(&empty)
         } else { &empty };
-        if !end.is_empty() && !ledger_dates.is_empty() && ledger_dates[0] >= year_fraction(&end) {
+        if !end.is_empty() && !ledger_dates.is_empty()
+            && ledger_dates[0] >= year_fraction(names::text(end)) {
             before = &empty;
         }
         let after: &FxMap<i64, Sym> = if has_start {
-            let when = if !end.is_empty() { end.as_str() } else { war.start.as_str() };
+            let when = if !end.is_empty() { names::text(end) } else { names::text(war.start) };
             ledger_at(&books, &ledger_dates, when, false).unwrap_or(&empty)
         } else { &empty };
         let mut goals_json = String::from("[");
-        let mut transfers: Vec<(String, String, String, String, usize, usize)> = Vec::new();
+        let mut transfers: Vec<(String, String, Sym, Sym, usize, usize)> = Vec::new();
         let (mut checkable, mut won) = (0usize, 0usize);
-        let mut tags: Vec<String> = Vec::new();
+        let mut tags: Vec<Sym> = Vec::new();
         for (gi, g) in listed.iter().enumerate() {
             let state = m.province_regions.get(&g.province).map(|s| s.as_str());
             let wanted: Vec<i64> = match state {
@@ -476,10 +481,9 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
                 _ => if g.province != 0 { vec![g.province] } else { vec![] },
             };
             let took: Vec<i64> = wanted.iter().copied().filter(|p| {
-                before.get(p).map(|o| names::text(*o)) == Some(g.receiver)
-                    && after.get(p).map(|o| names::text(*o)) == Some(g.actor)
+                before.get(p) == Some(&g.receiver) && after.get(p) == Some(&g.actor)
             }).collect();
-            let had = wanted.iter().filter(|p| before.get(p).map(|o| names::text(*o)) == Some(g.receiver)).count();
+            let had = wanted.iter().filter(|p| before.get(p) == Some(&g.receiver)).count();
             let met = had > 0 && took.len() == had;
             let part = !took.is_empty() && took.len() < had;
             if had > 0 {
@@ -492,15 +496,15 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
                 goals_json.push(',');
             }
             goals_json.push_str("{\"cb\":");
-            push_json_str(&mut goals_json, g.casus_belli);
+            push_json_str(&mut goals_json, names::text(g.casus_belli));
             goals_json.push_str(",\"actor\":");
-            push_json_str(&mut goals_json, g.actor);
+            push_json_str(&mut goals_json, names::text(g.actor));
             goals_json.push_str(",\"receiver\":");
-            push_json_str(&mut goals_json, g.receiver);
+            push_json_str(&mut goals_json, names::text(g.receiver));
             goals_json.push_str(",\"state\":");
             push_json_str(&mut goals_json, &state_label(state, g.province, m));
             goals_json.push_str(",\"added\":");
-            push_json_str(&mut goals_json, g.added);
+            push_json_str(&mut goals_json, names::text(g.added));
             goals_json.push_str(",\"took\":");
             push_int(&mut goals_json, took.len() as i64);
             goals_json.push_str(",\"of\":");
@@ -515,11 +519,11 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
             goals_json.push_str(",\"checkable\":");
             goals_json.push_str(if had > 0 { "true" } else { "false" });
             goals_json.push('}');
-            tags.push(g.actor.to_string());
-            tags.push(g.receiver.to_string());
+            tags.push(g.actor);
+            tags.push(g.receiver);
             if !took.is_empty() {
                 transfers.push((state.unwrap_or("").to_string(), state_label(state, took[0], m),
-                                g.receiver.to_string(), g.actor.to_string(), took.len(), had));
+                                g.receiver, g.actor, took.len(), had));
             }
         }
         goals_json.push(']');
@@ -527,11 +531,11 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
 
         let mut j = String::with_capacity(4096);
         j.push_str("{\"name\":");
-        push_json_str(&mut j, &war.name);
+        push_json_str(&mut j, names::text(war.name));
         j.push_str(",\"start\":");
-        push_json_str(&mut j, &war.start);
+        push_json_str(&mut j, names::text(war.start));
         j.push_str(",\"end\":");
-        push_json_str(&mut j, &end);
+        push_json_str(&mut j, names::text(end));
         j.push_str(",\"active\":");
         j.push_str(if war.active { "true" } else { "false" });
         j.push_str(",\"attackers\":");
@@ -539,18 +543,18 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
         j.push_str(",\"defenders\":");
         push_strs(&mut j, &defenders);
         j.push_str(",\"attacker_parties\":");
-        push_parties(&mut j, &participants(&attackers, &war.join_dates, true, &war.original_attacker,
-                                           &war.start, &war.leave_dates, &end));
+        push_parties(&mut j, &participants(&attackers, &war.join_dates, true, war.original_attacker,
+                                           war.start, &war.leave_dates, end));
         j.push_str(",\"defender_parties\":");
         push_parties(&mut j, &participants(&defenders, &war.join_dates, false,
-                                           &war.original_defender, &war.start,
-                                           &war.leave_dates, &end));
+                                           war.original_defender, war.start,
+                                           &war.leave_dates, end));
         j.push_str(",\"goal\":{\"casus_belli\":");
-        push_json_str(&mut j, &war.goal.casus_belli);
+        push_json_str(&mut j, names::text(war.goal.casus_belli));
         j.push_str(",\"actor\":");
-        push_json_str(&mut j, &war.goal.actor);
+        push_json_str(&mut j, names::text(war.goal.actor));
         j.push_str(",\"receiver\":");
-        push_json_str(&mut j, &war.goal.receiver);
+        push_json_str(&mut j, names::text(war.goal.receiver));
         j.push_str(",\"province\":");
         push_int(&mut j, war.goal.province);
         j.push_str("},\"losses\":[");
@@ -568,7 +572,7 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
         j.push_str(",\"goals\":");
         j.push_str(&goals_json);
         j.push_str(",\"dated\":");
-        push_int(&mut j, battles.iter().filter(|b| b.date.as_ref().is_some_and(|d| !d.is_empty())).count() as i64);
+        push_int(&mut j, battles.iter().filter(|b| b.date.is_some_and(|d| !d.is_empty())).count() as i64);
         j.push_str(",\"battles\":[");
         for (i, b) in battles.iter().enumerate() {
             if i > 0 {
@@ -577,28 +581,28 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
             j.push_str("{\"sea\":");
             j.push_str(if at_sea(b, m.unit_kinds) { "true" } else { "false" });
             j.push_str(",\"name\":");
-            push_json_str(&mut j, &b.name);
+            push_json_str(&mut j, names::text(b.name));
             j.push_str(",\"province\":");
             push_int(&mut j, b.location);
             j.push_str(",\"date\":");
-            push_json_str(&mut j, b.date.as_deref().unwrap_or(""));
+            push_json_str(&mut j, b.date.map_or("", names::text));
             j.push_str(",\"won\":");
             j.push_str(if b.attacker_won { "true" } else { "false" });
             for (label, side) in [(",\"a\":[", &b.attacker), (",\"d\":[", &b.defender)] {
                 j.push_str(label);
                 let (c, l, n) = match side {
-                    Some(s) => (s.country.as_str(), s.leader.as_str(), s.losses),
-                    None => ("", "", 0),
+                    Some(s) => (s.country, s.leader, s.losses),
+                    None => (Sym::default(), Sym::default(), 0),
                 };
-                push_json_str(&mut j, c);
+                push_json_str(&mut j, names::text(c));
                 j.push(',');
-                push_json_str(&mut j, l);
+                push_json_str(&mut j, names::text(l));
                 j.push(',');
                 push_int(&mut j, n);
                 j.push(',');
                 push_json_str(&mut j, &units(side));
                 j.push(']');
-                tags.push(c.to_string());
+                tags.push(c);
             }
             j.push('}');
         }
@@ -612,21 +616,22 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
             j.push(',');
             push_json_str(&mut j, &t.1);
             j.push(',');
-            push_json_str(&mut j, &t.2);
+            push_json_str(&mut j, names::text(t.2));
             j.push(',');
-            push_json_str(&mut j, &t.3);
+            push_json_str(&mut j, names::text(t.3));
             j.push(',');
             push_int(&mut j, t.4 as i64);
             j.push(',');
             push_int(&mut j, t.5 as i64);
             j.push(']');
-            tags.push(t.2.clone());
-            tags.push(t.3.clone());
+            tags.push(t.2);
+            tags.push(t.3);
         }
         j.push_str("]}");
-        tags.extend(attackers.iter().cloned());
-        tags.extend(defenders.iter().cloned());
-        let start_key = if war.start.is_empty() { 9999.0 } else { year_fraction(&war.start) };
+        tags.extend(attackers.iter().copied());
+        tags.extend(defenders.iter().copied());
+        let start_key = if war.start.is_empty() { 9999.0 }
+                        else { year_fraction(names::text(war.start)) };
         out.push(Built { start_key, json: j, tags });
     }
     out.sort_by(|a, b| a.start_key.partial_cmp(&b.start_key).unwrap_or(std::cmp::Ordering::Equal));
@@ -635,32 +640,32 @@ pub fn build(book: &Book, saves: &[(String, Vec<(i64, Sym)>)], m: &Mapping) -> V
 
 /// `war_tags(wars)`, sorted.
 pub fn war_tags(built: &[Built]) -> Vec<String> {
-    let mut v: Vec<String> = built.iter().flat_map(|b| b.tags.iter().cloned())
-        .filter(|t| !t.is_empty() && t != "---").collect();
-    v.sort();
+    let mut v: Vec<Sym> = built.iter().flat_map(|b| b.tags.iter().copied())
+        .filter(|t| !t.is_empty() && names::text(*t) != "---").collect();
+    v.sort_by(|a, b| names::cmp(*a, *b));
     v.dedup();
-    v
+    v.into_iter().map(|t| names::text(t).to_string()).collect()
 }
 
 /// Every nation the book names as fighting (`flags_for`'s fighters), sorted.
 pub fn fighters(book: &Book) -> Vec<String> {
-    let mut v: Vec<String> = Vec::new();
+    let mut v: Vec<Sym> = Vec::new();
     for held in book.wars.values() {
-        v.extend(held.attackers.iter().cloned());
-        v.extend(held.defenders.iter().cloned());
+        v.extend(held.attackers.iter().copied());
+        v.extend(held.defenders.iter().copied());
         for b in held.battles.values() {
             for side in [&b.attacker, &b.defender] {
                 if let Some(s) = side {
                     if !s.country.is_empty() {
-                        v.push(s.country.clone());
+                        v.push(s.country);
                     }
                 }
             }
         }
     }
-    v.retain(|t| !t.is_empty() && t != "---");
-    v.sort();
+    v.retain(|t| !t.is_empty() && names::text(*t) != "---");
+    v.sort_by(|a, b| names::cmp(*a, *b));
     v.dedup();
-    v
+    v.into_iter().map(|t| names::text(t).to_string()).collect()
 }
 

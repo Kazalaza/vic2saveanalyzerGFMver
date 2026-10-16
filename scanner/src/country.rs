@@ -23,7 +23,7 @@
 // to decode every country block whole before reading a word of it.
 
 use crate::text::{find, latin1, unquote_b};
-use crate::fx::FxMap;
+use crate::names::{self, Sym};
 
 /// Whether a byte of the save is whitespace, as Python's `\s` judged the
 /// latin-1 text it decoded -- the ASCII spaces, NEL and the no-break space --
@@ -336,10 +336,10 @@ pub struct Country {
     pub numerics: Vec<(String, f64)>,
     pub is_mobilized: i64,
     pub human: bool,
-    pub reforms: Vec<(String, String)>,
-    pub accepted_cultures: Vec<String>,
+    pub reforms: Vec<(Sym, Sym)>,
+    pub accepted_cultures: Vec<Sym>,
     pub country_flags: Vec<String>,
-    pub modifiers: Vec<String>,
+    pub modifiers: Vec<Sym>,
     pub goods_supply: Vec<(String, f64)>,
     pub invention_ids: Vec<i64>,
     pub mobilizing: i64,
@@ -350,7 +350,7 @@ pub struct Country {
     pub factory_count: i64,
     pub factory_levels: i64,
     pub techs: i64,
-    pub tech_list: Vec<String>,
+    pub tech_list: Vec<Sym>,
     pub army_techs: i64,
     pub navy_techs: i64,
     // from the units
@@ -359,66 +359,119 @@ pub struct Country {
     pub navies: i64,
     pub ships: i64,
     pub regiment_pops: Vec<i64>,
-    pub regiments_by_type: Vec<(String, i64)>,
-    pub ships_by_type: Vec<(String, i64)>,
-    pub ship_crew: Vec<(String, f64)>,
-    pub units_at: Vec<(i64, Vec<(String, i64)>)>,
-    pub men_at: Vec<(i64, Vec<(String, i64)>)>,
+    pub regiments_by_type: Vec<(Sym, i64)>,
+    pub ships_by_type: Vec<Ship>,
+    pub units_at: Vec<Stack>,
 }
 
-/// An ordered counter, so what comes back is in the order the file gave it.
-/// It counts the save's own bytes and decodes each name once, at the end.
+/// One kind of ship a nation has: how many, and their crews' strength summed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Ship {
+    pub kind: Sym,
+    pub count: i64,
+    pub crew: f64,
+}
+
+/// The regiments of one kind in one province: how many, and their men.
+/// A nation's stacks are in one `Vec`, grouped by province in the order the
+/// provinces were first met, and by kind inside a province in the order the
+/// kinds were first met: the armies' page and a stable sort read that order.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Stack {
+    pub pid: i64,
+    pub kind: Sym,
+    pub n: i64,
+    pub men: i64,
+}
+
+impl Stack {
+    /// The stacks of each province, in order.
+    pub fn provinces(stacks: &[Stack]) -> impl Iterator<Item = &[Stack]> {
+        stacks.chunk_by(|a, b| a.pid == b.pid)
+    }
+}
+
+/// `add` to `kind`'s count, or start it at the end.
+pub fn add_count(v: &mut Vec<(Sym, i64)>, kind: Sym, by: i64) {
+    match v.iter_mut().find(|e| e.0 == kind) {
+        Some(e) => e.1 += by,
+        None => v.push((kind, by)),
+    }
+}
+
+/// `ship` into `ships`: the kind keeps its first place, counts and crews add.
+pub fn add_ship(ships: &mut Vec<Ship>, ship: Ship) {
+    match ships.iter_mut().find(|e| e.kind == ship.kind) {
+        Some(e) => {
+            e.count += ship.count;
+            e.crew += ship.crew;
+        }
+        None => ships.push(ship),
+    }
+}
+
+/// `stack` into `stacks`: a new province goes last, a new kind in a known
+/// province goes at the end of that province's group, a known kind adds.
+pub fn add_stack(stacks: &mut Vec<Stack>, stack: Stack) {
+    let last = match stacks.iter().rposition(|s| s.pid == stack.pid) {
+        Some(i) => i,
+        None => {
+            stacks.push(stack);
+            return;
+        }
+    };
+    let mut i = last;
+    loop {
+        if stacks[i].kind == stack.kind {
+            stacks[i].n += stack.n;
+            stacks[i].men = stacks[i].men.saturating_add(stack.men);
+            return;
+        }
+        if i == 0 || stacks[i - 1].pid != stack.pid {
+            break;
+        }
+        i -= 1;
+    }
+    stacks.insert(last + 1, stack);
+}
+
+/// What the unit blocks of a country add up to. The two readers (this
+/// file's and the walk's) count into the same thing.
 #[derive(Default)]
-struct Tally<'a> {
-    order: Vec<&'a [u8]>,
-    index: FxMap<&'a [u8], usize>,
-    total: Vec<f64>,
+pub struct Units {
+    pub brigades: i64,
+    pub armies: i64,
+    pub navies: i64,
+    pub ships: i64,
+    pub regiment_pops: Vec<i64>,
+    pub by_type: Vec<(Sym, i64)>,
+    pub ships_by_type: Vec<Ship>,
+    pub at: Vec<Stack>,
 }
 
-impl<'a> Tally<'a> {
-    fn add(&mut self, name: &'a [u8], by: f64) {
-        match self.index.get(name) {
-            Some(&i) => self.total[i] += by,
-            None => {
-                self.index.insert(name, self.order.len());
-                self.order.push(name);
-                self.total.push(by);
-            }
+impl Units {
+    /// A regiment of `kind`, and where it stands if it stands anywhere.
+    pub fn regiment(&mut self, kind: Sym, at: Option<i64>, men: f64) {
+        add_count(&mut self.by_type, kind, 1);
+        if let Some(pid) = at {
+            add_stack(&mut self.at, Stack { pid, kind, n: 1, men: men as i64 });
         }
     }
-    fn ints(&self) -> Vec<(String, i64)> {
-        self.order.iter().map(|n| latin1(n))
-            .zip(self.total.iter().map(|v| *v as i64)).collect()
-    }
-    fn floats(&self) -> Vec<(String, f64)> {
-        self.order.iter().map(|n| latin1(n)).zip(self.total.iter().copied()).collect()
-    }
-}
 
-#[derive(Default)]
-struct Units<'a> {
-    brigades: i64,
-    armies: i64,
-    navies: i64,
-    ships: i64,
-    regiment_pops: Vec<i64>,
-    by_type: Tally<'a>,
-    ships_by_type: Tally<'a>,
-    ship_crew: Tally<'a>,
-    at: Vec<(i64, Tally<'a>)>,
-    men: Vec<(i64, Tally<'a>)>,
-}
+    /// A ship of `kind` with `crew` strength.
+    pub fn ship(&mut self, kind: Sym, crew: f64) {
+        add_ship(&mut self.ships_by_type, Ship { kind, count: 1, crew });
+    }
 
-impl<'a> Units<'a> {
-    fn at_mut(&mut self, where_: i64) -> usize {
-        match self.at.iter().position(|(p, _)| *p == where_) {
-            Some(i) => i,
-            None => {
-                self.at.push((where_, Tally::default()));
-                self.men.push((where_, Tally::default()));
-                self.at.len() - 1
-            }
-        }
+    pub fn into_country(self, out: &mut Country) {
+        out.brigades = self.brigades;
+        out.armies = self.armies;
+        out.navies = self.navies;
+        out.ships = self.ships;
+        out.regiment_pops = self.regiment_pops;
+        out.regiments_by_type = self.by_type;
+        out.ships_by_type = self.ships_by_type;
+        out.units_at = self.at;
     }
 }
 
@@ -427,7 +480,7 @@ impl<'a> Units<'a> {
 /// Recursive on purpose: an army loaded onto transports is stored as an
 /// `army` block inside the `navy` carrying it, so reading army->regiment at
 /// one fixed depth silently drops every embarked brigade.
-fn count_units<'a>(node: &Dict<'a>, out: &mut Units<'a>, where_: Option<i64>) {
+fn count_units(node: &Dict, out: &mut Units, where_: Option<i64>) {
     for (key, value) in &node.pairs {
         let key = *key;
         if key.first() == Some(&b'_') {
@@ -446,26 +499,21 @@ fn count_units<'a>(node: &Dict<'a>, out: &mut Units<'a>, where_: Option<i64>) {
                 let raw = reg.text(b"type").unwrap_or(b"");
                 let rtype: &[u8] = if parse_float(raw).is_some() { b"" } else { raw };
                 let rtype: &[u8] = if rtype.is_empty() { b"unknown" } else { rtype };
-                out.by_type.add(rtype, 1.0);
-                if let Some(w) = where_ {
-                    let i = out.at_mut(w);
-                    out.at[i].1.add(rtype, 1.0);
-                    let strength = to_float(reg.text(b"strength").unwrap_or(b""));
-                    out.men[i].1.add(rtype, (strength * 1000.0).round_ties_even());
-                }
+                let strength = to_float(reg.text(b"strength").unwrap_or(b""));
+                out.regiment(names::intern(rtype), where_,
+                             (strength * 1000.0).round_ties_even());
             }
         } else if key == b"ship" {
             for ship in sub_blocks(value) {
                 out.ships += 1;
                 let kind = ship.text(b"type").unwrap_or(b"unknown");
-                out.ships_by_type.add(kind, 1.0);
                 // Both are percentages. Strength scales the damage a hull
                 // deals; experience is subtracted from the damage it takes,
                 // which leaves it as a divisor on its owner's side.
                 let strength = to_float_or(ship.text(b"strength"), 100.0) / 100.0;
                 let experience = to_float_or(ship.text(b"experience"), 0.0) / 100.0;
                 let experience = experience.clamp(0.0, 0.95);
-                out.ship_crew.add(kind, strength.max(0.0) / (1.0 - experience));
+                out.ship(names::intern(kind), strength.max(0.0) / (1.0 - experience));
             }
         } else if key == b"army" || key == b"navy" {
             let blocks = sub_blocks(value);
@@ -565,7 +613,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
             } else if key == b"human" {
                 out.human = clean.eq_ignore_ascii_case(b"yes");
             } else if tables.reform_keys.iter().any(|r| eq_latin1(key, r)) {
-                out.reforms.push((latin1(key), latin1(clean)));
+                out.reforms.push((names::intern(key), names::intern(clean)));
             } else if let Some((_, name)) = SCALARS.iter().find(|(k, _)| *k == key) {
                 // Unquoted: the Python's entry scanner strips the quotes
                 // before the value ever reaches this decision, so a primary
@@ -596,7 +644,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
             b"culture" => {
                 for v in bare_values(&parse_block(&mut tok, &[])) {
                     if let Value::Text(s) = v {
-                        out.accepted_cultures.push(latin1(s));
+                        out.accepted_cultures.push(names::intern(s));
                     }
                 }
             }
@@ -617,7 +665,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
             b"modifier" => {
                 if let Value::Dict(d) = parse_block(&mut tok, &[]) {
                     if let Some(Value::Text(s)) = d.get(b"modifier") {
-                        out.modifiers.push(latin1(s));
+                        out.modifiers.push(names::intern(s));
                     }
                 }
             }
@@ -711,7 +759,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
                         };
                         if to_int(first) == 1 {
                             out.techs += 1;
-                            out.tech_list.push(latin1(tech));
+                            out.tech_list.push(names::intern(tech));
                             if tables.army_techs.iter().any(|t| eq_latin1(tech, t)) {
                                 out.army_techs += 1;
                             } else if tables.navy_techs.iter().any(|t| eq_latin1(tech, t)) {
@@ -725,16 +773,7 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
         }
     }
 
-    out.brigades = units.brigades;
-    out.armies = units.armies;
-    out.navies = units.navies;
-    out.ships = units.ships;
-    out.regiment_pops = units.regiment_pops;
-    out.regiments_by_type = units.by_type.ints();
-    out.ships_by_type = units.ships_by_type.ints();
-    out.ship_crew = units.ship_crew.floats();
-    out.units_at = units.at.iter().map(|(p, t)| (*p, t.ints())).collect();
-    out.men_at = units.men.iter().map(|(p, t)| (*p, t.ints())).collect();
+    units.into_country(&mut out);
     out
 }
 

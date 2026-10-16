@@ -43,40 +43,21 @@ pub(crate) fn pop_known(key: &[u8]) -> bool {
 }
 
 
-/// Names stored once, referred to by number.
-#[derive(Default)]
-pub(crate) struct Interner {
-    pub(crate) names: Vec<Vec<u8>>,
-    pub(crate) index: FxMap<Vec<u8>, u32>,
-}
-
-impl Interner {
-    pub(crate) fn id(&mut self, name: &[u8]) -> u32 {
-        if let Some(&i) = self.index.get(name) {
-            return i;
-        }
-        let i = self.names.len() as u32;
-        self.names.push(name.to_vec());
-        self.index.insert(name.to_vec(), i);
-        i
-    }
-}
-
 /// A count per name that remembers the order names first appeared.
 #[derive(Default)]
 pub(crate) struct Counter {
-    pub(crate) order: Vec<Vec<u8>>,
-    pub(crate) index: FxMap<Vec<u8>, usize>,
+    pub(crate) order: Vec<Sym>,
+    pub(crate) index: FxMap<Sym, usize>,
     pub(crate) total: Vec<i64>,
 }
 
 impl Counter {
-    pub(crate) fn add(&mut self, name: &[u8], by: i64) {
-        match self.index.get(name) {
+    pub(crate) fn add(&mut self, name: Sym, by: i64) {
+        match self.index.get(&name) {
             Some(&i) => self.total[i] += by,
             None => {
-                self.index.insert(name.to_vec(), self.order.len());
-                self.order.push(name.to_vec());
+                self.index.insert(name, self.order.len());
+                self.order.push(name);
                 self.total.push(by);
             }
         }
@@ -115,11 +96,10 @@ pub(crate) struct Nation {
     pub(crate) literacy_noncolonial: f64,
     pub(crate) mob_excluded_culture: i64,
     pub(crate) soldier_pops_at: FxMap<i64, Vec<i64>>,
-    // (pop type, culture, size, province), the first two as interned ids:
-    // a campaign has a dozen pop types and a few hundred cultures, and this
-    // list holds tens of thousands of entries per save. Two fresh strings
-    // apiece was the scanner's largest single cost.
-    pub(crate) mobilizable: Vec<(u32, u32, i64, i64)>,
+    // (pop type, culture, size, province): a campaign has a dozen pop types
+    // and a few hundred cultures, and this list holds tens of thousands of
+    // entries per save, so each is a name's number, not its text.
+    pub(crate) mobilizable: Vec<(Sym, Sym, i64, i64)>,
 }
 
 #[derive(Default)]
@@ -133,7 +113,7 @@ pub(crate) struct Population {
 
 #[derive(Default)]
 pub(crate) struct PopulationRules {
-    pub(crate) accepted: FxSet<Vec<u8>>,
+    pub(crate) accepted: FxSet<Sym>,
     pub(crate) colonial: FxSet<i64>,
 }
 
@@ -227,8 +207,7 @@ pub(crate) struct Scan {
     // while leaving the report -- which aggregates -- looking identical.
     pub(crate) seen: Vec<Vec<u8>>,
     pub(crate) pop_ids: Vec<i64>,
-    pub(crate) pop_kinds: Vec<u32>,
-    pub(crate) words: Interner,
+    pub(crate) pop_kinds: Vec<Sym>,
 }
 
 
@@ -462,29 +441,27 @@ pub(crate) fn accumulate(
             let id = to_int_b(id);
             if referenced_pops.contains(&id) {
                 scan.pop_ids.push(id);
-                let k = scan.words.id(pop.kind);
-                scan.pop_kinds.push(k);
+                scan.pop_kinds.push(names::intern(pop.kind));
             }
         }
         let size = pop.size.map_or(0, to_int_b);
         if size <= 0 {
             continue;
         }
-        // Interned before the nation is borrowed: both live on the same
-        // struct and the borrow checker is right to mind.
-        let candidate = pop.culture.is_some()
+        // Each name is looked up once for the pop, here, and then handed on.
+        let kind = names::intern(pop.kind);
+        let culture = pop.culture.map(names::intern);
+        let candidate = culture.is_some()
             && mob_types.iter().any(|t| t.as_slice() == pop.kind);
-        let accepted = pop.culture.is_some_and(|c|
-            country.is_some_and(|r| r.accepted.contains(c)));
-        let mob = match pop.culture {
-            Some(culture) if candidate && accepted => {
-                Some((scan.words.id(pop.kind), scan.words.id(culture)))
-            }
+        let accepted = culture.is_some_and(|c|
+            country.is_some_and(|r| r.accepted.contains(&c)));
+        let mob = match culture {
+            Some(culture) if candidate && accepted => Some((kind, culture)),
             _ => None,
         };
         let nat = scan.nations.get_mut(owner).unwrap();
         nat.total_pop += size;
-        nat.pop_by_type.add(pop.kind, size);
+        nat.pop_by_type.add(kind, size);
         if province_pop == 0 {
             if !nat.population_by_state.contains_key(&group) {
                 nat.population_order.push(group);
@@ -492,8 +469,8 @@ pub(crate) fn accumulate(
             nat.population_by_state.entry(group).or_default().provinces += 1;
         }
         let state = nat.population_by_state.get_mut(&group).unwrap();
-        state.types.add(pop.kind, size);
-        if let Some(culture) = pop.culture { state.cultures.add(culture, size); }
+        state.types.add(kind, size);
+        if let Some(culture) = culture { state.cultures.add(culture, size); }
         if pop.kind == b"soldiers" {
             if home { nat.soldiers_noncolonial += size; }
             nat.soldier_pops_at.entry(pid).or_default().push(size);
@@ -508,7 +485,7 @@ pub(crate) fn accumulate(
                 nat.starving += size;
             }
         }
-        if let Some(culture) = pop.culture {
+        if let Some(culture) = culture {
             nat.pop_by_culture.add(culture, size);
             if let Some((k, c)) = mob {
                 nat.mobilizable.push((k, c, size, pid));
@@ -541,7 +518,7 @@ mod tests {
 
     fn scan() -> Scan {
         Scan { world_pop: 0, owners: Vec::new(), nations: FxMap::default(), pop_ids: Vec::new(),
-               pop_kinds: Vec::new(), words: Interner::default(), seen: Vec::new() }
+               pop_kinds: Vec::new(), seen: Vec::new() }
     }
 
     /// As `PROVINCE_FIELDS` reads a pop: a field with no value is no field,
@@ -559,6 +536,6 @@ mod tests {
         assert_eq!(nat.total_pop, 100);
         assert_eq!(nat.starving, 0);
         assert_eq!(s.pop_ids, vec![7]);
-        assert_eq!(nat.pop_by_culture.order, vec![b"british".to_vec()]);
+        assert_eq!(nat.pop_by_culture.order, vec![names::intern(b"british")]);
     }
 }

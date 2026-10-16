@@ -19,19 +19,21 @@
 // the cap, the ships -- is finished after (`finish`).
 
 use crate::deflate;
+use crate::country::{Ship, Stack};
 use crate::engine::model::{Meta, Nation};
+use crate::names::{self, Sym};
 use crate::omap::OMap;
 use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::{floordiv, push_csv_field, push_float, push_int, push_json_float,
                    push_json_str, round, trunc_int, Num};
-use crate::engine::rules::{impact_for, naval_profile, rate_for, save_world, Held, Mod, World, D};
+use crate::engine::rules::{impact_for, naval_profile, rate_for, save_world, Mod, World, D};
 
 /// `finishing.Finish`, and the few things of the run the tables need.
 /// Its `rate` is not here: it is the rate a run with no mod uses, and the
 /// engine is handed only runs with one.
 pub struct Spec {
     pub pop_per_regiment: i64,
-    pub mob_types: FxSet<String>,
+    pub mob_types: FxSet<Sym>,
     pub include_occupied: bool,
     pub player_nations: Option<Vec<String>>,
     pub wanted: Option<FxSet<String>>,
@@ -79,8 +81,6 @@ pub struct Pre {
     pub nations: Vec<PreNation>,
     /// The state snapshot, packed as the page carries it.
     pub chunk: String,
-    /// What the invention pass keeps of each nation.
-    pub held: Vec<Held>,
 }
 
 /// `players_in(meta, nations, told)`.
@@ -149,30 +149,30 @@ fn brigade_cap(nat: &Nation, defines: &FxMap<String, f64>, ppr: i64) -> i64 {
 /// `state_history.Snapshot`.
 #[derive(Default)]
 pub struct Snapshot {
-    words: OMap<String, usize>,
+    words: OMap<Sym, usize>,
     layouts: OMap<(Vec<usize>, Vec<usize>), usize>,
     nations: Vec<(String, String)>,
 }
 
 impl Snapshot {
-    fn word(&mut self, value: &str) -> usize {
+    fn word(&mut self, value: Sym) -> usize {
         let n = self.words.len();
-        *self.words.entry(value.to_string(), || n)
+        *self.words.entry(value, || n)
     }
 
     fn add(&mut self, tag: &str, nat: &Nation, regions: &FxMap<i64, String>) {
         let mut rows = String::from("[");
         for (i, g) in nat.population_by_state.iter().enumerate() {
             let region = match regions.get(&g.group) {
-                Some(r) if !r.is_empty() => r.clone(),
-                _ => format!("province:{}", g.group),
+                Some(r) if !r.is_empty() => names::intern_str(r),
+                _ => names::intern_str(&format!("province:{}", g.group)),
             };
-            let types: Vec<usize> = g.types.iter().map(|(t, _)| self.word(t)).collect();
+            let types: Vec<usize> = g.types.iter().map(|(t, _)| self.word(*t)).collect();
             let cultures: Vec<usize> = g.cultures.iter()
-                .map(|(c, _)| 2 * self.word(c) + nat.accepts(c) as usize).collect();
+                .map(|(c, _)| 2 * self.word(*c) + nat.accepts(*c) as usize).collect();
             let n = self.layouts.len();
             let index = *self.layouts.entry((types, cultures), || n);
-            let region_word = self.word(&region);
+            let region_word = self.word(region);
             if i > 0 {
                 rows.push(',');
             }
@@ -215,7 +215,7 @@ impl Snapshot {
             if i > 0 {
                 raw.push(',');
             }
-            push_json_str(&mut raw, w);
+            push_json_str(&mut raw, names::text(*w));
         }
         raw.push_str("],[");
         for (i, (types, cultures)) in self.layouts.keys().enumerate() {
@@ -268,12 +268,8 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
     let pairs: Vec<(String, Nation)> = keys.into_iter().zip(nations).collect();
     let playing = players(&meta, &pairs, &spec.player_nations);
     let mut snapshot = Snapshot::default();
-    let mut held = Vec::with_capacity(pairs.len());
     let mut out = Vec::with_capacity(pairs.len());
     for (tag, mut nat) in pairs {
-        held.push(Held { tag: tag.clone(), record_tag: nat.tag.clone(),
-                         tech_list: nat.tech_list.clone(), invention_ids: nat.invention_ids.clone(),
-                         government: nat.government.clone() });
         let kept = spec.keeps(&tag, &nat);
         let mut pre = PreNation { tag: tag.clone(), nat: Nation::default(), kept,
                                   is_player: false, buckets: Vec::new(), pool: 0, entries: 0,
@@ -282,7 +278,7 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
             pre.is_player = playing.contains(&tag);
             // `mobilization_clusters`.
             for (poptype, culture, size, pid) in &nat.mobilizable_pops {
-                if !spec.mob_types.contains(poptype) || !nat.accepts(culture) {
+                if !spec.mob_types.contains(poptype) || !nat.accepts(*culture) {
                     continue;
                 }
                 if nat.colonial_provinces.contains(pid)
@@ -309,7 +305,7 @@ pub fn prepare(meta: Meta, nations: Vec<Nation>, keys: Vec<String>, spec: &Spec)
         pre.nat = nat;
         out.push(pre);
     }
-    Pre { meta, nations: out, chunk: snapshot.pack(), held }
+    Pre { meta, nations: out, chunk: snapshot.pack() }
 }
 
 // ------------------------------------------------------------- pass two
@@ -366,7 +362,7 @@ pub struct Row {
     pub date: String,
     pub year: String,
     pub is_player: bool,
-    pub nat: Nation,
+    pub facts: RowFacts,
     pub accepted_pop: i64,
     pub accepted_pct: f64,
     pub primary_culture_pop: i64,
@@ -392,16 +388,101 @@ pub struct Row {
     pub accepted_cultures: String,
 }
 
+/// What `Row::get` reads of a finished nation, and nothing else: the rest of
+/// the `Nation` is let go when the row is made.
+pub struct RowFacts {
+    pub tag: String,
+    pub primary_culture: Sym,
+    pub civilized: String,
+    pub provinces: i64,
+    pub states: i64,
+    pub total_pop: i64,
+    pub pop_noncolonial: i64,
+    pub brigades: i64,
+    pub regular_brigades: i64,
+    pub mobilized_brigades: i64,
+    pub mobilizing: i64,
+    pub is_mobilized: i64,
+    pub armies: i64,
+    pub ships: i64,
+    pub navies: i64,
+    pub factory_count: i64,
+    pub factory_levels: i64,
+    pub ports: i64,
+    pub naval_base_levels: Num,
+    pub max_naval_base: Num,
+    pub railroad_levels: Num,
+    pub fort_levels: Num,
+    pub techs: i64,
+    pub army_techs: i64,
+    pub navy_techs: i64,
+    pub prestige: f64,
+    pub infamy: f64,
+    pub treasury: f64,
+    pub tax_base: f64,
+    pub research_points: f64,
+    pub war_exhaustion: f64,
+    pub plurality: f64,
+    pub soldiers_noncolonial: i64,
+    pub life_unmet: i64,
+    pub starving: i64,
+    pub pop_by_type: OMap<Sym, i64>,
+}
+
+impl RowFacts {
+    /// The facts, moved (or copied, for the scalars) out of `nat`.
+    fn take(nat: &mut Nation) -> RowFacts {
+        RowFacts {
+            tag: std::mem::take(&mut nat.tag),
+            primary_culture: nat.primary_culture,
+            civilized: std::mem::take(&mut nat.civilized),
+            provinces: nat.provinces,
+            states: nat.states,
+            total_pop: nat.total_pop,
+            pop_noncolonial: nat.pop_noncolonial,
+            brigades: nat.brigades,
+            regular_brigades: nat.regular_brigades,
+            mobilized_brigades: nat.mobilized_brigades,
+            mobilizing: nat.mobilizing,
+            is_mobilized: nat.is_mobilized,
+            armies: nat.armies,
+            ships: nat.ships,
+            navies: nat.navies,
+            factory_count: nat.factory_count,
+            factory_levels: nat.factory_levels,
+            ports: nat.ports,
+            naval_base_levels: nat.naval_base_levels,
+            max_naval_base: nat.max_naval_base,
+            railroad_levels: nat.railroad_levels,
+            fort_levels: nat.fort_levels,
+            techs: nat.techs,
+            army_techs: nat.army_techs,
+            navy_techs: nat.navy_techs,
+            prestige: nat.prestige,
+            infamy: nat.infamy,
+            treasury: nat.treasury,
+            tax_base: nat.tax_base,
+            research_points: nat.research_points,
+            war_exhaustion: nat.war_exhaustion,
+            plurality: nat.plurality,
+            soldiers_noncolonial: nat.soldiers_noncolonial,
+            life_unmet: nat.life_unmet,
+            starving: nat.starving,
+            pop_by_type: std::mem::take(&mut nat.pop_by_type),
+        }
+    }
+}
+
 impl Row {
     /// `row[col]`, for a column of `spending.BASE_COLUMNS` or a `pop_<type>`.
     pub fn get(&self, col: &str) -> Val<'_> {
-        let n = &self.nat;
+        let n = &self.facts;
         match col {
             "date" => Val::S(&self.date),
             "year" => Val::S(&self.year),
             "tag" => Val::S(&n.tag),
             "is_player" => Val::B(self.is_player),
-            "primary_culture" => Val::S(&n.primary_culture),
+            "primary_culture" => Val::S(names::text(n.primary_culture)),
             "civilized" => Val::S(&n.civilized),
             "provinces" => Val::I(n.provinces),
             "states" => Val::I(n.states),
@@ -459,7 +540,7 @@ impl Row {
             "starving_pct" => Val::F(self.starving_pct),
             "accepted_cultures" => Val::S(&self.accepted_cultures),
             _ => match col.strip_prefix("pop_") {
-                Some(t) => Val::I(n.pop_by_type.get(t).copied().unwrap_or(0)),
+                Some(t) => Val::I(n.pop_by_type.get(&names::intern_str(t)).copied().unwrap_or(0)),
                 None => Val::S(""),
             },
         }
@@ -469,21 +550,20 @@ impl Row {
 /// One save's share of the payload's per-nation tables (`PerNation`).
 #[derive(Default)]
 pub struct PerNation {
-    pub ships: Vec<(String, Vec<(String, i64)>)>,
-    pub crews: Vec<(String, Vec<(String, f64)>)>,
-    pub brigades: Vec<(String, Vec<(String, i64)>)>,
+    pub ships: Vec<(String, Vec<(Sym, i64)>)>,
+    pub crews: Vec<(String, Vec<(Sym, f64)>)>,
+    pub brigades: Vec<(String, Vec<(Sym, i64)>)>,
     pub techs: Vec<(String, Vec<String>)>,
-    pub pops: Vec<(String, Vec<(String, i64)>)>,
+    pub pops: Vec<(String, Vec<(Sym, i64)>)>,
     pub cultures: Vec<(String, Vec<(String, i64, i64)>)>,
 }
 
 /// What survives of a nation for the rest of the run (`KEEP_NATION`).
 pub struct Kept {
     pub tag: String,
-    pub units_at: OMap<i64, OMap<String, i64>>,
-    pub men_at: OMap<i64, OMap<String, i64>>,
-    pub primary_culture: String,
-    pub accepted_cultures: Vec<String>,
+    pub units_at: Vec<Stack>,
+    pub primary_culture: Sym,
+    pub accepted_cultures: Vec<Sym>,
     pub government: String,
     pub capital: String,
 }
@@ -560,9 +640,9 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
     let columns = &spec.columns;
 
     for pre in nations {
-        let PreNation { tag, nat, kept, is_player, buckets, pool, entries, cap_rule } = pre;
+        let PreNation { tag, mut nat, kept, is_player, buckets, pool, entries, cap_rule } = pre;
         if !kept {
-            kept_out.push(trim(&tag, &nat));
+            kept_out.push(trim(&tag, &mut nat));
             continue;
         }
         let rate = rate_for(&nat, m, live, Some(&world), is_player)?;
@@ -591,8 +671,8 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
             if total != 0 { round(100.0 * part as f64 / total as f64, digits) } else { 0.0 }
         };
         let accepted_pop: i64 = nat.pop_by_culture.iter()
-            .filter(|(c, _)| nat.accepts(c)).map(|(_, s)| *s).sum();
-        let primary_pop = nat.pop_by_culture.get(nat.primary_culture.as_str()).copied().unwrap_or(0);
+            .filter(|(c, _)| nat.accepts(**c)).map(|(_, s)| *s).sum();
+        let primary_pop = nat.pop_by_culture.get(&nat.primary_culture).copied().unwrap_or(0);
         let mut policy = String::new();
         let mut cap = 0i64;
         let index = trunc_int(if nat.ruling_party.truthy() { nat.ruling_party.as_f64() } else { 0.0 })
@@ -615,14 +695,95 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
                 .map(|(_, v)| v.as_slice()).unwrap_or(&[]);
             if !layers.is_empty() {
                 nat.pop_by_type.iter()
-                    .filter(|(t, _)| layers.get(t.as_str()).map(|s| s.as_str()) == Some(name))
+                    .filter(|(t, _)| layers.get(names::text(**t)).map(|s| s.as_str()) == Some(name))
                     .map(|(_, s)| *s).sum()
             } else {
-                vanilla.iter().map(|t| nat.pop_by_type.get(t.as_str()).copied().unwrap_or(0)).sum()
+                vanilla.iter().map(|t| nat.pop_by_type.get(&names::intern_str(t)).copied().unwrap_or(0)).sum()
             }
         };
-        let mut accepted: Vec<&String> = nat.accepted_cultures.iter().collect();
+        let mut accepted: Vec<&str> = nat.accepted_cultures.iter().map(|s| names::text(*s)).collect();
         accepted.sort();
+        let head = [Val::S(&date), Val::S(&year), Val::S(&tag)];
+
+        // ships_by_type.csv, and the payload's ships and crews.
+        let mut ship_types: Vec<&Ship> = nat.ships_by_type.iter().collect();
+        ship_types.sort_by(|a, b| names::cmp(a.kind, b.kind));
+        let (mut count_of, mut crew_of) = (Vec::new(), Vec::new());
+        for ship in ship_types {
+            let effective = Num::F(round(ship.crew, 3));
+            csv_line(&mut text[1], &[head[0], head[1], head[2], Val::S(names::text(ship.kind)),
+                                     Val::I(ship.count), Val::N(effective)]);
+            count_of.push((ship.kind, ship.count));
+            let e = effective.as_f64();
+            if (e - ship.count as f64).abs() > 0.005 {
+                crew_of.push((ship.kind, round(e, 2)));
+            }
+        }
+        if !count_of.is_empty() {
+            tables.ships.push((tag.clone(), count_of));
+        }
+        if !crew_of.is_empty() {
+            tables.crews.push((tag.clone(), crew_of));
+        }
+        if nat.ships != 0 {
+            let profile = naval_profile(&nat, m);
+            naval.push((tag.clone(), profile_key(&profile), profile));
+        }
+        for (good, amount) in nat.goods_supply.iter() {
+            supply.push((good.clone(), tag.clone(), *amount));
+        }
+        let mut regiments: Vec<&(Sym, i64)> = nat.regiments_by_type.iter().collect();
+        regiments.sort_by(|a, b| names::cmp(a.0, b.0));
+        let mut held = Vec::new();
+        for &(rtype, count) in regiments {
+            csv_line(&mut text[2], &[head[0], head[1], head[2], Val::S(names::text(rtype)),
+                                     Val::I(count)]);
+            held.push((rtype, count));
+        }
+        if !held.is_empty() {
+            tables.brigades.push((tag.clone(), held));
+        }
+        let mut techs: Vec<Sym> = nat.tech_list.clone();
+        techs.sort_by(|a, b| names::cmp(*a, *b));
+        let dense = m.dense();
+        let mut names: Vec<String> = Vec::with_capacity(techs.len());
+        for tech in &techs {
+            let (branch, line) = dense.tech_group(*tech).unwrap_or(("other", "Other"));
+            let tech = names::text(*tech);
+            csv_line(&mut text[3], &[head[0], head[1], head[2], Val::S(tech), Val::S(branch),
+                                     Val::S(line)]);
+            names.push(tech.to_string());
+        }
+        if !names.is_empty() {
+            tables.techs.push((tag.clone(), names));
+        }
+        let mut pops: Vec<(&Sym, &i64)> = nat.pop_by_type.iter().collect();
+        pops.sort_by(|a, b| names::cmp(*a.0, *b.0));
+        let mut held = Vec::new();
+        for (ptype, size) in pops {
+            csv_line(&mut text[4], &[head[0], head[1], head[2], Val::S(names::text(*ptype)),
+                                     Val::I(*size)]);
+            held.push((*ptype, *size));
+        }
+        if !held.is_empty() {
+            tables.pops.push((tag.clone(), held));
+        }
+        // Largest first; a stable sort, so equal sizes keep the save's order.
+        let mut cultures: Vec<(&Sym, &i64)> = nat.pop_by_culture.iter().collect();
+        cultures.sort_by(|a, b| b.1.cmp(a.1));
+        let accepted_set = |c: Sym| nat.accepted_cultures.contains(&c)
+            || nat.primary_culture == c;
+        let mut largest = Vec::new();
+        for (culture, size) in cultures {
+            let acc = accepted_set(*culture) as i64;
+            let culture = names::text(*culture);
+            csv_line(&mut text[5], &[head[0], head[1], head[2], Val::S(culture), Val::I(*size),
+                                     Val::I(acc)]);
+            largest.push((culture.to_string(), *size, acc));
+        }
+        if !largest.is_empty() {
+            tables.cultures.push((tag.clone(), largest));
+        }
         let row = Row {
             key: tag.clone(),
             date: date.clone(),
@@ -652,107 +813,26 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
             soldiers_noncolonial_pct: pct(nat.soldiers_noncolonial, 3),
             life_unmet_pct: pct(nat.life_unmet, 3),
             starving_pct: pct(nat.starving, 3),
-            accepted_cultures: accepted.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(";"),
-            nat,
+            accepted_cultures: accepted.join(";"),
+            facts: RowFacts::take(&mut nat),
         };
-        let nat = &row.nat;
-        let head = [Val::S(&date), Val::S(&year), Val::S(&tag)];
-
-        // ships_by_type.csv, and the payload's ships and crews.
-        let mut ship_types: Vec<(&String, &i64)> = nat.ships_by_type.iter().collect();
-        ship_types.sort();
-        let (mut count_of, mut crew_of) = (Vec::new(), Vec::new());
-        for (stype, count) in ship_types {
-            let effective = match nat.ship_crew.get(stype.as_str()) {
-                Some(c) => Num::F(round(*c, 3)),
-                None => Num::I(*count),
-            };
-            csv_line(&mut text[1], &[head[0], head[1], head[2], Val::S(stype), Val::I(*count),
-                                     Val::N(effective)]);
-            count_of.push((stype.clone(), *count));
-            let e = effective.as_f64();
-            if (e - *count as f64).abs() > 0.005 {
-                crew_of.push((stype.clone(), round(e, 2)));
-            }
-        }
-        if !count_of.is_empty() {
-            tables.ships.push((tag.clone(), count_of));
-        }
-        if !crew_of.is_empty() {
-            tables.crews.push((tag.clone(), crew_of));
-        }
-        if nat.ships != 0 {
-            let profile = naval_profile(nat, m);
-            naval.push((tag.clone(), profile_key(&profile), profile));
-        }
-        for (good, amount) in nat.goods_supply.iter() {
-            supply.push((good.clone(), tag.clone(), *amount));
-        }
-        let mut regiments: Vec<(&String, &i64)> = nat.regiments_by_type.iter().collect();
-        regiments.sort();
-        let mut held = Vec::new();
-        for (rtype, count) in regiments {
-            csv_line(&mut text[2], &[head[0], head[1], head[2], Val::S(rtype), Val::I(*count)]);
-            held.push((rtype.clone(), *count));
-        }
-        if !held.is_empty() {
-            tables.brigades.push((tag.clone(), held));
-        }
-        let mut names: Vec<String> = nat.tech_list.clone();
-        names.sort();
-        for tech in &names {
-            let (branch, line) = match spec.tech_group.get(tech) {
-                Some((b, l)) => (b.as_str(), l.as_str()),
-                None => ("other", "Other"),
-            };
-            csv_line(&mut text[3], &[head[0], head[1], head[2], Val::S(tech), Val::S(branch),
-                                     Val::S(line)]);
-        }
-        if !names.is_empty() {
-            tables.techs.push((tag.clone(), names));
-        }
-        let mut pops: Vec<(&String, &i64)> = nat.pop_by_type.iter().collect();
-        pops.sort();
-        let mut held = Vec::new();
-        for (ptype, size) in pops {
-            csv_line(&mut text[4], &[head[0], head[1], head[2], Val::S(ptype), Val::I(*size)]);
-            held.push((ptype.clone(), *size));
-        }
-        if !held.is_empty() {
-            tables.pops.push((tag.clone(), held));
-        }
-        // Largest first; a stable sort, so equal sizes keep the save's order.
-        let mut cultures: Vec<(&String, &i64)> = nat.pop_by_culture.iter().collect();
-        cultures.sort_by(|a, b| b.1.cmp(a.1));
-        let accepted_set = |c: &str| nat.accepted_cultures.iter().any(|a| a == c)
-            || nat.primary_culture == c;
-        let mut largest = Vec::new();
-        for (culture, size) in cultures {
-            let acc = accepted_set(culture) as i64;
-            csv_line(&mut text[5], &[head[0], head[1], head[2], Val::S(culture), Val::I(*size),
-                                     Val::I(acc)]);
-            largest.push((culture.clone(), *size, acc));
-        }
-        if !largest.is_empty() {
-            tables.cultures.push((tag.clone(), largest));
-        }
         let vals: Vec<Val> = columns.iter().map(|c| row.get(c)).collect();
         csv_line(&mut text[0], &vals);
-        kept_out.push(trim(&tag, &row.nat));
+        kept_out.push(trim(&tag, &mut nat));
         rows.push(row);
     }
     Ok(Spent { meta, nations: kept_out, chunk, rows, tables, naval, supply, text })
 }
 
-fn trim(tag: &str, nat: &Nation) -> Kept {
+/// `nat`'s units, cultures, government and capital, moved out of it.
+fn trim(tag: &str, nat: &mut Nation) -> Kept {
     Kept {
         tag: tag.to_string(),
-        units_at: nat.units_at.clone(),
-        men_at: nat.men_at.clone(),
-        primary_culture: nat.primary_culture.clone(),
-        accepted_cultures: nat.accepted_cultures.clone(),
-        government: nat.government.clone(),
-        capital: nat.capital.clone(),
+        units_at: std::mem::take(&mut nat.units_at),
+        primary_culture: nat.primary_culture,
+        accepted_cultures: std::mem::take(&mut nat.accepted_cultures),
+        government: std::mem::take(&mut nat.government),
+        capital: std::mem::take(&mut nat.capital),
     }
 }
 

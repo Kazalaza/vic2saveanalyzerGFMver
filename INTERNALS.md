@@ -504,6 +504,255 @@ occupied; only that third one took anything.
 
 ## Speed
 
+### Units and ships, flat, 2026-10-04
+
+**What changed.**
+- Two commits. First the ships, regiments and units are keyed by `Sym`
+  with the containers as they were; then the flattening.
+- A nation's ships are one `Vec<Ship { kind, count, crew }>` (was
+  `ships_by_type` and `ship_crew`, two maps with the same keys in the same
+  order), its regiments a `Vec<(Sym, i64)>`, and its units one
+  `Vec<Stack { pid, kind, n, men }>` (was `units_at` and `men_at`, a map of
+  maps each): grouped by province in the order the provinces were first met,
+  and by kind inside a province in the order the kinds were first met. Both
+  orders reach the output (the page's armies come out in nation order, then
+  province order; the kinds of one province are a stable sort by count, so
+  ties keep first-seen), so `add_stack` puts a new kind at the end of its
+  province's group and a new province last, and nothing else reorders it.
+  `Stack::provinces` walks the groups.
+- The two readers (`country.rs` and `walk.rs`) count into one `Units` in
+  `country.rs`, interning a name once a regiment or ship and scanning a
+  `Vec` of at most a few kinds, where they hashed the name's bytes three
+  times (`country.rs`) or searched three `String` tallies (`walk.rs`).
+- Ships, regiments and pop types are sorted by `names::cmp` (their text)
+  before output; the ship, crew, brigade and pop tables of `finish` and the
+  `ByTag` tables of the page carry `Sym`s and make text where it is written.
+- The cache writes the bytes the old maps wrote (the ships' counts, then
+  their crews, then the provinces' counts, then their men) and reads them
+  into the flat form, refusing an entry whose halves disagree. The entries
+  are the same size to the byte, `V2ENGC02` is unchanged and an entry from
+  either side of this change reads on the other.
+- A regiment's men are cut to an integer as it is counted; the old tally
+  summed floats and cut the sum. They differ only where a strength is not
+  finite (`nan`, `inf`), which the game does not write.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 2.53 M, 346.5 MB | 1.67 M, 291.5 MB |
+| a whole `PreNation`, held | 1.44 M allocations | 0.58 M |
+| `Kept`, held | 825,603 allocations | 47,029 |
+| `read_countries`, allocations a save | 33,785 | 28,589 |
+| warm cache load, allocations a save | 11,780 | 8,539 |
+| warm pass one | 0.117 s | 0.106 s |
+| warm rebuild, empty-cache run | 0.805 s, 2.222 s | 0.807 s, 2.219 s |
+
+(Alternating rounds, medians, `abwarm.py`; `speed/MODEL.md` 4.7 has every
+number, including part one's alone.) **What did not pan out:** the 0.02-0.03
+s the task file estimated for the empty-cache run: the allocations went but
+the clocks barely moved (the countries' reader is 13 ms a save of thread
+time, `build` 1 ms). **Not done:** `naval_profile`'s 793,000 allocations,
+which are strings and `Changes` clones, not ships, so this change did not
+make them cheap to fix.
+
+### Carrying less, the tech lists and the rates, 2026-10-04
+
+**What changed.**
+- `Held` is gone. The invention pass (`rules::settle_campaign`, `holdings`,
+  `index_base_for`), `--explain-mob`'s `index_holdings`, `say_mod` and `--cross`'s
+  nation names read `PreNation` (its `tag`, `nat.tag`, `nat.tech_list`,
+  `nat.invention_ids`, `nat.government`) instead of a second copy of them. An
+  entry in the engine cache no longer ends with the copy: an entry made by an
+  earlier build is refused by the length check (a miss, rebuilt), and the
+  other way about.
+- `Row.nat` is `Row.facts`, a `RowFacts` of what `Row::get` reads (the scalars,
+  the four levels, `civilized`, `tag`, `primary_culture`, `pop_by_type`). `finish`
+  builds the tables from the whole nation, then moves those out and moves
+  `Kept`'s four fields out (`trim` takes them, it no longer clones), and
+  the rest of the nation is let go there, in pass two's threads.
+- `tech_list`, `modifiers`, `reforms` and `nationalvalue` are `Sym`s in both
+  readers (`country.rs`, `walk.rs`), the fold and the cache (written as their
+  text). Order is the order the save gave (`reforms` is an `OMap<Sym, Sym>`).
+  The technologies table sorts on `names::cmp`.
+- The rates' lookups are `rules::Dense`, made in `run_spec` right after the
+  campaign is settled and held in `Mod.dense`: `tech_mob`, `event_mob`,
+  `nv_mob` and the modifiers' impacts are `Vec<f64>`s indexed by `Sym::index()`,
+  `reform_mob` a map on two `Sym`s, the techs' branch and line and the naval tech
+  effects are indexes into small tables. A name interned after the build is
+  past the end and reads as absent, which is what the mod says of it.
+  `Sym::index` is for these tables only; nothing sorts or prints by it.
+- A nation's held inventions (a set of the mod's names) are made on the first
+  `invention` trigger that asks, from the mod's names without copying them.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 3.53 M, 394 MB | 2.53 M, 347 MB |
+| live after the walk | 4.24 M | 2.35 M |
+| `rate_for` + `impact_for` allocations | 1.91 M | 58,000 |
+| warm cache load, allocations a save | 15,565 | 11,780 |
+| settle | 0.042 s | 0.023 s |
+| warm pass two | 0.076 s | 0.044 s |
+| warm rebuild | 0.867 s | 0.796 s |
+| empty-cache run | 2.149 s | 2.045 s |
+
+(Alternating rounds against the build before the task, medians; everything in
+`speed/MODEL.md` 4.6.) **What did not pan out:** the walk (0.072 s to 0.070 s)
+did not gain from `Row.nat` going although it was 2.34 M allocations: it
+does not free them. The dense tables moved nothing on their own; the rates'
+gain was the Strings made for the parts and the invention set. `Held` going
+did not shorten the settle (the first commit made it 0.007 s slower): its
+cost was hashing the tech names, which the `Sym`s halved. **Not done:**
+`naval_profile` (50-70 ms and 793,000 allocations of thread time, 5,661
+calls), `goods_supply`, `country_flags` and the scalar names.
+
+### Pops and cultures on `Sym`, 2026-10-03
+
+**What changed.** The provinces look a pop's type and culture up in the name
+table once (`names::intern`) and hand the `Sym` to every counter it feeds: the
+nation's `pop_by_type` and `pop_by_culture`, the state's types and cultures.
+`Counter` is keyed by `Sym` (`order`, `index`, `total` as before) and the
+scanner's own `Interner` is gone: the mobilizable pops and the pop kinds of the
+pops regiments name are `Sym`s. `Nation.pop_by_type`, `pop_by_culture`,
+`accepted_cultures`, `primary_culture`, `Group.types` and `cultures`,
+`mobilizable_pops`, `Kept`, `Spec.mob_types`, `PopulationRules.accepted` and
+`Country.accepted_cultures` are all `Sym`; the cache writes them as the text
+they stand for, as before. Containers and their order are what they were
+(`pop_by_culture` is still sorted by size with a stable sort, so equal sizes
+keep the save's order; a state's types and cultures still number the chunk's
+words and layouts in the order the reader met them). Every sort that was on a
+string is `names::cmp` (the pop-type table's names, the accepted cultures'
+list in a row and in `--explain-mob`), and the text comes back only where it is
+written: the CSVs, the payload's tables, `--explain-mob`.
+
+| | before | after |
+|---|---|---|
+| allocations a save, empty cache | 177,600 | 140,300 |
+| of which `read_provinces`, `build`, `prepare` | 85,000 | 38,300 |
+| live allocations after pass one | 3.95 M | 3.53 M |
+| empty-cache pass one | 1.457 s | 1.379 s |
+| empty-cache run | 2.216 s | 2.150 s |
+| warm rebuild | 0.862 s | 0.861 s |
+
+(Alternating rounds against the build before this stage, medians; the rest in
+`speed/MODEL.md` 4.5.) The first run gained what the task file expected, the
+warm rebuild did not move, and the counters and the groups are now so small
+that flattening them would take 2% of the allocations that are left, so they
+were left as `OMap`s and `Vec`s. **Not done, on the counts:** dense tables for
+`strata` and `culture_groups` (285,000 string lookups in a whole campaign, 11
+ms of thread time) and one `Vec` a nation for the groups.
+
+**What is left of pass one, and where its time is** (one thread, per save):
+the provinces 18.3 ms of 49, the countries 10.6, reading the file 5.0 and
+finding its blocks 4.9, `prepare` 4.0, the wars and market 3.7, the cache store
+1.6, `build` 1.1. The wars and market are still half the allocations and 7.5%
+of the time.
+
+### The wars on `Sym`, and what a warm pass one costs, 2026-10-03
+
+**The wars.** `War`, `Goal`, `FirstGoal`, `Battle` and `Side` hold every name,
+tag and date as a `Sym`; a side's units are an `OMap<Sym, i64>`; the war
+`Book` (`Held`, its keys, `join_dates`, `goalbook`), `wars::build`,
+`rules::save_world` and the cache's records follow. Containers and their order
+are as they were: the wars, a war's battles and goals, a side's units reach the
+page in the order the file gave them. Every sort and every date parse works on
+the text (`names::cmp`, `year_fraction(names::text(..))`); `sorted_names` in
+`model.rs` still sorts the bytes, which orders latin-1 names as their text is
+ordered. `War` is still compared whole by the `Book`, and the comparison is
+now a few integers a record. `save_world`'s `at_war` is a set of `Sym`, asked
+with `names::intern_str(&nat.tag)`. `explain.rs` needed nothing: it only calls
+`save_world`.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 7.15 M | 3.95 M |
+| what `Meta.wars` holds | 4.14 M allocations | 1.02 M |
+| a warm load, allocations a save | 28,922 | 17,167 |
+| warm pass one | 0.205 s | 0.141 s |
+| warm rebuild | 0.980 s | 0.897 s |
+| empty-cache run | 2.406 s | 2.287 s |
+
+(Alternating rounds against the build before this stage, medians. The raw
+numbers and the expected figures are in `speed/MODEL.md` 4.4.)
+
+**The first version of this was slower.** With only the wars on `Sym` the warm
+pass one went from 0.205 s to 0.337 s although it made four million fewer
+allocations. On the `windows-gnu` target a `thread_local!` access calls
+`std::sys::thread_local::guard::windows::enable`, which does three locked
+operations on one counter every thread shares; the name table's per-thread
+cache was reached that way about 5.5 M times on 31 workers, and 110 of 160
+sampled threads were in it. The cache is now behind a `TlsAlloc` slot read
+with `TlsGetValue` (`names.rs`; other targets keep `thread_local!`). **Any
+thread-local on a hot path needs the same, on Windows.**
+
+**A serial 35 ms.** After the workers, pass one wrote an empty marker file for
+each of 265 saves on the thread the workers hand to, whether or not it was
+there. Only the saves that had no marker are marked: warm pass one 0.178 s to
+0.149 s.
+
+**What a warm pass one is now:** 0.024 s of one thread's setup (a stat and a
+hash a file), then about 0.12 s with all 31 workers busy to the end. What is
+left in the workers is not the allocator, the page faults, the name table or
+an imbalance (each tried, `MODEL.md` 4.4); a load repeated by the same worker
+costs a quarter of its first. It is the open question.
+
+**Tried and dropped:** `Side.units` as one `Vec` (0.4 M fewer allocations;
+pass one 0.171 s to 0.169 s). A name table that gives a thread every name added
+since it last looked (6 ms, noise). Neither is in the tree.
+
+### The name table, the owners and the market, 2026-10-03
+
+**The war records are freed on a thread nothing waits for.** The walk's
+thread that folds the saves' war records into the `Book` used to drop them
+before it returned (4.1 M small allocations), and the walk waited: 0.13 s of
+every warm rebuild. The drop is `std::thread::spawn(move || drop(wars))` and
+nothing joins it; if the process ends first the work is not done. (Not
+`mem::forget`: quicker still, and 189 MB more at the peak.) Warm rebuild, six
+alternating rounds: 1.213 s to 1.055 s, the walk 0.207 s to 0.071 s. Because
+it changes how the run ends it was checked through a pipe, hosted, and for a
+leftover process (`speed/pipecheck.sh`, which looks with `tasklist` on
+Windows).
+
+**`names.rs`: one table of the names a run meets.** A `Sym` is a `u32`. The
+table is shared by every thread; each thread keeps a cache in front of it
+(bytes to name for the saves, text to name for the mod, the spec and the
+cache), so a name met before is a hash and a compare with no lock and no
+allocation. Names are leaked. Ids are handed out in the order threads first
+meet names, so they differ from run to run, and nothing may depend on one:
+`Sym` has no `Ord` and its number is private to the file, a cache entry is
+written by the names' text, and order by name is `names::cmp`.
+`VIC2_ENGINE_NAMES_SHIFT=k` takes the first `k` ids for placeholders, which
+moves every id and every hash order; the real campaign gives the same answers
+with it set, and a cache made with it is read by a run without
+(`speed/warmshift.py`).
+
+**What uses it so far:** the provinces' owners (`Scan.owners` and
+`Meta.province_owner`, `(i64, Sym, Sym)` where there were two `Vec<u8>`s and
+then two `String`s a province), and the world market (`Market.current`,
+`history`, `snapshot`). The containers are the ones they were; only the keys
+changed. `report.rs` and `wars.rs` read the text where they write it, and
+everything that came out of a hash order is sorted on `names::cmp` first. The
+cache writes a `Sym` through the entry's string table exactly as it wrote a
+`String`, so entries are byte for byte what they were and the magic is the
+same.
+
+| | before | after |
+|---|---|---|
+| live allocations after pass one | 9.61 M | 7.15 M |
+| a warm load, allocations a save | 38,200 | 28,922 |
+| what `Meta` holds besides the wars | 2.47 M allocations | 8,000 |
+| warm rebuild | 1.009 s | 0.951 s |
+| warm `map: owners` | 0.043 s | 0.010 s |
+| warm pass one | 0.205 s | 0.203 s |
+| empty-cache run | 2.336 s | 2.193 s |
+
+(Alternating rounds of the commit before against this one, medians.) **The
+warm cache load did not get quicker with its allocations**: a quarter fewer,
+a tenth less thread time, two milliseconds of wall. What the load costs is not
+mostly the allocator, and that is why the next stages are gated on it.
+
+**Tried and dropped:** nothing was dropped; the containers were not flattened
+(the task asks for that only where the counts say it pays, and `OMap` and
+`Vec` of two or three words per entry are not what is left to count).
+
 ### The state chunk is compressed at level 5, 2026-10-03
 
 Each save's state-history chunk (`Snapshot::pack`, `finish.rs`) is JSON,

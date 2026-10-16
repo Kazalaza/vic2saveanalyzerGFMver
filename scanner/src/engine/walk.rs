@@ -20,10 +20,11 @@
 // what they find goes into the same record the scan fills.
 
 use crate::clause::{unquote, V};
-use crate::country::{Country, Tables};
+use crate::country::{Country, Tables, Units};
 use crate::engine::modread::{block_end, py_float, str_of};
 use crate::fx::{FxMap, FxSet};
 use crate::province::{accumulate, pop_known, Parts, Pop, PopulationRules, Scan};
+use crate::names;
 use crate::pyre::space;
 
 /// `v2parse.Tokens`: a cursor over `TOKEN_RE`, one token of pushback, and a
@@ -331,43 +332,6 @@ fn items_of(v: &V) -> Vec<&V> {
 
 // ----------------------------------------------------------- the units
 
-#[derive(Default)]
-struct Tally {
-    order: Vec<String>,
-    total: Vec<f64>,
-}
-
-impl Tally {
-    fn add(&mut self, name: &str, by: f64) {
-        match self.order.iter().position(|o| o == name) {
-            Some(i) => self.total[i] += by,
-            None => {
-                self.order.push(name.to_string());
-                self.total.push(by);
-            }
-        }
-    }
-    fn ints(&self) -> Vec<(String, i64)> {
-        self.order.iter().cloned().zip(self.total.iter().map(|v| *v as i64)).collect()
-    }
-    fn floats(&self) -> Vec<(String, f64)> {
-        self.order.iter().cloned().zip(self.total.iter().copied()).collect()
-    }
-}
-
-#[derive(Default)]
-struct Units {
-    brigades: i64,
-    armies: i64,
-    navies: i64,
-    ships: i64,
-    regiment_pops: Vec<i64>,
-    by_type: Tally,
-    ships_by_type: Tally,
-    ship_crew: Tally,
-    at: Vec<(i64, Tally, Tally)>,
-}
-
 /// `readsave.count_units`.
 fn count_units(node: &V, out: &mut Units, where_: Option<i64>) -> Result<(), String> {
     for (key, value) in pairs(node) {
@@ -384,19 +348,8 @@ fn count_units(node: &V, out: &mut Units, where_: Option<i64>) -> Result<(), Str
                 let raw = text(&get(reg, b"type").map(str_of).unwrap_or_default());
                 let rtype = if py_float(raw.as_bytes()).is_some() { String::new() } else { raw };
                 let rtype = if rtype.is_empty() { "unknown".to_string() } else { rtype };
-                out.by_type.add(&rtype, 1.0);
-                if let Some(w) = where_ {
-                    let i = match out.at.iter().position(|(p, _, _)| *p == w) {
-                        Some(i) => i,
-                        None => {
-                            out.at.push((w, Tally::default(), Tally::default()));
-                            out.at.len() - 1
-                        }
-                    };
-                    out.at[i].1.add(&rtype, 1.0);
-                    let men = (to_float(get(reg, b"strength"), 0.0) * 1000.0).round_ties_even();
-                    out.at[i].2.add(&rtype, men);
-                }
+                let men = (to_float(get(reg, b"strength"), 0.0) * 1000.0).round_ties_even();
+                out.regiment(names::intern_str(&rtype), where_, men);
             }
         } else if key == b"ship" {
             for ship in sub_blocks(value) {
@@ -405,10 +358,9 @@ fn count_units(node: &V, out: &mut Units, where_: Option<i64>) -> Result<(), Str
                     Some(v) => text(&str_of(v)),
                     None => "unknown".to_string(),
                 };
-                out.ships_by_type.add(&kind, 1.0);
                 let strength = to_float(get(ship, b"strength"), 100.0) / 100.0;
                 let experience = (to_float(get(ship, b"experience"), 0.0) / 100.0).clamp(0.0, 0.95);
-                out.ship_crew.add(&kind, strength.max(0.0) / (1.0 - experience));
+                out.ship(names::intern_str(&kind), strength.max(0.0) / (1.0 - experience));
             }
         } else if key == b"army" || key == b"navy" {
             let blocks = sub_blocks(value);
@@ -469,7 +421,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                         let block = parse_block(&mut sub, &[]);
                         if matches!(block, V::List(_) | V::Dict(_)) {
                             out.accepted_cultures = items_of(&block).iter()
-                                .map(|c| text(&str_of(c))).collect();
+                                .map(|c| crate::names::intern_str(&text(&str_of(c)))).collect();
                         }
                     }
                     b"flags" => {
@@ -484,7 +436,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                     b"modifier" => {
                         let block = parse_block(&mut sub, &[]);
                         if let Some(m) = get(&block, b"modifier") {
-                            out.modifiers.push(text(unquote(&str_of(m))));
+                            out.modifiers.push(crate::names::intern_str(&text(unquote(&str_of(m)))));
                         }
                     }
                     b"saved_country_supply" => {
@@ -559,7 +511,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                                 } else if tables.navy_techs.iter().any(|t| *t == name) {
                                     out.navy_techs += 1;
                                 }
-                                out.tech_list.push(name);
+                                out.tech_list.push(crate::names::intern_str(&name));
                             }
                         }
                     }
@@ -572,7 +524,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                 } else if key == b"human" {
                     out.human = clean.eq_ignore_ascii_case(b"yes");
                 } else if tables.reform_keys.iter().any(|r| r.as_bytes() == key) {
-                    out.reforms.push((text(key), text(unquote(clean))));
+                    out.reforms.push((crate::names::intern_str(&text(key)), crate::names::intern_str(&text(unquote(clean)))));
                 } else if let Some((_, name)) = SCALARS.iter().find(|(k, _)| *k == key) {
                     out.scalars.push((name.to_string(), text(clean)));
                 } else if let Some((_, name)) = NUMERICS.iter().find(|(k, _)| *k == key) {
@@ -581,16 +533,7 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
             }
         }
     }
-    out.brigades = units.brigades;
-    out.armies = units.armies;
-    out.navies = units.navies;
-    out.ships = units.ships;
-    out.regiment_pops = units.regiment_pops;
-    out.regiments_by_type = units.by_type.ints();
-    out.ships_by_type = units.ships_by_type.ints();
-    out.ship_crew = units.ship_crew.floats();
-    out.units_at = units.at.iter().map(|(p, t, _)| (*p, t.ints())).collect();
-    out.men_at = units.at.iter().map(|(p, _, m)| (*p, m.ints())).collect();
+    units.into_country(&mut out);
     Ok(out)
 }
 
@@ -768,11 +711,10 @@ pub fn read<'a>(text_: &'a [u8], pop_types: &[Vec<u8>], mob_types: &[Vec<u8>], t
         if looks_like_country_tag(key) {
             let country = read_country(text_, *at, &text(key), tables)?;
             let rule = rules.entry(key.to_vec()).or_default();
-            let bytes = |s: &str| s.chars().map(|c| c as u8).collect::<Vec<_>>();
-            rule.accepted.extend(country.accepted_cultures.iter().map(|s| bytes(s)));
+            rule.accepted.extend(country.accepted_cultures.iter().copied());
             for (name, value) in &country.scalars {
                 if name == "primary_culture" && !value.is_empty() {
-                    rule.accepted.insert(bytes(value));
+                    rule.accepted.insert(crate::names::intern_str(value));
                 }
             }
             rule.colonial.extend(&country.colonial_provinces);

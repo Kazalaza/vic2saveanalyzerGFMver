@@ -474,8 +474,10 @@ sets one out, with the war goals and battles beside it:
 - **Strength**: each nation's brigades and ships at the last save before the
   war, or at the first save taken during it. Great-power ranks come from the
   same save. A war fought before the first save has neither.
-- **Casualties and losses**: what each nation lost in the battles it fought,
-  with each side's total.
+- **Casualties and losses**: each side's total, men and ships together. Not
+  by nation: a save keeps one loss figure for each side of a battle, under the
+  nation leading that side, and the men its allies had in the army are counted
+  in it, so a sum by nation would credit an ally's dead to whoever led them.
 - **War goals**: every demand the war carried, meaning the one it opened with
   plus any added while it ran. **Taken at the peace** compares who held the
   state before the war against who held it after. **Occupied mid-war** is a
@@ -484,6 +486,17 @@ sets one out, with the war goals and battles beside it:
 - **Land battles** and **naval battles**, separately, each sortable by date, by
   name, or by either side's losses. Every battle shows both commanders and what
   each side was made of.
+
+**Legacy**, beside the back button, lays a war out the way the old War Analyzer
+window did instead: a panel for each side with its war leader's flag, its total
+losses and ships lost, and its nations with the dates they joined and left; the
+war's general information and original war goal in the middle; and every battle
+beneath it, largest first. Its losses are men in land battles and its ships lost
+those sunk at sea, kept apart, and it has no losses by nation, for the reason
+above. The layout chosen is kept for the next war opened until the report is
+closed. A few of the old window's fields are not shown, because the report does
+not read them from the saves: the war's action date, and the original war
+goal's country, score and change.
 
 Nations are named even when they were gone before the first save, such as
 Baden or the North German Federation, as long as the mod names them.

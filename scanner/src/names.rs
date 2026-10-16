@@ -28,7 +28,8 @@
 // `--cross` run is a few campaigns, a few thousand names each.
 
 use crate::fx::FxMap;
-use std::cell::RefCell;
+#[cfg(not(windows))]
+use std::cell::Cell;
 use std::sync::{Mutex, OnceLock};
 
 /// A name. Equal ids are equal names within one run; the number means
@@ -41,6 +42,17 @@ impl Sym {
     pub fn is_empty(self) -> bool {
         self.0 == 0
     }
+
+    /// The id's number, for indexing a dense table built after pass one
+    /// (`rules::Dense`). Never an order: nothing may sort or print by it.
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// How many names there are now, the empty one included.
+pub fn len() -> usize {
+    table().lock().unwrap_or_else(|e| e.into_inner()).texts.len()
 }
 
 impl std::fmt::Debug for Sym {
@@ -94,14 +106,58 @@ struct Local {
     mirror: Vec<&'static str>,
 }
 
-thread_local! {
-    static LOCAL: RefCell<Local> = RefCell::new(Local::default());
+// A thread's `Local` is reached through a plain pointer, made on the thread's
+// first use and never freed. Not through `thread_local!` on Windows: there
+// std's thread-locals go through `guard::enable` on every access, which does
+// three locked operations on one counter every thread shares, and with 31
+// workers reading a few million names it was most of a warm load (gdb
+// samples: 110 of 160 threads inside it). The system's own slot costs a load.
+#[cfg(windows)]
+fn local_ptr() -> *mut Local {
+    use std::ffi::c_void;
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn TlsAlloc() -> u32;
+        fn TlsGetValue(index: u32) -> *mut c_void;
+        fn TlsSetValue(index: u32, value: *mut c_void) -> i32;
+    }
+    static SLOT: OnceLock<u32> = OnceLock::new();
+    let slot = *SLOT.get_or_init(|| unsafe { TlsAlloc() });
+    // SAFETY: plain calls into the system's thread-local slots.
+    unsafe {
+        let mut at = TlsGetValue(slot) as *mut Local;
+        if at.is_null() {
+            at = Box::into_raw(Box::new(Local::default()));
+            TlsSetValue(slot, at as *mut c_void);
+        }
+        at
+    }
+}
+
+#[cfg(not(windows))]
+fn local_ptr() -> *mut Local {
+    thread_local! {
+        static LOCAL: Cell<*mut Local> = const { Cell::new(std::ptr::null_mut()) };
+    }
+    LOCAL.with(|cell| {
+        let mut at = cell.get();
+        if at.is_null() {
+            at = Box::into_raw(Box::new(Local::default()));
+            cell.set(at);
+        }
+        at
+    })
+}
+
+fn with_local<R>(f: impl FnOnce(&mut Local) -> R) -> R {
+    // SAFETY: the pointer is this thread's alone and is never freed, and
+    // nothing run inside `f` comes back here for the same thread.
+    f(unsafe { &mut *local_ptr() })
 }
 
 /// The name a save's bytes spell, decoded the way `text::latin1` does.
 pub fn intern(bytes: &[u8]) -> Sym {
-    LOCAL.with(|l| {
-        let mut l = l.borrow_mut();
+    with_local(|l| {
         if let Some(&s) = l.by_bytes.get(bytes) {
             return s;
         }
@@ -113,13 +169,12 @@ pub fn intern(bytes: &[u8]) -> Sym {
 
 /// The name this text spells.
 pub fn intern_str(name: &str) -> Sym {
-    LOCAL.with(|l| {
-        let mut l = l.borrow_mut();
+    with_local(|l| {
         if let Some(&s) = l.by_text.get(name) {
             return s;
         }
         let s = shared(name);
-        let text = text_in(&mut l, s);
+        let text = text_in(l, s);
         l.by_text.insert(text, s);
         s
     })
@@ -137,7 +192,7 @@ fn text_in(l: &mut Local, s: Sym) -> &'static str {
 
 /// What the name says.
 pub fn text(s: Sym) -> &'static str {
-    LOCAL.with(|l| text_in(&mut l.borrow_mut(), s))
+    with_local(|l| text_in(l, s))
 }
 
 /// Order by what the names say, which is the order of the strings they
