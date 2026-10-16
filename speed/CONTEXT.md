@@ -148,7 +148,7 @@ culture names, tech names, and so on.
 ## How to verify each step
 
 - `python3 testkit/all.py "$VIC2_SAVES" --mod "$VIC2_MOD"`:
-  all 28 checks must hold.
+  all 29 checks must hold.
 - Mutations: `testkit/mutate.py` on a worktree, never the main tree. Copy
   `scanner/target/release/vic2scan` into the worktree first. The worktree
   `~/.cache/vic2speed/rw/retire-mut` exists for this: check it out at the

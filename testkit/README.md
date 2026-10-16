@@ -22,7 +22,7 @@ one that broke.
 
 ### On Windows
 
-All 28 hold there, as on Linux, against the same recorded answers. What a
+All 29 hold there, as on Linux, against the same recorded answers. What a
 run prints with backslashes is held to the record's slashes by
 `expected.stand_in_for` (the names below a check's own folder only), and
 `expected.os_wording` says Windows' words for a folder opened as a file and
@@ -47,6 +47,7 @@ python3 testkit/invariants.py out/nations_timeseries.csv out/report.html
 python3 testkit/mangled.py ["/path/to/one/save.v2"]
 python3 testkit/boots.py out/report.html
 python3 testkit/state_history_ui.py out/report.html # every decoded state value and order
+python3 testkit/war_legacy_ui.py [out/report.html]  # both war layouts; no losses by nation
 python3 testkit/map_rendering.py out/report.html # map pixels, seams, and cache reuse
 python3 testkit/looks.py out/report.html shot.png   # for eyes, not for CI
 python3 testkit/keeping.py                        # no saves needed
@@ -340,6 +341,17 @@ the map tab with no map in it, every section inside hidden, the page blank
 Needs Firefox; says so and passes if there is none. A `--split` report will
 fail it, and should: its payload is a separate file, and a browser will not
 fetch that over `file://`.
+
+**`war_legacy_ui.py`** checks the war view's two layouts, the infobox and
+the legacy one (the old War Analyzer window), and that neither credits
+casualties to a nation. A save keeps one loss figure for each side of a
+battle, under the nation leading that side, with its allies' men counted in
+it, so a nation's losses summed from battles were the losses of every army
+it led. It builds a campaign whose war has an ally leading one battle and a
+naval one, and checks every figure in both layouts, the legacy one's
+columns and sort, and that the chosen layout is kept for the next war.
+Given a report, it also opens every war in it both ways and checks that the
+sides' totals add up to the war's and its battles'. Needs Firefox.
 
 **`looks.py`** takes a picture of a report so somebody can look at it.
 Nothing here can pass or fail on a picture, and it earned its place anyway:
