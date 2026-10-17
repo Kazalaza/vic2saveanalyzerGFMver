@@ -316,6 +316,34 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         obj(&mut j, k.nations.iter().filter(|n| !n.capital.is_empty())
             .map(|n| (n.tag.as_str(), &n.capital)), |o, c| push_json_str(o, c));
     }
+    // Who is whose subject, by save: [overlord, subject, kind] with the two
+    // as indices into `tags`. A relation whose either end holds no land in
+    // any save has nothing to draw and is left out.
+    j.push_str("},\"subjects\":{");
+    for (si, k) in parsed.iter().enumerate() {
+        if si > 0 {
+            j.push(',');
+        }
+        push_json_str(&mut j, &k.meta.date);
+        j.push_str(":[");
+        let mut first = true;
+        for (over, under, kind) in &k.meta.subjects {
+            if let (Some(a), Some(b)) = (by_sym.get(over), by_sym.get(under)) {
+                if !first {
+                    j.push(',');
+                }
+                first = false;
+                j.push('[');
+                push_int(&mut j, *a as i64);
+                j.push(',');
+                push_int(&mut j, *b as i64);
+                j.push(',');
+                push_int(&mut j, *kind);
+                j.push(']');
+            }
+        }
+        j.push(']');
+    }
     j.push_str("},\"populationStates\":{");
     for (si, k) in parsed.iter().enumerate() {
         if si > 0 {
@@ -562,18 +590,28 @@ fn flags_for(m: &Mod, parsed: &[Kept1], book: &Book) -> (String, String) {
     // Everyone else flies one flag for the whole report: the one their
     // government in the last save that holds them calls for, not the plain
     // flag a nation with no government to ask would get.
+    //
+    // That is every nation in every save, not only the great powers and the
+    // nations that fought. The page looks a nation's flag up here wherever it
+    // shows one -- the country page, the tables, the maps -- and a nation with
+    // no entry gets a swatch of its colour in the flag's place, which is what a
+    // peaceful country like La Plata showed. The war fighters come first so
+    // their flags are in the report in the same order as before.
     let mut last_gov: FxMap<&str, &str> = FxMap::default();
+    let mut order: Vec<&str> = Vec::new();
     for k in parsed {
         for n in &k.nations {
-            last_gov.insert(n.tag.as_str(), n.government.as_str());
+            if last_gov.insert(n.tag.as_str(), n.government.as_str()).is_none() {
+                order.push(n.tag.as_str());
+            }
         }
     }
-    for tag in wars::fighters(book) {
+    let fighters = wars::fighters(book);
+    for tag in fighters.iter().map(|t| t.as_str()).chain(order.iter().copied()) {
         let key = format!("{}|", tag);
-        if !flags.contains_key(&key) {
-            let name: &str = &tag;
-            let gov = last_gov.get(name).copied().unwrap_or("");
-            if let Some(uri) = mapflags::flag_image(&m.flag_roots, &tag, gov, &m.flag_styles) {
+        if !flags.contains_key(&key) && tried.insert(key.clone()) {
+            let gov = last_gov.get(tag).copied().unwrap_or("");
+            if let Some(uri) = mapflags::flag_image(&m.flag_roots, tag, gov, &m.flag_styles) {
                 flags.set(key, uri);
             }
         }

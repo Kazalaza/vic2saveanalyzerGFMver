@@ -108,6 +108,9 @@ pub struct Meta {
     /// is the order the game numbers its countries in. Empty when the save
     /// gave no way to do that, and then the mod's `countries.txt` is used.
     pub great_tags: Vec<String>,
+    /// Who is whose subject in this save: (overlord, subject, kind) with kind
+    /// 0 a vassal, 1 a personal union, 2 a substate. See `read_subjects`.
+    pub subjects: Vec<(Sym, Sym, i64)>,
     pub wars: Vec<War>,
     pub market: Option<Market>,
 }
@@ -368,6 +371,7 @@ pub struct Rest {
     pub great: Vec<i64>,
     /// `great`, as tags in the save's own country order (see `Meta`).
     pub great_tags: Vec<String>,
+    pub subjects: Vec<(Sym, Sym, i64)>,
 }
 
 /// One save, as the engine keeps it: its meta and its nations holding land
@@ -435,6 +439,7 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
         province_owner: scan.owners.clone(),
         great_nations: rest.great,
         great_tags: rest.great_tags,
+        subjects: rest.subjects,
         wars: rest.wars,
         market: rest.market,
     };
@@ -713,7 +718,98 @@ pub fn read_rest(text: &[u8], blocks: &[(&[u8], usize, usize)]) -> R<Rest> {
     // Every number must land on a country, or the save's order is not what
     // it was taken to be and the mod's list is the safer answer.
     let great_tags = if great_tags.len() == great.len() { great_tags } else { Vec::new() };
-    Ok(Rest { wars, market, great, great_tags })
+    let subjects = read_subjects(text);
+    Ok(Rest { wars, market, great, great_tags, subjects })
+}
+
+/// The subject relations a save lists, as (overlord, subject, kind).
+///
+/// A relation is a block of three fields, the first naming the overlord and
+/// the second the subject:
+///
+/// ```text
+/// vassal=
+/// {
+///     first="LPL"
+///     second="PRG"
+///     start_date="1865.1.10"
+/// }
+/// ```
+///
+/// `vassal` is a puppet (kind 0), `union` a personal union (1) and `substate`
+/// a substate (2). Other blocks use the same two fields -- `alliance`,
+/// `casus_belli` -- and are left alone, and so are the `vassal` blocks inside
+/// a country's AI, which carry `id` and `value` and are how much it wants a
+/// vassal, not whether it has one.
+///
+/// Where the game writes these is not relied on: every `second="` in the file
+/// is a candidate, and one is taken only if it is the second field of a block
+/// whose first is a country and whose name is one of the three. That is one
+/// pass of a plain byte search -- under a tenth of a second on a 110 MB save --
+/// and it finds the relations wherever they are. The same pair listed twice is
+/// one relation.
+pub fn read_subjects(text: &[u8]) -> Vec<(Sym, Sym, i64)> {
+    const MARK: &[u8] = b"second=\"";
+    let back_ws = |mut p: usize| {
+        while p > 0 && text[p - 1].is_ascii_whitespace() {
+            p -= 1;
+        }
+        p
+    };
+    let mut out: Vec<(Sym, Sym, i64)> = Vec::new();
+    let mut seen: FxSet<(Sym, Sym)> = FxSet::default();
+    let mut at = 0;
+    while let Some(i) = crate::text::find(text, MARK, at, text.len()) {
+        at = i + MARK.len();
+        // The subject: three characters and the closing quote.
+        let s0 = i + MARK.len();
+        if s0 + 4 > text.len() || text[s0 + 3] != b'"' || !looks_like_tag(&text[s0..s0 + 3]) {
+            continue;
+        }
+        // Backwards from `second`: the overlord's quoted tag, then `first=`.
+        let p = back_ws(i);
+        if p < 6 || text[p - 1] != b'"' || text[p - 5] != b'"' || !looks_like_tag(&text[p - 4..p - 1]) {
+            continue;
+        }
+        let q = back_ws(p - 5);
+        if q < 6 || text[q - 1] != b'=' {
+            continue;
+        }
+        let q = back_ws(q - 1);
+        if q < 5 || &text[q - 5..q] != b"first" {
+            continue;
+        }
+        // Then the opening brace, the `=` before it, and the block's name.
+        let q = back_ws(q - 5);
+        if q == 0 || text[q - 1] != b'{' {
+            continue;
+        }
+        let q = back_ws(q - 1);
+        if q == 0 || text[q - 1] != b'=' {
+            continue;
+        }
+        let end = back_ws(q - 1);
+        let mut start = end;
+        while start > 0 && (text[start - 1].is_ascii_alphabetic() || text[start - 1] == b'_') {
+            start -= 1;
+        }
+        if start > 0 && !text[start - 1].is_ascii_whitespace() {
+            continue;
+        }
+        let kind = match &text[start..end] {
+            b"vassal" => 0,
+            b"union" => 1,
+            b"substate" => 2,
+            _ => continue,
+        };
+        let over = names::intern(&text[p - 4..p - 1]);
+        let under = names::intern(&text[s0..s0 + 3]);
+        if over != under && seen.insert((over, under)) {
+            out.push((over, under, kind));
+        }
+    }
+    out.sort_by(|a, b| names::cmp(a.0, b.0).then(names::cmp(a.1, b.1)));
+    out
 }
 
 /// A country block's key: three capitals or digits, at least one a capital

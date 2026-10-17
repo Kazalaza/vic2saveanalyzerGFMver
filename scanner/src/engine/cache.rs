@@ -33,7 +33,7 @@ use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::Num;
 use std::io::Write;
 
-const MAGIC: &[u8; 8] = b"V2ENGC03";
+const MAGIC: &[u8; 8] = b"V2ENGC04";
 
 pub struct W {
     out: Vec<u8>,
@@ -425,7 +425,7 @@ fn get_stacks(r: &mut R) -> X<Vec<Stack>> {
 }
 
 keep_struct!(Meta { file, date, player, world_pop, province_owner, great_nations, great_tags,
-                    wars, market });
+                    subjects, wars, market });
 
 /// What `prepare` leaves of a nation: everything but the per-province
 /// tables it spent, which are empty by then and stay empty here.
