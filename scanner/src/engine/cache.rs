@@ -33,7 +33,7 @@ use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::Num;
 use std::io::Write;
 
-const MAGIC: &[u8; 8] = b"V2ENGC04";
+const MAGIC: &[u8; 8] = b"V2ENGC05";
 
 pub struct W {
     out: Vec<u8>,
@@ -424,7 +424,7 @@ fn get_stacks(r: &mut R) -> X<Vec<Stack>> {
     Ok(stacks)
 }
 
-keep_struct!(Meta { file, date, player, world_pop, province_owner, great_nations, great_tags,
+keep_struct!(Meta { file, date, player, world_pop, province_owner, province_layers, great_nations, great_tags,
                     subjects, wars, market });
 
 /// What `prepare` leaves of a nation: everything but the per-province

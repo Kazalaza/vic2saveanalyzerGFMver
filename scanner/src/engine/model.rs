@@ -103,6 +103,9 @@ pub struct Meta {
     pub world_pop: i64,
     /// (province, owner, controller), in the order the file lists them.
     pub province_owner: Vec<(i64, Sym, Sym)>,
+    /// (province, biggest culture, biggest religion, `layer_pack`) for every
+    /// owned province with people in it.
+    pub province_layers: Vec<(i64, Sym, Sym, i64)>,
     pub great_nations: Vec<i64>,
     /// `great_nations` turned into tags by the save's own country order, which
     /// is the order the game numbers its countries in. Empty when the save
@@ -437,6 +440,7 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
         player,
         world_pop: scan.world_pop,
         province_owner: scan.owners.clone(),
+        province_layers: scan.layers.clone(),
         great_nations: rest.great,
         great_tags: rest.great_tags,
         subjects: rest.subjects,

@@ -344,6 +344,55 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         }
         j.push(']');
     }
+    // What each owned province's people are, by save, for the map layers.
+    // `layerWords` numbers the culture and religion names once (0 is "no
+    // answer"); a save's rows then run five numbers to a province: its id,
+    // its biggest culture and religion by that numbering, its people, and
+    // literacy, culture share and religion share in thousandths, ten bits
+    // each. The people and the rest travel apart because one number holding
+    // both would be past what a JavaScript number keeps exactly.
+    let mut words: OMap<Sym, usize> = OMap::new();
+    words.set(names::intern(b""), 0);
+    for k in parsed.iter() {
+        for (_, c, r, _) in &k.meta.province_layers {
+            for w in [*c, *r] {
+                if !words.contains_key(&w) {
+                    let n = words.len();
+                    words.set(w, n);
+                }
+            }
+        }
+    }
+    j.push_str("},\"layerWords\":[");
+    for (i, (w, _)) in words.iter().enumerate() {
+        if i > 0 {
+            j.push(',');
+        }
+        push_json_str(&mut j, names::text(*w));
+    }
+    j.push_str("],\"provinceLayers\":{");
+    for (si, k) in parsed.iter().enumerate() {
+        if si > 0 {
+            j.push(',');
+        }
+        push_json_str(&mut j, &k.meta.date);
+        j.push_str(":[");
+        for (i, (pid, c, r, packed)) in k.meta.province_layers.iter().enumerate() {
+            if i > 0 {
+                j.push(',');
+            }
+            push_int(&mut j, *pid);
+            j.push(',');
+            push_int(&mut j, *words.get(c).unwrap_or(&0) as i64);
+            j.push(',');
+            push_int(&mut j, *words.get(r).unwrap_or(&0) as i64);
+            j.push(',');
+            push_int(&mut j, packed >> 30);
+            j.push(',');
+            push_int(&mut j, packed & ((1 << 30) - 1));
+        }
+        j.push(']');
+    }
     j.push_str("},\"populationStates\":{");
     for (si, k) in parsed.iter().enumerate() {
         if si > 0 {

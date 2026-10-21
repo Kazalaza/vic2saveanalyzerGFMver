@@ -575,13 +575,13 @@ fn building_level(v: Option<&V>) -> f64 {
 }
 
 /// `pop_culture`: the first field neither the game's own nor a number.
-fn pop_culture<'a>(pop: &[(&'a [u8], &'a [u8])]) -> Option<&'a [u8]> {
+fn pop_culture<'a>(pop: &[(&'a [u8], &'a [u8])]) -> Option<(&'a [u8], &'a [u8])> {
     for (key, val) in pop {
         if pop_known(key) || key.first() == Some(&b'_') {
             continue;
         }
         if py_float(val).is_none() {
-            return Some(key);
+            return Some((key, val));
         }
     }
     None
@@ -622,7 +622,9 @@ fn read_province(text_: &[u8], at: usize, pid: i64, pop_types: &[Vec<u8>], mob_t
                         kind: key,
                         id: field(b"id"),
                         size: field(b"size"),
-                        culture: pop_culture(&pop),
+                        culture: pop_culture(&pop).map(|c| c.0),
+                        religion: pop_culture(&pop).map(|c| crate::text::trim_end_b(c.1)).map(|v| {
+                            if v.len() >= 2 && v[0] == b'"' && v[v.len() - 1] == b'"' { &v[1..v.len() - 1] } else { v } }),
                         money: field(b"money"),
                         con: field(b"con"),
                         mil: field(b"mil"),
