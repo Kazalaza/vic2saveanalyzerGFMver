@@ -124,6 +124,8 @@ pub(crate) struct Pop<'a> {
     pub(crate) id: Option<&'a [u8]>,
     pub(crate) size: Option<&'a [u8]>,
     pub(crate) culture: Option<&'a [u8]>,
+    /// What the culture's own line says: `swedish=protestant`.
+    pub(crate) religion: Option<&'a [u8]>,
     pub(crate) money: Option<&'a [u8]>,
     pub(crate) con: Option<&'a [u8]>,
     pub(crate) mil: Option<&'a [u8]>,
@@ -208,6 +210,17 @@ pub(crate) struct Scan {
     pub(crate) seen: Vec<Vec<u8>>,
     pub(crate) pop_ids: Vec<i64>,
     pub(crate) pop_kinds: Vec<Sym>,
+    /// One row per owned province that holds people: (province, its biggest
+    /// culture, its biggest religion, `layer_pack`). The map layers read it.
+    pub(crate) layers: Vec<(i64, Sym, Sym, i64)>,
+}
+
+/// A province's figures in one number: its pops (up to 2^26), its literacy in
+/// thousandths, and the shares its biggest culture and religion hold, also in
+/// thousandths. Ten bits each, so none can spill into the next.
+pub(crate) fn layer_pack(size: i64, literacy: f64, culture: f64, religion: f64) -> i64 {
+    let m = |x: f64| ((x * 1000.0).round() as i64).clamp(0, 1023);
+    (size.clamp(0, (1 << 26) - 1) << 30) | (m(literacy) << 20) | (m(culture) << 10) | m(religion)
 }
 
 
@@ -321,6 +334,7 @@ pub(crate) fn read_province(
                         && !is_number_b(trim_end_b(value))
                     {
                         slot.culture = Some(key);
+                        slot.religion = Some(unquote_b(trim_end_b(value)));
                     }
                 }
             }
@@ -435,6 +449,8 @@ pub(crate) fn accumulate(
     let group = *population_groups.get(&pid).unwrap_or(&pid);
     let mut province_pop = 0;
     let mut province_literate = 0.0;
+    let mut by_culture: Vec<(Sym, i64)> = Vec::new();
+    let mut by_religion: Vec<(Sym, i64)> = Vec::new();
 
     for pop in &pops {
         if let Some(id) = pop.id {
@@ -471,6 +487,18 @@ pub(crate) fn accumulate(
         let state = nat.population_by_state.get_mut(&group).unwrap();
         state.types.add(kind, size);
         if let Some(culture) = culture { state.cultures.add(culture, size); }
+        if let Some(culture) = culture {
+            match by_culture.iter_mut().find(|(c, _)| *c == culture) {
+                Some(slot) => slot.1 += size,
+                None => by_culture.push((culture, size)),
+            }
+            if let Some(religion) = pop.religion.map(names::intern) {
+                match by_religion.iter_mut().find(|(c, _)| *c == religion) {
+                    Some(slot) => slot.1 += size,
+                    None => by_religion.push((religion, size)),
+                }
+            }
+        }
         if pop.kind == b"soldiers" {
             if home { nat.soldiers_noncolonial += size; }
             nat.soldier_pops_at.entry(pid).or_default().push(size);
@@ -500,6 +528,16 @@ pub(crate) fn accumulate(
         nat.mil_weighted += pop.mil.map_or(0.0, to_float_b) * size as f64;
         nat.money_total += pop.money.map_or(0.0, to_float_b);
     }
+    if province_pop > 0 {
+        // The first of equals wins, which is file order and so repeatable.
+        let top = |v: &[(Sym, i64)]| v.iter().fold(None::<(Sym, i64)>, |best, &(k, n)|
+            match best { Some((_, m)) if m >= n => best, _ => Some((k, n)) });
+        let share = |v: Option<(Sym, i64)>| v.map_or(0.0, |(_, n)| n as f64 / province_pop as f64);
+        let (c, r) = (top(&by_culture), top(&by_religion));
+        let none = names::intern(b"");
+        scan.layers.push((pid, c.map_or(none, |x| x.0), r.map_or(none, |x| x.0),
+            layer_pack(province_pop, province_literate / province_pop as f64, share(c), share(r))));
+    }
     let nat = scan.nations.get_mut(owner).unwrap();
     if province_pop > 0 {
         let state = nat.population_by_state.get_mut(&group).unwrap();
@@ -518,7 +556,7 @@ mod tests {
 
     fn scan() -> Scan {
         Scan { world_pop: 0, owners: Vec::new(), nations: FxMap::default(), pop_ids: Vec::new(),
-               pop_kinds: Vec::new(), seen: Vec::new() }
+               pop_kinds: Vec::new(), seen: Vec::new(), layers: Vec::new() }
     }
 
     /// As `PROVINCE_FIELDS` reads a pop: a field with no value is no field,
