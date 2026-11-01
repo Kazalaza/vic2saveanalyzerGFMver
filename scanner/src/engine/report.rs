@@ -1524,8 +1524,8 @@ fn section_series_facts(run: &Run, rows: &[Row], dates: &[String], tags: &[Strin
     }
     p.push('}');
     // facts, thinned of what series holds.
-    const FACTS: [(&str, char); 30] = [
-        ("total_pop", 'i'), ("accepted_pop", 'i'), ("accepted_pct", 'f'), ("avg_literacy", 'f'),
+    const FACTS: [(&str, char); 31] = [
+        ("total_pop", 'i'), ("pop_noncolonial", 'i'), ("accepted_pop", 'i'), ("accepted_pct", 'f'), ("avg_literacy", 'f'),
         ("avg_literacy_stated", 'f'), ("life_unmet", 'i'), ("life_unmet_pct", 'f'),
         ("starving", 'i'), ("starving_pct", 'f'), ("avg_militancy", 'f'),
         ("avg_consciousness", 'f'), ("brigades", 'i'), ("regular_brigades", 'i'),

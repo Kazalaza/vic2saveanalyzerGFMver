@@ -37,7 +37,7 @@ pub struct Tables {
     pub template: String,
 }
 
-const METRICS: [(&str, &str, &str); 44] = [
+const METRICS: [(&str, &str, &str); 45] = [
     ("output", "Economic output (factories + RGOs)", "count"),
     ("factory_output", "Factory output", "count"),
     ("rgo_output", "RGO output", "count"),
@@ -47,6 +47,7 @@ const METRICS: [(&str, &str, &str); 44] = [
     ("expenses", "Daily expenses", "count"),
     ("balance", "Daily balance", "count"),
     ("total_pop", "Total population", "count"),
+    ("pop_noncolonial", "Population excluding colonies", "count"),
     ("accepted_pop", "Accepted-culture population", "count"),
     ("accepted_pct", "Accepted share", "percent"),
     ("primary_culture_pop", "Primary-culture population", "count"),
