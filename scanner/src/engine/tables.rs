@@ -37,7 +37,15 @@ pub struct Tables {
     pub template: String,
 }
 
-const METRICS: [(&str, &str, &str); 36] = [
+const METRICS: [(&str, &str, &str); 44] = [
+    ("output", "Economic output (factories + RGOs)", "count"),
+    ("factory_output", "Factory output", "count"),
+    ("rgo_output", "RGO output", "count"),
+    ("artisan_output", "Artisan output", "count"),
+    ("output_per_capita", "Output per capita", "decimal"),
+    ("income", "Daily income", "count"),
+    ("expenses", "Daily expenses", "count"),
+    ("balance", "Daily balance", "count"),
     ("total_pop", "Total population", "count"),
     ("accepted_pop", "Accepted-culture population", "count"),
     ("accepted_pct", "Accepted share", "percent"),
@@ -76,7 +84,7 @@ const METRICS: [(&str, &str, &str); 36] = [
     ("pop_rich", "Rich strata", "count"),
 ];
 
-const BASE_COLUMNS: [&str; 60] = [
+const BASE_COLUMNS: [&str; 68] = [
     "date", "year", "tag", "is_player", "primary_culture", "civilized",
     "provinces", "states", "total_pop", "accepted_pop", "accepted_pct",
     "primary_culture_pop", "avg_literacy", "avg_literacy_stated",
@@ -90,6 +98,8 @@ const BASE_COLUMNS: [&str; 60] = [
     "mobilization_brigades", "mobilization_cap",
     "mobilization_available", "mobilization_remaining", "war_policy",
     "techs", "army_techs", "navy_techs", "prestige", "infamy", "treasury", "tax_base",
+    "factory_output", "rgo_output", "artisan_output", "output", "output_per_capita",
+    "income", "expenses", "balance",
     "research_points", "war_exhaustion", "plurality",
     "pop_poor", "pop_middle", "pop_rich",
     "soldiers_noncolonial", "soldiers_noncolonial_pct",

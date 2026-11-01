@@ -420,6 +420,11 @@ pub struct RowFacts {
     pub infamy: f64,
     pub treasury: f64,
     pub tax_base: f64,
+    pub factory_income: f64,
+    pub rgo_income: f64,
+    pub artisan_income: f64,
+    pub income: f64,
+    pub expenses: f64,
     pub research_points: f64,
     pub war_exhaustion: f64,
     pub plurality: f64,
@@ -462,6 +467,11 @@ impl RowFacts {
             infamy: nat.infamy,
             treasury: nat.treasury,
             tax_base: nat.tax_base,
+            factory_income: nat.factory_income,
+            rgo_income: nat.rgo_income,
+            artisan_income: nat.artisan_income,
+            income: nat.income,
+            expenses: nat.expenses,
             research_points: nat.research_points,
             war_exhaustion: nat.war_exhaustion,
             plurality: nat.plurality,
@@ -526,6 +536,14 @@ impl Row {
             "infamy" => Val::F(n.infamy),
             "treasury" => Val::F(n.treasury),
             "tax_base" => Val::F(n.tax_base),
+            "factory_output" => Val::F(n.factory_income),
+            "rgo_output" => Val::F(n.rgo_income),
+            "artisan_output" => Val::F(n.artisan_income),
+            "output" => Val::F(n.factory_income + n.rgo_income),
+            "output_per_capita" => Val::F(if n.total_pop > 0 { (n.factory_income + n.rgo_income) / (n.total_pop as f64 * 4.0) } else { 0.0 }),
+            "income" => Val::F(n.income),
+            "expenses" => Val::F(n.expenses),
+            "balance" => Val::F(n.income - n.expenses),
             "research_points" => Val::F(n.research_points),
             "war_exhaustion" => Val::F(n.war_exhaustion),
             "plurality" => Val::F(n.plurality),
@@ -582,6 +600,8 @@ pub struct Spent {
     pub naval: Vec<(String, String, Profile)>,
     /// (good, tag, amount)
     pub supply: Vec<(String, String, f64)>,
+    /// (tag, good, supply, offered to the world market, RGO income, sold at home)
+    pub econ: Vec<(String, String, f64, f64, f64, f64)>,
     /// The six tables' CSV text, in `PER_SAVE` order.
     pub text: [String; 6],
 }
@@ -635,6 +655,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
     let mut tables = PerNation::default();
     let mut naval = Vec::new();
     let mut supply = Vec::new();
+    let mut econ: Vec<(String, String, f64, f64, f64, f64)> = Vec::new();
     let mut text: [String; 6] = Default::default();
     let mut kept_out = Vec::with_capacity(nations.len());
     let columns = &spec.columns;
@@ -732,6 +753,24 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         for (good, amount) in nat.goods_supply.iter() {
             supply.push((good.clone(), tag.clone(), *amount));
         }
+        {
+            // Every good the nation makes, offers or digs up, once.
+            let mut goods: Vec<&String> = Vec::new();
+            for g in nat.goods_supply.keys().chain(nat.goods_pool.keys()).chain(nat.rgo_by_good.keys()).chain(nat.goods_sold.keys()) {
+                if !goods.contains(&g) {
+                    goods.push(g);
+                }
+            }
+            for g in goods {
+                let s = nat.goods_supply.get(g).copied().unwrap_or(0.0);
+                let p = nat.goods_pool.get(g).copied().unwrap_or(0.0);
+                let r = nat.rgo_by_good.get(g).copied().unwrap_or(0.0);
+                let h = nat.goods_sold.get(g).copied().unwrap_or(0.0);
+                if s > 0.0 || p > 0.0 || r > 0.0 || h > 0.0 {
+                    econ.push((tag.clone(), g.clone(), s, p, r, h));
+                }
+            }
+        }
         let mut regiments: Vec<&(Sym, i64)> = nat.regiments_by_type.iter().collect();
         regiments.sort_by(|a, b| names::cmp(a.0, b.0));
         let mut held = Vec::new();
@@ -821,7 +860,7 @@ pub fn finish(pre: Pre, spec: &Spec, m: &Mod, live: Option<&FxSet<String>>) -> D
         kept_out.push(trim(&tag, &mut nat));
         rows.push(row);
     }
-    Ok(Spent { meta, nations: kept_out, chunk, rows, tables, naval, supply, text })
+    Ok(Spent { meta, nations: kept_out, chunk, rows, tables, naval, supply, econ, text })
 }
 
 /// `nat`'s units, cultures, government and capital, moved out of it.

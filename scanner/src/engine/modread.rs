@@ -1620,6 +1620,49 @@ impl Reader {
         Ok(J::Obj(out))
     }
 
+    /// `tag -> {government: "#rrggbb"}`: the colours a country file gives a
+    /// government of its own, as `democracy = { 226 255 78 }` beside the
+    /// plain `color`. Only top-level lines count (parties are blocks).
+    fn government_colours(&self) -> D<J> {
+        let mut out = Vec::new();
+        for (tag, target) in self.country_files()?.iter() {
+            let text = String::from_utf8_lossy(&self.plain(target)?).into_owned();
+            let mut depth = 0i32;
+            let mut found: Vec<(String, J)> = Vec::new();
+            for line in text.split('\n') {
+                let line = line.split('#').next().unwrap_or("");
+                if depth == 0 {
+                    if let Some((key, rest)) = line.split_once('=') {
+                        let key = key.trim();
+                        let body = rest.trim();
+                        if key != "color" && !key.is_empty()
+                            && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+                            && body.starts_with('{') && body.contains('}')
+                        {
+                            let inner = &body[1..body.find('}').unwrap()];
+                            let nums: Vec<&str> = inner.split_whitespace().collect();
+                            if nums.len() == 3 && nums.iter().all(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())) {
+                                let mut s = String::from("#");
+                                for n in &nums {
+                                    let v: i64 = n.parse().unwrap_or(0);
+                                    s.push_str(&format!("{:02x}", v.clamp(0, 255)));
+                                }
+                                found.push((key.to_string(), J::Str(s)));
+                            }
+                        }
+                    }
+                }
+                for b in line.bytes() {
+                    if b == b'{' { depth += 1; } else if b == b'}' { depth -= 1; }
+                }
+            }
+            if !found.is_empty() {
+                out.push((l1(tag), J::Obj(found)));
+            }
+        }
+        Ok(J::Obj(out))
+    }
+
     fn sea_provinces(&self) -> D<Vec<i64>> {
         let target = self.map_file("default.map");
         if !is_file(&target) {
@@ -1676,6 +1719,7 @@ impl Reader {
         }
         let raw = Reader::read(&target)?;
         let mut out: OMap<i64, Vec<u8>> = OMap::new();
+        let mut order: Vec<i64> = Vec::new();
         let mut lines = raw.split_inclusive(|&c| c == b'\n');
         lines.next();
         for line in lines {
@@ -1687,12 +1731,31 @@ impl Reader {
                 Some(p) => p,
                 None => continue,
             };
+            order.push(pid);
             let name = strip(bits[4]);
             if !name.is_empty() && lower1(name) != b"x" {
                 out.set(pid, name.to_vec());
             }
         }
-        Ok(out.iter().map(|(p, n)| J::List(vec![J::Int(*p), js(n)])).collect())
+        // What the game shows is the localisation's `PROV<id>`, not the
+        // definition's internal name; a mod that adds provinces (GFM adds
+        // thousands) often leaves the definition blank or an `x` and names
+        // them only there. The localisation wins where it has an entry.
+        let wanted: HashSet<String> = order.iter().map(|p| format!("PROV{}", p)).collect();
+        let shown = self.text_localisation(&wanted)?;
+        let mut named: Vec<(i64, J)> = Vec::new();
+        for pid in &order {
+            if let Some(n) = shown.get(&format!("PROV{}", pid)) {
+                if !n.is_empty() {
+                    named.push((*pid, J::Str(n.clone())));
+                    continue;
+                }
+            }
+            if let Some(n) = out.get(pid) {
+                named.push((*pid, js(n)));
+            }
+        }
+        Ok(named.into_iter().map(|(p, n)| J::List(vec![J::Int(p), n])).collect())
     }
 
     fn flag_styles(&self) -> D<J> {
@@ -2230,6 +2293,7 @@ pub fn export(path: &str) -> D<J> {
     // not turned into a sentence: handed back, not refused.
     let later = |d: Decline| Decline(format!("the map or the flags: {}", d.0.trim_start_matches(RAISED)));
     put("colours", if has_map { r.country_colours().map_err(later)? } else { J::Obj(Vec::new()) });
+    put("gov_colours", if has_map { r.government_colours().map_err(later)? } else { J::Obj(Vec::new()) });
     put("sea", J::List(if has_map {
         r.sea_provinces().map_err(later)?.into_iter().map(J::Int).collect()
     } else { Vec::new() }));

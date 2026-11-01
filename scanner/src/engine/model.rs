@@ -103,9 +103,15 @@ pub struct Meta {
     pub world_pop: i64,
     /// (province, owner, controller), in the order the file lists them.
     pub province_owner: Vec<(i64, Sym, Sym)>,
+    /// (province, name) as the save names each owned province, and (province,
+    /// name) for each province of a state the save names.
+    pub province_names: Vec<(i64, Sym)>,
+    pub state_names: Vec<(i64, Sym)>,
     /// (province, biggest culture, biggest religion, `layer_pack`) for every
     /// owned province with people in it.
     pub province_layers: Vec<(i64, Sym, Sym, i64)>,
+    /// (province, railroad level, fort level, factory levels in its state).
+    pub province_extra: Vec<(i64, i64, i64, i64)>,
     pub great_nations: Vec<i64>,
     /// `great_nations` turned into tags by the save's own country order, which
     /// is the order the game numbers its countries in. Empty when the save
@@ -194,6 +200,12 @@ pub struct Nation {
     pub province_colonial: FxMap<i64, i64>,
     pub population_by_state: Vec<Group>,
     pub goods_supply: OMap<String, f64>,
+    /// What the country offers the world market, per good.
+    pub goods_pool: OMap<String, f64>,
+    /// What the country's own people and factories bought at home, per good.
+    pub goods_sold: OMap<String, f64>,
+    /// What each good's RGOs made (Σ `last_income`).
+    pub rgo_by_good: OMap<String, f64>,
     /// (pop type, culture, size, province), in save order.
     pub mobilizable_pops: Vec<(Sym, Sym, i64, i64)>,
     pub mob_excluded_culture: i64,
@@ -204,6 +216,13 @@ pub struct Nation {
     pub con_weighted: f64,
     pub mil_weighted: f64,
     pub money_total: f64,
+    /// What the economy made: Σ factory `last_income`, Σ RGO `last_income`,
+    /// Σ artisan `production_income`, and the budget's income and expenses.
+    pub factory_income: f64,
+    pub rgo_income: f64,
+    pub artisan_income: f64,
+    pub income: f64,
+    pub expenses: f64,
 }
 
 impl Default for Num {
@@ -246,6 +265,11 @@ fn fold_provinces(nat: &mut Nation, n: &crate::province::Nation) {
     nat.con_weighted += n.con_weighted;
     nat.mil_weighted += n.mil_weighted;
     nat.money_total += n.money_total;
+    nat.rgo_income += n.rgo_income;
+    for (g, v) in &n.rgo_by_good {
+        *nat.rgo_by_good.entry(names::text(*g).to_string(), || 0.0) += *v;
+    }
+    nat.artisan_income += n.artisan_income;
     nat.core_provinces.extend(n.cores.iter().copied());
     nat.occupied_provinces.extend(n.occupied.iter().copied());
     for (pid, flag) in &n.colonial {
@@ -330,6 +354,20 @@ fn fold_country(nat: &mut Nation, c: &Country) {
         }
         nat.goods_supply = m;
     }
+    if !c.goods_sold.is_empty() {
+        let mut m = OMap::new();
+        for (g, v) in &c.goods_sold {
+            m.set(g.clone(), *v);
+        }
+        nat.goods_sold = m;
+    }
+    if !c.goods_pool.is_empty() {
+        let mut m = OMap::new();
+        for (g, v) in &c.goods_pool {
+            m.set(g.clone(), *v);
+        }
+        nat.goods_pool = m;
+    }
     if !c.invention_ids.is_empty() {
         nat.invention_ids = c.invention_ids.clone();
     }
@@ -344,6 +382,9 @@ fn fold_country(nat: &mut Nation, c: &Country) {
     }
     nat.factory_count += c.factory_count;
     nat.factory_levels += c.factory_levels;
+    nat.factory_income += c.factory_income;
+    nat.income += c.income;
+    nat.expenses += c.expenses;
     nat.techs += c.techs;
     nat.tech_list.extend(c.tech_list.iter().copied());
     nat.army_techs += c.army_techs;
@@ -440,7 +481,21 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
         player,
         world_pop: scan.world_pop,
         province_owner: scan.owners.clone(),
+        province_names: scan.names.clone(),
+        state_names: countries.iter().flat_map(|c| c.state_names.iter()).flat_map(|(n, ps)| {
+            let s = names::intern_str(n);
+            ps.iter().map(move |p| (*p, s))
+        }).collect(),
         province_layers: scan.layers.clone(),
+        province_extra: {
+            let mut fac: FxMap<i64, i64> = FxMap::default();
+            for c in countries.iter() {
+                for (p, n) in &c.state_factories {
+                    fac.insert(*p, *n);
+                }
+            }
+            scan.extra.iter().map(|(p, r, f)| (*p, *r, *f, fac.get(p).copied().unwrap_or(0))).collect()
+        },
         great_nations: rest.great,
         great_tags: rest.great_tags,
         subjects: rest.subjects,

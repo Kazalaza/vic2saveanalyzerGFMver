@@ -63,6 +63,7 @@ struct Campaign {
     naval_profiles: Vec<Profile>,
     naval_of: ByTag<usize>,
     supply: OMap<String, OMap<String, OMap<String, f64>>>,
+    econ: Vec<(String, Vec<(String, String, f64, f64, f64, f64)>)>,
     parsed: Vec<Kept1>,
     book: Book,
 }
@@ -102,7 +103,7 @@ fn walk_tables(spent: Vec<Spent>) -> Campaign {
         rows: Vec::new(), ships: OMap::new(), crews: OMap::new(), brigades: OMap::new(),
         techs: OMap::new(), pops: OMap::new(), cultures: OMap::new(),
         text: Default::default(), naval_profiles: Vec::new(), naval_of: OMap::new(),
-        supply: OMap::new(), parsed: Vec::new(), book: Book::default(),
+        supply: OMap::new(), econ: Vec::new(), parsed: Vec::new(), book: Book::default(),
     };
     let mut naval_index: FxMap<String, usize> = FxMap::default();
     for s in spent {
@@ -128,6 +129,7 @@ fn walk_tables(spent: Vec<Spent>) -> Campaign {
         for (good, tag, amount) in s.supply {
             c.supply.entry(good, OMap::new).entry(date.clone(), OMap::new).set(tag, amount);
         }
+        c.econ.push((date.clone(), s.econ));
         let meta = s.meta;
         c.parsed.push(Kept1 { meta, nations: s.nations, chunk: s.chunk });
     }
@@ -143,6 +145,80 @@ struct MapOut {
 }
 
 /// `build_map`, less its state chunks, which travel beside the payload.
+/// `{province: [[date, name], ...]}`: each time the saves give a province (or,
+/// with `states`, the state it is in) a different name from the one before,
+/// starting from the mod's own. A state name of "" means the mod's own name is
+/// back. Text that is plainly not a place name (GFM events park message text
+/// in the same field) is dropped.
+fn name_changes(m: &Mod, parsed: &[Kept1], states: bool) -> String {
+    let place = |s: &str| !s.is_empty() && s.chars().count() <= 40
+        && !s.contains(|c: char| ".,!?;:\"".contains(c));
+    let base = |pid: i64| -> String {
+        if states {
+            m.province_regions.get(&pid).and_then(|r| m.state_names.get(r)).cloned().unwrap_or_default()
+        } else {
+            m.province_names.get(&pid).cloned().unwrap_or_default()
+        }
+    };
+    let mut cur: std::collections::BTreeMap<i64, String> = std::collections::BTreeMap::new();
+    let mut out: std::collections::BTreeMap<i64, Vec<(String, String)>> = std::collections::BTreeMap::new();
+    for k in parsed {
+        let list = if states { &k.meta.state_names } else { &k.meta.province_names };
+        let mut now: FxMap<i64, &str> = FxMap::default();
+        for (pid, n) in list {
+            let s = names::text(*n);
+            if place(s) {
+                now.insert(*pid, s);
+            }
+        }
+        let mut keys: Vec<i64> = now.keys().copied().collect();
+        if states {
+            keys.extend(cur.keys().copied().filter(|p| !now.contains_key(p)));
+        }
+        keys.sort_unstable();
+        for pid in keys {
+            let was = cur.get(&pid).cloned().unwrap_or_else(|| if states { String::new() } else { base(pid) });
+            let next = match now.get(&pid) {
+                Some(s) => s.to_string(),
+                None if states => String::new(),
+                None => continue,
+            };
+            if next == was {
+                continue;
+            }
+            // A state name equal to the mod's own is the same as none.
+            let shown = if states && next == base(pid) { String::new() } else { next.clone() };
+            let before_shown = if states && was == base(pid) { String::new() } else { was.clone() };
+            cur.insert(pid, next);
+            if shown != before_shown {
+                out.entry(pid).or_default().push((k.meta.date.clone(), shown));
+            }
+        }
+    }
+    let mut s = String::from("{");
+    for (i, (pid, list)) in out.iter().enumerate() {
+        if i > 0 {
+            s.push(',');
+        }
+        s.push('"');
+        s.push_str(&pid.to_string());
+        s.push_str("\":[");
+        for (j, (d, n)) in list.iter().enumerate() {
+            if j > 0 {
+                s.push(',');
+            }
+            s.push('[');
+            push_json_str(&mut s, d);
+            s.push(',');
+            push_json_str(&mut s, n);
+            s.push(']');
+        }
+        s.push(']');
+    }
+    s.push('}');
+    s
+}
+
 fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
     if m.path.is_empty() {
         return None;
@@ -215,6 +291,37 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
             m.colours.get(t).map(|c| (t, c))
         }),
         |o, c| push_json_str(o, c));
+    // `govColours`: per save, the tags whose government has a colour of its
+    // own that differs from the plain one -- `{date: {tag: "#rrggbb"}}`.
+    j.push_str(",\"govColours\":{");
+    {
+        let mut firstd = true;
+        for k in parsed {
+            let mut row: Vec<(&str, &str)> = Vec::new();
+            for n in &k.nations {
+                if let Some(c) = m.gov_colours.get(n.tag.as_str()).and_then(|g| g.get(n.government.as_str())) {
+                    if m.colours.get(n.tag.as_str()) != Some(c) && index.contains_key(n.tag.as_str()) {
+                        row.push((n.tag.as_str(), c.as_str()));
+                    }
+                }
+            }
+            if row.is_empty() {
+                continue;
+            }
+            if !firstd { j.push(','); }
+            firstd = false;
+            push_json_str(&mut j, &k.meta.date);
+            j.push_str(":{");
+            for (i, (t, c)) in row.iter().enumerate() {
+                if i > 0 { j.push(','); }
+                push_json_str(&mut j, t);
+                j.push(':');
+                push_json_str(&mut j, c);
+            }
+            j.push('}');
+        }
+    }
+    j.push('}');
     j.push_str(",\"sea\":[");
     for (i, s) in m.sea.iter().enumerate() {
         if i > 0 {
@@ -231,8 +338,10 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         o.push(']');
     });
     j.push_str(",\"names\":");
-    let names: OMap<i64, &String> = m.province_names.iter()
-        .filter(|(p, _)| spots.contains_key(*p)).map(|(p, n)| (*p, n)).collect();
+    // Every named province, not only those with a unit position: a mod that
+    // adds provinces (GFM adds thousands) may not give the new ones one, and
+    // they would show up as "province 3398" with a name sitting unused.
+    let names: OMap<i64, &String> = m.province_names.iter().map(|(p, n)| (*p, n)).collect();
     int_keyed(&mut j, &names, |o, n| push_json_str(o, n));
 
     j.push_str(",\"owners\":[");
@@ -393,6 +502,29 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         }
         j.push(']');
     }
+    // The same provinces' railroad, fort and state factory levels, four to a
+    // province, by save: for the layers that are not about people.
+    j.push_str("},\"provinceExtra\":{");
+    for (si, k) in parsed.iter().enumerate() {
+        if si > 0 {
+            j.push(',');
+        }
+        push_json_str(&mut j, &k.meta.date);
+        j.push_str(":[");
+        for (i, (pid, rail, fort, fac)) in k.meta.province_extra.iter().enumerate() {
+            if i > 0 {
+                j.push(',');
+            }
+            push_int(&mut j, *pid);
+            j.push(',');
+            push_int(&mut j, *rail);
+            j.push(',');
+            push_int(&mut j, *fort);
+            j.push(',');
+            push_int(&mut j, *fac);
+        }
+        j.push(']');
+    }
     j.push_str("},\"populationStates\":{");
     for (si, k) in parsed.iter().enumerate() {
         if si > 0 {
@@ -420,6 +552,13 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
     int_keyed(&mut j, &m.province_regions, |o, r| push_json_str(o, r));
     j.push_str(",\"stateNames\":");
     m.state_names_j.write(&mut j);
+    // What the saves call provinces and states, where it differs from the
+    // mod's own names: GFM renames them by who owns them, so the name belongs
+    // to a date, not to the map.
+    j.push_str(",\"provinceNameChanges\":");
+    j.push_str(&name_changes(m, parsed, false));
+    j.push_str(",\"stateNameChanges\":");
+    j.push_str(&name_changes(m, parsed, true));
     crate::engine::phase("map: capitals");
     j.push_str(",\"armies\":{");
     for (si, k) in parsed.iter().enumerate() {
@@ -1762,6 +1901,107 @@ fn section_market(run: &Run, m: &Mod, c: &Campaign, prices: &[PriceRow], snaps: 
         p.push('}');
     }
     p.push('}');
+    // `econ`: what each nation produced, offered to the world market and dug
+    // up, good by good, at a thinned set of saves (a century of monthly saves
+    // would triple the file for a detail page nobody scrubs through).
+    {
+        let kept: Vec<&(String, Vec<(String, String, f64, f64, f64, f64)>)> =
+            c.econ.iter().filter(|(d, rows)| keep.contains(d.as_str()) && !rows.is_empty()).collect();
+        let cap = 24usize;
+        let step = if kept.len() <= cap { 1.0 } else { (kept.len() - 1) as f64 / (cap - 1) as f64 };
+        let mut picked: Vec<usize> = Vec::new();
+        if !kept.is_empty() {
+            let n = kept.len().min(cap);
+            for i in 0..n {
+                let at = if i + 1 == n { kept.len() - 1 } else { (i as f64 * step).round() as usize };
+                if picked.last() != Some(&at) {
+                    picked.push(at);
+                }
+            }
+        }
+        p.push_str(",\"econ\":{");
+        for (n, at) in picked.iter().enumerate() {
+            let (d, rows) = kept[*at];
+            if n > 0 {
+                p.push(',');
+            }
+            push_json_str(&mut p, d);
+            p.push_str(":{");
+            let mut cur: Option<&str> = None;
+            for (tag, good, s, pool, rgo, sold) in rows {
+                if cur != Some(tag.as_str()) {
+                    if cur.is_some() {
+                        p.push_str("},");
+                    }
+                    push_json_str(&mut p, tag);
+                    p.push_str(":{");
+                    cur = Some(tag.as_str());
+                } else {
+                    p.push(',');
+                }
+                push_json_str(&mut p, good);
+                p.push_str(":[");
+                push_json_float(&mut p, round(*s, 2));
+                p.push(',');
+                push_json_float(&mut p, round(*pool, 2));
+                p.push(',');
+                push_json_float(&mut p, round(*rgo, 1));
+                p.push(',');
+                push_json_float(&mut p, round(*sold, 2));
+                p.push(']');
+            }
+            if cur.is_some() {
+                p.push('}');
+            }
+            p.push('}');
+        }
+        p.push('}');
+    }
+    // `govs`: each nation's government at every kept save, by an index into
+    // `govNames` (the mod's own name for it, where it has one).
+    {
+        let mut order: Vec<&str> = Vec::new();
+        let mut body = String::new();
+        let mut firstd = true;
+        for k in c.parsed.iter().filter(|k| keep.contains(k.meta.date.as_str())) {
+            let mut row = String::new();
+            for n in &k.nations {
+                if n.government.is_empty() {
+                    continue;
+                }
+                let at = match order.iter().position(|g| *g == n.government.as_str()) {
+                    Some(i) => i,
+                    None => { order.push(n.government.as_str()); order.len() - 1 }
+                };
+                if !row.is_empty() { row.push(','); }
+                push_json_str(&mut row, &n.tag);
+                row.push(':');
+                push_int(&mut row, at as i64);
+            }
+            if row.is_empty() { continue; }
+            if !firstd { body.push(','); }
+            firstd = false;
+            push_json_str(&mut body, &k.meta.date);
+            body.push_str(":{");
+            body.push_str(&row);
+            body.push('}');
+        }
+        p.push_str(",\"govList\":[");
+        for (i, g) in order.iter().enumerate() {
+            if i > 0 { p.push(','); }
+            push_json_str(&mut p, g);
+        }
+        p.push_str("],\"govNames\":{");
+        for (i, g) in order.iter().enumerate() {
+            if i > 0 { p.push(','); }
+            push_json_str(&mut p, g);
+            p.push(':');
+            push_json_str(&mut p, m.localisation.get(*g).map(|s| s.as_str()).unwrap_or(""));
+        }
+        p.push_str("},\"govs\":{");
+        p.push_str(&body);
+        p.push('}');
+    }
     let ends = if price_dates.is_empty() { None }
                else { Some((price_dates[0].to_string(), price_dates[price_dates.len() - 1].to_string())) };
     (p, ends)

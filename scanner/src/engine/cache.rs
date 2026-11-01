@@ -33,7 +33,7 @@ use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::Num;
 use std::io::Write;
 
-const MAGIC: &[u8; 8] = b"V2ENGC05";
+const MAGIC: &[u8; 8] = b"V2ENGC10";
 
 pub struct W {
     out: Vec<u8>,
@@ -424,7 +424,7 @@ fn get_stacks(r: &mut R) -> X<Vec<Stack>> {
     Ok(stacks)
 }
 
-keep_struct!(Meta { file, date, player, world_pop, province_owner, province_layers, great_nations, great_tags,
+keep_struct!(Meta { file, date, player, world_pop, province_owner, province_names, state_names, province_layers, province_extra, great_nations, great_tags,
                     subjects, wars, market });
 
 /// What `prepare` leaves of a nation: everything but the per-province
@@ -450,6 +450,9 @@ impl Keep for Nation {
         n.literacy_noncolonial.put(w); n.goods_supply.put(w); n.mob_excluded_culture.put(w);
         n.literacy_weighted.put(w); n.con_weighted.put(w); n.mil_weighted.put(w);
         n.money_total.put(w);
+        n.factory_income.put(w); n.rgo_income.put(w); n.artisan_income.put(w);
+        n.income.put(w); n.expenses.put(w);
+        n.goods_pool.put(w); n.rgo_by_good.put(w); n.goods_sold.put(w);
     }
     fn get(r: &mut R) -> X<Self> {
         let mut n = Nation::default();
@@ -481,6 +484,9 @@ impl Keep for Nation {
         n.mob_excluded_culture = Keep::get(r)?; n.literacy_weighted = Keep::get(r)?;
         n.con_weighted = Keep::get(r)?; n.mil_weighted = Keep::get(r)?;
         n.money_total = Keep::get(r)?;
+        n.factory_income = Keep::get(r)?; n.rgo_income = Keep::get(r)?;
+        n.artisan_income = Keep::get(r)?; n.income = Keep::get(r)?; n.expenses = Keep::get(r)?;
+        n.goods_pool = Keep::get(r)?; n.rgo_by_good = Keep::get(r)?; n.goods_sold = Keep::get(r)?;
         Ok(n)
     }
 }
@@ -604,7 +610,7 @@ impl Store {
 
 // ------------------------------------------------------------- the mod
 
-const MOD_MAGIC: &[u8] = b"V2ENGM01";
+const MOD_MAGIC: &[u8] = b"V2ENGM02";
 
 /// Where the mod read from `path` is kept, when Python has signed its files
 /// (`mod_reader.mod_signature`, which it takes for the stamp anyway): keyed

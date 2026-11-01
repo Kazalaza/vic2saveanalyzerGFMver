@@ -439,10 +439,31 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                             out.modifiers.push(crate::names::intern_str(&text(unquote(&str_of(m)))));
                         }
                     }
+                    b"incomes" | b"expenses" => {
+                        let block = parse_block(&mut sub, &[]);
+                        let total: f64 = items_of(&block).into_iter().map(|v| to_float(Some(v), 0.0)).sum();
+                        if key == b"incomes" { out.income = total; } else { out.expenses = total; }
+                    }
                     b"saved_country_supply" => {
                         let block = parse_block(&mut sub, &[]);
                         if let V::Dict(_) = block {
                             out.goods_supply = pairs(&block).iter()
+                                .filter(|(g, v)| g.first() != Some(&b'_') && to_float(Some(v), 0.0) > 0.0)
+                                .map(|(g, v)| (text(g), to_float(Some(v), 0.0))).collect();
+                        }
+                    }
+                    b"actual_sold_domestic" => {
+                        let block = parse_block(&mut sub, &[]);
+                        if let V::Dict(_) = block {
+                            out.goods_sold = pairs(&block).iter()
+                                .filter(|(g, v)| g.first() != Some(&b'_') && to_float(Some(v), 0.0) > 0.0)
+                                .map(|(g, v)| (text(g), to_float(Some(v), 0.0))).collect();
+                        }
+                    }
+                    b"domestic_supply_pool" => {
+                        let block = parse_block(&mut sub, &[]);
+                        if let V::Dict(_) = block {
+                            out.goods_pool = pairs(&block).iter()
                                 .filter(|(g, v)| g.first() != Some(&b'_') && to_float(Some(v), 0.0) > 0.0)
                                 .map(|(g, v)| (text(g), to_float(Some(v), 0.0))).collect();
                         }
@@ -478,18 +499,36 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                         };
                         let colonial = get(&block, b"is_colonial").is_some();
                         let level = if colonial { to_int(get(&block, b"is_colonial"), 0)? } else { 0 };
+                        let sname = get(&block, b"name").map(str_of).map(|s| crate::text::latin1(crate::text::unquote_b(&s)));
+                        let mut named: Vec<i64> = Vec::new();
                         for pid in ids {
                             let pid = to_int(Some(pid), -1)?;
+                            named.push(pid);
                             out.province_state.push((pid, ordinal));
                             if colonial {
                                 out.colonial_provinces.push(pid);
                                 out.colonial_level.push((pid, level));
                             }
                         }
+                        let all_ids = named.clone();
+                        if let Some(n) = sname {
+                            if !n.is_empty() {
+                                out.state_names.push((n, named));
+                            }
+                        }
+                        let mut here = 0i64;
                         for bld in as_list(get(&block, b"state_buildings")) {
                             if let V::Dict(_) = bld {
                                 out.factory_count += 1;
-                                out.factory_levels += to_int(get(bld, b"level"), 1)?;
+                                let lv = to_int(get(bld, b"level"), 1)?;
+                                out.factory_levels += lv;
+                                here += lv;
+                                out.factory_income += to_float(get(bld, b"last_income"), 0.0);
+                            }
+                        }
+                        if here > 0 {
+                            for pid in &all_ids {
+                                out.state_factories.push((*pid, here));
                             }
                         }
                     }
@@ -598,6 +637,9 @@ fn read_province(text_: &[u8], at: usize, pid: i64, pop_types: &[Vec<u8>], mob_t
     let mut cores: Vec<&[u8]> = Vec::new();
     let mut pops: Vec<Pop> = Vec::new();
     let mut buildings: Vec<(&[u8], V)> = Vec::new();
+    let mut rgo_income = 0.0f64;
+    let mut rgo_goods: Option<Vec<u8>> = None;
+    let mut pname: Option<&[u8]> = None;
     let mut tok = Tokens::new(text_, at);
     for (key, entry) in walk_entries(&mut tok, false) {
         match entry {
@@ -612,6 +654,8 @@ fn read_province(text_: &[u8], at: usize, pid: i64, pop_types: &[Vec<u8>], mob_t
                     }
                 } else if key == b"colonial" {
                     colonial_flag = to_int_text(value, 0)?;
+                } else if key == b"name" {
+                    pname = Some(crate::text::unquote_b(value));
                 }
             }
             Entry::Block(block_at) => {
@@ -630,7 +674,12 @@ fn read_province(text_: &[u8], at: usize, pid: i64, pop_types: &[Vec<u8>], mob_t
                         mil: field(b"mil"),
                         literacy: field(b"literacy"),
                         life: field(b"life_needs"),
+                        production_income: field(b"production_income"),
                     });
+                } else if key == b"rgo" {
+                    let block = parse_block(&mut Tokens::new(text_, block_at), &[]);
+                    rgo_income = to_float(get(&block, b"last_income"), 0.0);
+                    rgo_goods = get(&block, b"goods_type").map(str_of);
                 } else if key == b"naval_base" || key == b"fort" || key == b"railroad" {
                     let block = parse_block(&mut Tokens::new(text_, block_at), &[]);
                     match buildings.iter_mut().find(|(k, _)| *k == key) {
@@ -651,6 +700,9 @@ fn read_province(text_: &[u8], at: usize, pid: i64, pop_types: &[Vec<u8>], mob_t
         fort: level(b"fort"),
         railroad: level(b"railroad"),
         pops,
+        rgo_income,
+        rgo_goods: rgo_goods.as_deref(),
+        name: pname,
     };
     accumulate(parts, pid, mob_types, scan, rules, referenced, groups);
     Ok(())
