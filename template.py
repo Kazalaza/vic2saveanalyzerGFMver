@@ -7166,7 +7166,7 @@ function openBattle(w, b) {
     + `<span class="rk">${b.sea ? 'Naval' : 'Land'} battle · ${w.name}</span>`
     + `<button type="button" class="bt-close" aria-label="Close">Close</button></div>`
     + `<div class="bt-body"><div class="bt-sum">`
-    + tile('Result', (b.won ? 'Attacker' : 'Defender') + ' won')
+    + tile('Result', (b.won ? 'Attacking side' : 'Defending side') + ' won')
     + tile('Date', b.date ? longDate(b.date) : '<span class="rk">not recorded</span>')
     + tile('Place', (state ? state + ' · ' : '') + (b.province ? 'province ' + b.province : '—'))
     + tile('Engaged', (aArmy + dArmy).toLocaleString() + ' ' + (b.sea ? 'ships' : 'men'))
@@ -7205,7 +7205,7 @@ function battleDetail(b, kind, index) {
       + `</div>`;
   };
   return `<tr class="battledetail"><td colspan="8"><div class="battlesides">`
-    + side('Defender', b.d) + side('Attacker', b.a)
+    + side('Defending side', b.d) + side('Attacking side', b.a)
     + `</div><button type="button" class="battle-open" data-bkind="${kind}" data-bi="${index}">Full record &rarr;</button></td></tr>`;
 }
 
@@ -7225,8 +7225,8 @@ function warBattleTable(list, title, kind) {
   // Defender before Attacker, matching how a reader asks "who held, who came
   // for it" -- the Winner column already carries whichever side actually won.
   const head = [['date', 'Date'], ['name', 'Battle'], ['', 'Winner'],
-                ['', 'Defender'], ['dlost', 'Lost'],
-                ['', 'Attacker'], ['alost', 'Lost'], ['total', 'Total losses']];
+                ['', 'Defending side'], ['dlost', 'Lost'],
+                ['', 'Attacking side'], ['alost', 'Lost'], ['total', 'Total losses']];
   // Column widths sum to 100%. Fixed rather than content-driven -- see
   // .battletable -- so this table can never push the page wider than the
   // screen no matter how long a battle or nation name gets.
@@ -7421,13 +7421,13 @@ function legacyBattles(w) {
     return (a < b ? -1 : a > b ? 1 : 0) * legacyBattleSort.dir;
   });
   legacyShown = rows;
-  const head = [['name', 'Battle'], ['date', 'Date'], ['attacker', 'Attacker'],
-                ['defender', 'Defender'], ['type', 'Type'], ['result', 'Result'],
+  const head = [['name', 'Battle'], ['date', 'Date'], ['attacker', 'Attacking side'],
+                ['defender', 'Defending side'], ['type', 'Type'], ['result', 'Result'],
                 ['total', 'Total losses']];
   const num = k => k === 'date' || k === 'total' ? ' class="num"' : '';
   return `<div class="tablewrap fit"><table class="mini lgbattles"><thead><tr>`
     + head.map(([k, label]) => `<th data-lk="${k}"${num(k)}`
-        + (k === 'result' ? ' title="Whether the attacker won"' : '')
+        + (k === 'result' ? ' title="Whether the war\u2019s attacking side won"' : '')
         + (legacyBattleSort.key === k ? ` aria-sort="${legacyBattleSort.dir < 0
             ? 'descending' : 'ascending'}"` : '') + `>${label}</th>`).join('')
     + `</tr></thead><tbody>`
@@ -7532,7 +7532,7 @@ function drawWarDetail() {
     `<div class="warlayout">${warInfobox(w)}<div class="warmain">`
     + `<div class="techsub">War goals</div>${goals}`
     + (w.battles.length ? `<div class="techsub" style="margin-top:12px">Losses by nation</div>${warNation(w)}` : '')
-    + (w.battles.length ? '<p class="note">Click a battle for its units; double-click it, or use <b>Full record</b>, for the whole battle.</p>' : '')
+    + (w.battles.length ? '<p class="note">Click a battle for its units; double-click it, or use <b>Full record</b>, for the whole battle. Attacking and defending side are the war&rsquo;s sides, which is how the save lists the two armies of a battle.</p>' : '')
     + warBattleTable(dry, 'Land battles', 'land')
     + warBattleTable(sea, 'Naval battles', 'sea')
     + (undated ? `<p class="note">${undated} battle${undated === 1 ? ' has' : 's have'} no recorded date.</p>` : '')
