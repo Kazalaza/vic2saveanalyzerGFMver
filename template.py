@@ -225,6 +225,15 @@ svg{display:block;width:100%;height:auto}
 .map-caption #mapworld{display:block;font-size:10px;letter-spacing:.04em;margin-top:4px}
 #maplegend{right:14px;bottom:14px;width:190px;padding:9px 12px;font-size:10px;letter-spacing:.03em;pointer-events:none}
 #maplegend[hidden]{display:none}
+#maplegend.cat{pointer-events:auto;max-height:min(340px,60%);overflow-y:auto}
+#maplegend .lg-row[data-w]{cursor:pointer;padding:1px 3px;margin:1px -3px;border-radius:2px}
+#maplegend .lg-row[data-w]:hover{background:rgba(255,255,255,.1)}
+#maplegend .lg-row.on{background:rgba(224,191,103,.28)}
+.map-tip{position:absolute;z-index:4;pointer-events:none;padding:6px 10px;background:rgba(30,15,23,.94);
+  border:1px solid rgba(183,155,110,.75);box-shadow:0 3px 12px rgba(0,0,0,.35);font-size:11px;line-height:1.55;max-width:270px}
+.map-tip[hidden]{display:none}
+.map-tip>span{display:block}
+.map-tip .tip-name{color:var(--brass);font-size:12px}
 #maplegend .lg-name{color:var(--brass);margin-bottom:5px;font-size:11px}
 #maplegend .lg-bar{height:9px;border:1px solid rgba(0,0,0,.5);border-radius:1px}
 #maplegend .lg-ends{display:flex;justify-content:space-between;margin-top:3px;opacity:.9}
@@ -413,7 +422,50 @@ tbody tr:hover{background:rgba(231,196,100,.10)}
 .side .who{color:var(--ink-dim);font-size:11px;font-style:italic}
 /* Battle rows stay one line so many fit on screen; clicking one opens a detail
    row beneath it with the composition either side brought and lost. */
-.battlerow{cursor:pointer}
+.battlerow,.lgrow{cursor:pointer}
+.lgrow:hover td{background:rgba(255,255,255,.07)}
+.wnation{margin-top:6px}
+.wn-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.wntable{width:100%;table-layout:auto}
+.wntable th,.wntable td{white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.wnation .tablewrap{overflow-x:auto}
+.wntable th[data-wn-sort]{cursor:pointer}
+.wntable td.num,.wntable th.num{text-align:right}
+.wntable .wn-men{min-width:110px}
+.wntable .wn-bar{display:block;height:4px;margin-top:3px;opacity:.85}
+.wntable tr.idle td{opacity:.55}
+.wntable tfoot td{border-top:1px solid var(--rule);color:var(--ink-dim)}
+.wn-side{font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.wn-side.att{color:#e8a27c}.wn-side.def{color:#8fb3e0}
+.lgtabs{margin-bottom:10px}
+.battle-open{margin-top:8px;font-size:12px}
+dialog.battlebox{width:min(1000px,94vw);max-height:92vh;padding:0;border:1px solid var(--rule);
+  background:var(--ground);color:var(--ink);box-shadow:0 10px 50px rgba(0,0,0,.6)}
+dialog.battlebox::backdrop{background:rgba(10,5,8,.68)}
+.bt-top{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--rule);background:rgba(8,25,44,.5)}
+.bt-top h3{margin:0;font-family:'Playfair Display',serif;font-size:21px;font-weight:600;flex:1}
+.bt-top .rk{font-size:12px}
+.bt-body{padding:14px 18px 18px;overflow:auto;max-height:calc(92vh - 62px)}
+.bt-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+.bt-sum>div{border:1px solid var(--grid);padding:6px 10px;background:rgba(42,15,23,.5)}
+.bt-sum .l{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim)}
+.bt-sum .v{font-size:19px;font-family:'Playfair Display',serif}
+.bt-armies{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.bt-army{border:1px solid var(--grid);padding:12px 14px;background:rgba(42,15,23,.5)}
+.bt-army.won{border-color:var(--brass);box-shadow:0 0 0 1px rgba(231,196,100,.35) inset}
+.bt-role{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+.bt-army.won .bt-role{color:var(--brass)}
+.bt-nation{font-size:18px;margin:2px 0 8px}
+.bt-facts{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0 0 10px;font-size:13px}
+.bt-facts dt{color:var(--ink-dim)}.bt-facts dd{margin:0}
+.bt-units{width:100%;border-collapse:collapse;font-size:12.5px}
+.bt-units td{padding:2px 4px;border-top:1px solid var(--grid)}
+.bt-units td.num{text-align:right;font-family:'IBM Plex Mono',monospace}
+.bt-units .bar{width:45%}
+.bt-units .bar i{display:block;height:6px;background:var(--brass);opacity:.75}
+.bt-nav{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.bt-more{margin-top:12px;font-size:12.5px;color:var(--ink-dim)}
+.bt-more button{font-size:12px;margin:2px 4px 2px 0}
 .battlerow.on{background:rgba(231,196,100,.14)}
 .battledetail td{padding:12px 14px 16px;background:rgba(42,15,23,.4);
   border-bottom:1px solid var(--rule)}
@@ -460,6 +512,24 @@ tbody tr:hover{background:rgba(231,196,100,.10)}
 .ib .rk{color:var(--ink-dim)}
 #popcountrydetail .controls[hidden],.popatlas[hidden]{display:none}
 .popatlas{display:block;width:100%;height:auto;cursor:pointer}
+.popmapbox{position:relative;overflow:hidden;background:#1e2f3d}
+.popmapbox[hidden]{display:none}
+.popmapbox .popatlas{transform-origin:0 0;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.popmapbox .popatlas.dragging{cursor:grabbing}
+.popviewbtns{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:4px;z-index:3}
+.popviewbtns button{width:30px;height:30px;padding:0;line-height:1;font-size:16px}
+#poplegend{right:10px;bottom:10px;width:190px;padding:9px 12px;font-size:10px;letter-spacing:.03em;pointer-events:none}
+#poplegend{right:14px;bottom:14px;width:190px;padding:9px 12px;font-size:10px;letter-spacing:.03em;pointer-events:none}
+#poplegend[hidden]{display:none}
+#poplegend.cat{pointer-events:auto;max-height:min(340px,60%);overflow-y:auto}
+#poplegend .lg-row[data-w]{cursor:pointer;padding:1px 3px;margin:1px -3px;border-radius:2px}
+#poplegend .lg-row[data-w]:hover{background:rgba(255,255,255,.1)}
+#poplegend .lg-row.on{background:rgba(224,191,103,.28)}
+#poplegend .lg-name{color:var(--brass);margin-bottom:5px;font-size:11px}
+#poplegend .lg-bar{height:9px;border:1px solid rgba(0,0,0,.5);border-radius:1px}
+#poplegend .lg-ends{display:flex;justify-content:space-between;margin-top:3px;opacity:.9}
+#poplegend .lg-note{opacity:.65;margin-top:4px}
+#poplegend .lg-row{margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .popcountrylayout{align-items:start;display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,2fr);gap:24px;margin-bottom:28px}
 .popcountrylayout .ib{max-width:none}
 #popcountryfacts section{padding:0 16px 16px;margin:0}
@@ -473,7 +543,14 @@ tbody tr:hover{background:rgba(231,196,100,.10)}
 #popfind{max-width:210px}
 @media(max-width:760px){.popcountrylayout{grid-template-columns:1fr}}
 .wartheatre{margin:0;border:0;border-bottom:1px solid var(--rule)}
-.wartheatre canvas{display:block;width:100%;height:auto}
+.wartheatre canvas{display:block;width:100%;height:auto;touch-action:none;outline-offset:-2px}
+.wtwrap{position:relative;background:rgb(30,47,61)}
+.wtctl{position:absolute;top:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:70%}
+.wtctl button{padding:3px 9px;font-size:12px;min-width:28px;background:rgba(30,15,23,.86)}
+.wtctl button[aria-pressed="true"]{background:var(--brass);color:var(--ground-deep)}
+.wthint{position:absolute;left:8px;bottom:6px;font-size:10.5px;color:var(--ink-dim);background:rgba(30,15,23,.7);padding:2px 6px;pointer-events:none;opacity:.85}
+.wttip{max-width:340px;white-space:normal}
+.battlerow.maphl td{background:rgba(231,196,100,.2)}
 .wartheatre figcaption{padding:8px 12px;font-size:11px;line-height:1.5;color:var(--ink-dim)}
 .war-export{display:inline-flex;vertical-align:middle;margin-left:10px;padding:5px;border:0;background:none;color:var(--brass)}
 .war-export svg{width:18px;height:18px}
@@ -627,6 +704,60 @@ table.mini.fitmini th,table.mini.fitmini td{white-space:normal;
 #popchart rect[data-pop-type]{cursor:pointer}
 #popchart rect[data-pop-type]:hover,#popchart rect[data-pop-type]:focus-visible{fill-opacity:1;stroke:var(--brass);stroke-width:1.5}
 .slegend i{width:9px;height:9px;display:block}
+/* Economy tab */
+.econ-tools{display:inline-flex;flex-wrap:wrap;gap:10px;align-items:center}
+.econ-tools[hidden]{display:none}
+.econ-wrap{max-height:none}
+.tablewrap>table.econ-ledger{table-layout:auto;min-width:720px}
+#econtable>thead>tr>th:first-child{width:52px}
+.econ-ledger th.num,.econ-ledger td.num{text-align:right;white-space:nowrap}
+.econ-ledger th.num button{text-align:right}
+#econtable th:nth-child(2),#econtable td:nth-child(2){text-align:left;width:34%}
+#econtable th:nth-child(2) button{text-align:left}
+.econ-ledger td:not(.num),.econ-ledger th:not(.num){text-align:left}
+.econ-ledger th:not(.num) button{text-align:left}
+.strength-ledger.econ-ledger>thead>tr>th:first-child{width:auto}
+#econtable td:first-child{color:var(--ink-dim)}
+.econ-ledger th[draggable="true"]{cursor:grab}
+.econ-ledger th.drop-target{box-shadow:inset 3px 0 0 var(--brass)}
+.econ-ledger tr.econ-world td{background:rgba(231,196,100,.1);color:var(--brass);font-weight:500;border-bottom:1px solid var(--rule)}
+.econ-ledger td .nation-toggle{padding:4px 0}
+.econ-dot{display:inline-block;width:11px;height:11px;border-radius:2px;flex:none}
+.econ-dot.big{width:22px;height:22px}
+.econ-pager{display:flex;gap:14px;align-items:center;margin:12px 0;flex-wrap:wrap;color:var(--ink-dim);font-size:13px}
+.econ-cols{position:relative}
+.econ-cols>summary{cursor:pointer;padding:6px 8px;border:1px solid var(--rule);font-size:12px;list-style:none}
+.econ-colmenu{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;min-width:250px;max-height:360px;overflow:auto;
+  background:var(--ground-deep);border:1px solid var(--rule);padding:8px}
+.econ-colrow{display:flex;align-items:center;gap:6px;padding:2px 0}
+.econ-colrow label{flex:1;font-size:13px}
+.econ-colrow button{padding:1px 7px;font-size:12px}
+.econ-reset{margin-top:8px;font-size:12px}
+.econ-strip{grid-template-columns:repeat(5,minmax(0,1fr))}
+.econ-strip>div{border-bottom:1px solid var(--grid)}
+.econ-strip .military-stat{font-size:26px}
+.econ-split{display:flex;height:16px;margin:4px 0 10px;border:1px solid var(--rule);background:rgba(0,0,0,.25)}
+.econ-split>span{display:block;height:100%}
+.econ-splitrow{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--grid);font-size:13px;flex-wrap:wrap}
+.econ-page h2{border:0}
+.econ-sub{margin:-6px 0 12px;color:var(--ink-dim);font-size:13px}
+.econ-sub b{color:var(--ink);font-weight:500}
+.econ-pies{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;margin:6px 0 22px}
+.econ-pie .econ-piebody{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;padding:8px 2px 4px}
+.econ-pie svg{width:190px;height:190px;flex:none}
+.econ-pieleg{flex:1;min-width:150px;font-size:12px}
+.econ-pieleg button{display:flex;gap:6px;align-items:center;width:100%;padding:1px 2px;margin:0;border:0;background:none;
+  color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:2px}
+.econ-pieleg button:hover,.econ-pieleg button:focus-visible{background:rgba(255,255,255,.1)}
+.econ-pieleg i{width:10px;height:10px;flex:none;border:1px solid rgba(0,0,0,.4)}
+.econ-pieleg .v{margin-left:auto;font-family:'IBM Plex Mono',monospace;opacity:.85;white-space:nowrap}
+.econ-pienote{font-size:12px;color:var(--ink-dim);margin:2px 0 0}
+.econ-history .chart-toolbar{margin-bottom:8px}
+.econ-bar,.econ-slice{cursor:pointer}
+.econ-bar:hover text,.econ-bar:focus-visible text{fill:var(--brass)}
+.econ-slice:hover,.econ-slice:focus-visible{stroke:var(--brass);stroke-width:2.5}
+@media(max-width:900px){.econ-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:550px){.econ-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
   padding-top:14px;margin-top:8px}
 /* Strength returns: one compact ledger with details on demand. */
@@ -740,6 +871,7 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
     <button class="tab" role="tab" id="tab-military" aria-controls="panel-military" aria-selected="false">Military</button>
     <button class="tab" role="tab" id="tab-wars" aria-controls="panel-wars" aria-selected="false">Wars</button>
     <button class="tab" role="tab" id="tab-tech" aria-controls="panel-tech" aria-selected="false">Technology</button>
+    <button class="tab" role="tab" id="tab-economy" aria-controls="panel-economy" aria-selected="false">Economy</button>
     <button class="tab" role="tab" id="tab-market" aria-controls="panel-market" aria-selected="false">Market</button>
   </div>
 
@@ -750,6 +882,7 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
         <div class="mapwrap"><canvas id="mapcanvas" role="img"
              aria-label="Political map with army positions"></canvas></div>
         <div id="maplegend" class="map-overlay" hidden></div>
+        <div id="maptip" class="map-tip" hidden></div>
         <div class="map-caption map-overlay">
           <h2>World at <span id="mapdate"></span><span id="mapworld" class="rk"></span></h2>
         </div>
@@ -785,6 +918,8 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
               <button id="mapvalues" aria-pressed="true" title="Write each country's figure under its name when colouring by a statistic">Values</button>
               <select id="mapramp" aria-label="Colour scale" title="Colour scale for the statistic">
                 <option value="rg">Red to green</option><option value="by">Blue to yellow</option></select>
+              <select id="mapquality" class="mapq" aria-label="Map quality" title="Smooth antialiases coastlines and borders; Standard is the crisp pixel map and the fastest">
+                <option value="0">Standard (crisp)</option><option value="1">Smooth</option></select>
               <button id="mapreset" title="Back to the whole world">Reset</button>
               <span class="rk" id="mapzoom">1.0&times;</span>
               <span id="pick-map"></span>
@@ -952,8 +1087,20 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
             <div class="chart-toolbar" role="group" aria-label="Population map controls"><select id="popregion" aria-label="State" title="State"><option value="">Choose a state</option></select>
               <button id="popallland" aria-pressed="false">All possessions</button>
               <button id="popsubjects" aria-pressed="true" title="Show puppets, personal unions and substates in a lighter shade of this country's colour">Puppets</button>
-              <button id="popnames" aria-pressed="true" title="Name the neighbouring countries on the map">Names</button></div>
-            <canvas id="popcountrymap" class="popatlas" role="img" aria-label="Selected country; click a state for population and literacy"></canvas>
+              <button id="popnames" aria-pressed="true" title="Name the neighbouring countries on the map">Names</button>
+              <button id="popstatenames" aria-pressed="false" title="Write each state's name on the map, as it is called in this save">State names</button>
+              <select id="poplayer" aria-label="Colour the map by" title="Colour the map by a statistic, province by province"><option value="">Nation colours</option></select>
+              <select id="popquality" class="mapq" aria-label="Map quality" title="Smooth antialiases coastlines and borders; Standard is the crisp pixel map and the fastest">
+                <option value="0">Standard (crisp)</option><option value="1">Smooth</option></select></div>
+            <div id="popmapbox" class="popmapbox">
+              <canvas id="popcountrymap" class="popatlas" role="img" aria-label="Selected country; scroll to zoom, drag to move, click a state for population and literacy"></canvas>
+              <div class="popviewbtns" role="group" aria-label="Map view">
+                <button id="popzoomin" title="Zoom in" aria-label="Zoom in">+</button>
+                <button id="popzoomout" title="Zoom out" aria-label="Zoom out">&minus;</button>
+                <button id="popzoomreset" title="Back to the whole country" aria-label="Reset view">&#8634;</button>
+              </div>
+              <div id="poplegend" class="map-overlay" hidden></div>
+            </div>
             <div id="popstatefacts" class="readout">Click a state or choose one above.</div></figure>
           <p class="note">Highlighted land belongs to this country at the selected save. State figures cover its owned portion.<span id="popsubjectnote"></span></p>
         </div>
@@ -977,6 +1124,49 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
   </div>
 
   <!-- ============ MARKET ============ -->
+  <!-- ============ ECONOMY ============ -->
+  <div role="tabpanel" id="panel-economy" aria-labelledby="tab-economy" hidden>
+    <section id="econ-section">
+      <div class="ledger-heading">
+        <h2>Economy at <span id="econdate"></span></h2>
+        <div class="segments" id="econmodes" role="group" aria-label="Economy view">
+          <button type="button" data-mode="countries" aria-pressed="true">Countries</button>
+          <button type="button" data-mode="goods" aria-pressed="false">Goods</button>
+        </div>
+      </div>
+      <p class="note">Countries ranked by share of world output &mdash; the factory and RGO income of their provinces over the world total, the report&rsquo;s stand-in for GDP &mdash; with output per capita as the stand-in for GDP per capita. Click a heading to sort, drag a heading to move its column, click a row to open it.</p>
+      <div id="econ-browse">
+        <div class="controls ledger-toolbar">
+          <label for="econsave">Save</label><select id="econsave"></select>
+          <input type="search" id="econsearch" placeholder="Search" aria-label="Search">
+          <span id="econ-countryonly" class="econ-tools">
+            <label for="econsize">Rows</label>
+            <select id="econsize"><option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option><option value="0">All</option></select>
+            <details class="econ-cols"><summary>Columns</summary><div id="econcolmenu" class="econ-colmenu"></div></details>
+            <span class="segments" id="econviews" role="group" aria-label="Display">
+              <button type="button" data-view="table" aria-pressed="true">Table</button>
+              <button type="button" data-view="bars" aria-pressed="false">Bars</button>
+              <button type="button" data-view="pie" aria-pressed="false">Pie</button>
+            </span>
+          </span>
+        </div>
+        <div id="econ-countries">
+          <div id="econ-table-view">
+            <div class="tablewrap econ-wrap"><table id="econtable" class="strength-ledger econ-ledger"><thead><tr></tr></thead><tbody></tbody></table></div>
+            <div class="econ-pager" id="econpager"></div>
+          </div>
+          <figure id="econ-chart-view" hidden>
+            <svg id="econchart" viewBox="0 0 1000 440" role="img" aria-label="Economy chart"></svg>
+            <p class="note" id="econchartnote"></p>
+          </figure>
+        </div>
+        <div id="econ-goods" hidden><div id="econgoodstable"></div></div>
+        <p class="note" id="econfoot"></p>
+      </div>
+      <div id="econ-detail" hidden></div>
+    </section>
+  </div>
+
   <div role="tabpanel" id="panel-market" aria-labelledby="tab-market" hidden>
     <section>
       <h2>World prices &middot; <span>__PRICESPAN__</span></h2>
@@ -3989,6 +4179,15 @@ const mapDim = hex => {
        + `${mix(rgb & 255, 2)})`;
 };
 
+/* A country's colour on a given save: the mod gives some governments a colour
+   of their own (a Prussia that turns communist stops being Prussian blue), and
+   the scanner sends only those that differ, per save. Anything else, and any
+   date the scanner did not name, keeps the tag's plain colour. */
+function mapColourOf(tag, date) {
+  const g = MAP.govColours && MAP.govColours[date];
+  return (g && g[tag]) || MAP.colours[tag];
+}
+
 // Match the theatre map's softer land colours without changing marker colours.
 function mapLandColour(hex) {
   const rgb = parseInt(hex.slice(1), 16);
@@ -4008,7 +4207,7 @@ function mapPalette(date, plain) {
   const water = (MAP_WATER[0] << 16) | (MAP_WATER[1] << 8) | MAP_WATER[2];
   for (let p = 0; p <= top; p++) table[p] = mapSea.has(p) ? water : wild;
   owners.forEach((idx, pid) => {
-    const hex = MAP.colours[MAP.tags[idx]];
+    const hex = mapColourOf(MAP.tags[idx], date);
     if (hex) table[pid] = mapLandColour(hex);
   });
   if (!plain && mapLayer && mapLayerIsProvince(mapLayer)) {
@@ -4070,6 +4269,10 @@ const MAP_LAYERS = [
   {key: 'p:religion', label: 'Religion (largest in province)', level: 'province', kind: 'cat', field: 'religion'},
   {key: 'p:literacy', label: 'Literacy by province', level: 'province', kind: 'pct', scale: 'lin'},
   {key: 'p:pop', label: 'Population by province', level: 'province', kind: 'count', scale: 'log'},
+  // From the province and its state: railroads and forts sit on the province, factories on the state.
+  {key: 'p:railroad', label: 'Railroad level by province', level: 'province', kind: 'count', scale: 'lin', extra: true},
+  {key: 'p:fort', label: 'Fort level by province', level: 'province', kind: 'count', scale: 'lin', extra: true},
+  {key: 'p:factories', label: 'Factory levels (by state)', level: 'province', kind: 'count', scale: 'log', extra: true},
 ];
 const mapLayerIsProvince = key => { const d = MAP_LAYERS.find(l => l.key === key); return !!(d && d.level === 'province'); };
 
@@ -4079,15 +4282,27 @@ const mapLayerIsProvince = key => { const d = MAP_LAYERS.find(l => l.key === key
    and which religion has the most of them, how many people there are, how
    literate they are, and what share the biggest culture and religion hold
    (see `provinceLayers` in the scanner). The map is coloured province by
-   province from that. Cultures and religions are categories: the ones with
-   the most people over the whole campaign each get a colour of their own and
-   the rest share a grey, and the same name keeps the same colour in every
+   province from that. Cultures and religions are categories: every one gets a colour
+   of its own, ranked by the provinces it leads, and the same name keeps the same colour in every
    save, which is what makes playing through the saves readable. A province
    that is only just ahead of the next culture is drawn paler than one that is
    nearly all one people, so a mixed border region looks mixed. */
 const MAP_CATEGORY_COLOURS = [[222, 166, 60], [82, 150, 214], [206, 88, 76], [104, 188, 118], [166, 124, 208],
   [226, 212, 92], [56, 178, 172], [216, 132, 168], [150, 160, 62], [196, 122, 64], [128, 146, 170]];
 const MAP_CATEGORY_OTHER = [150, 146, 136];
+// More than the hand-picked eleven: further hues round the wheel at the golden angle, which keeps neighbours apart,
+// with lightness and saturation alternating so two close hues still differ.
+function mapHsl(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+for (let i = 0; MAP_CATEGORY_COLOURS.length < 36; i++) {
+  MAP_CATEGORY_COLOURS.push(mapHsl((i * 137.508 + 20) % 360, [60, 46, 72][i % 3], [58, 68, 46][(i >> 1) % 3]));
+}
+let mapLayerFocus = 0;                                  // a culture or religion picked in the legend, or 0
+const mapLayerSig = () => mapLayer + '|' + mapRampName + '|' + mapLayerFocus;
+const MAP_FOCUS_DIM = [38, 44, 52], MAP_FOCUS_LIT = [255, 236, 150];
 const mapProvData = new Map();
 function mapProvinceData(date) {
   mapDecoded();
@@ -4117,26 +4332,78 @@ const mapWordName = (w, field) => {
   return raw ? raw.replace(/_/g, ' ').replace(/(^|\s)(\S)/g, (_m, a, b) => a + b.toUpperCase()) : 'Unknown';
 };
 let mapCategoryRank = {culture: null, religion: null};
+// Religions get a colour family by what they are -- Christian blues, Muslim greens, and so on -- with the shade
+// picked per religion, so a glance at the map says "Christian / Muslim / Hindu" before the legend does.
+const MAP_RELIGION_FAMILIES = [
+  [/catholic|protestant|orthodox|christian|coptic|anglican|lutheran|reformed|calvin|monophys|nestor|armenian|uniate|copt/, 214, 56],
+  [/sunni|shia|shiite|ibad|islam|muslim|druze|alevi|sufi|ahmad|wahhab|zaydi|ismaili/, 138, 52],
+  [/hindu|sikh|jain|vaishn|shaiv|brahman/, 28, 78],
+  [/buddh|mahayana|theravada|gelug|vajrayana|lamaist|tibet|zen/, 47, 82],
+  [/shinto|confuc|tao|folk|ancestor/, 352, 62],
+  [/jew|judais|hebrew|samarit/, 278, 46],
+  [/animis|pagan|tribal|shaman|fetish|totem|voodoo|polythe|spirit/, 24, 34]];
+const MAP_RELIGION_SHADES = {catholic: 48, protestant: 66, orthodox: 36, sunni: 40, shiite: 60, ibadi: 52};
 function mapCategoryColours(field) {
   if (mapCategoryRank[field]) return mapCategoryRank[field];
-  const totals = new Map();
+  // Ranked by how many provinces each one leads (over every save), not by how many people it has, so a culture
+  // that is the majority in a handful of small provinces still gets a colour of its own.
+  const led = new Map();
   for (const date of Object.keys(MAP.provinceLayers || {})) {
     const d = mapProvinceData(date); if (!d) continue;
     for (let i = 0; i < d.n; i++) {
       const w = field === 'culture' ? d.cw[i] : d.rw[i];
-      if (w) totals.set(w, (totals.get(w) || 0) + d.size[i]);
+      if (w) led.set(w, (led.get(w) || 0) + 1);
     }
   }
-  const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  const ranked = [...led.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
   const colour = new Map();
-  ranked.slice(0, MAP_CATEGORY_COLOURS.length).forEach((w, i) => colour.set(w, MAP_CATEGORY_COLOURS[i]));
-  mapCategoryRank[field] = {colour, ranked};
+  if (field === 'religion') {
+    const used = new Array(MAP_RELIGION_FAMILIES.length).fill(0);
+    let other = 0;
+    ranked.forEach(w => {
+      const raw = String((MAP.layerWords || [])[w] || '').toLowerCase();
+      const fi = MAP_RELIGION_FAMILIES.findIndex(f => f[0].test(raw));
+      if (fi < 0) { colour.set(w, mapHsl((other++ * 137.508 + 300) % 360, 40, [58, 70, 46][other % 3])); return; }
+      const n = used[fi]++, shade = MAP_RELIGION_SHADES[raw];
+      const light = shade || [52, 40, 64, 46, 58, 34, 70][n % 7];
+      colour.set(w, mapHsl((MAP_RELIGION_FAMILIES[fi][1] + ((n % 3) - 1) * (shade ? 0 : 9) + 360) % 360, MAP_RELIGION_FAMILIES[fi][2], light));
+    });
+  } else {
+    ranked.forEach((w, i) => {
+      if (i >= MAP_CATEGORY_COLOURS.length) MAP_CATEGORY_COLOURS.push(mapHsl((i * 137.508 + 20) % 360, [60, 46, 72][i % 3], [58, 68, 46][(i >> 1) % 3]));
+      colour.set(w, MAP_CATEGORY_COLOURS[i]);
+    });
+  }
+  mapCategoryRank[field] = {colour, ranked, led};
   return mapCategoryRank[field];
 }
+const mapExtraCache = new Map();
+/* railroad, fort and the state's factory levels, per province: a Map of
+   province -> [railroad, fort, factories], or null where the report has none. */
+function mapProvinceExtra(date) {
+  mapDecoded();
+  if (mapExtraCache.has(date)) return mapExtraCache.get(date);
+  const flat = (MAP.provinceExtra || {})[date];
+  let out = null;
+  if (flat && flat.length) {
+    out = new Map();
+    for (let i = 0; i + 3 < flat.length; i += 4) out.set(flat[i], [flat[i + 1], flat[i + 2], flat[i + 3]]);
+  }
+  mapExtraCache.set(date, out);
+  return out;
+}
+function mapProvValue(key, d, i, ex) {
+  if (key === 'p:literacy') return d.lit[i];
+  if (key === 'p:pop') return d.size[i];
+  const e = ex && ex.get(d.pid[i]);
+  if (!e) return 0;
+  return key === 'p:railroad' ? e[0] : key === 'p:fort' ? e[1] : e[2];
+}
 const mapProvLayerCache = new Map();
-function mapProvLayerInfo(date, key) {
+function mapProvLayerInfo(date, key, focus) {
   key = key || mapLayer;
-  const ck = date + '|' + key + '|' + mapRampName;
+  if (focus === undefined) focus = mapLayerFocus;
+  const ck = date + '|' + key + '|' + mapRampName + '|' + focus;
   if (mapProvLayerCache.has(ck)) return mapProvLayerCache.get(ck);
   const def = MAP_LAYERS.find(l => l.key === key), d = mapProvinceData(date);
   let out = null;
@@ -4146,20 +4413,22 @@ function mapProvLayerInfo(date, key) {
       const cats = mapCategoryColours(def.field), share = new Map();
       for (let i = 0; i < d.n; i++) {
         const w = def.field === 'culture' ? d.cw[i] : d.rw[i], s = def.field === 'culture' ? d.cs[i] : d.rs[i];
-        const base = cats.colour.get(w) || MAP_CATEGORY_OTHER;
-        const k = .5 + .5 * Math.max(0, Math.min(1, (s - .34) / .66));
+        let base = cats.colour.get(w) || MAP_CATEGORY_OTHER;
+        if (focus) base = w === focus ? (cats.colour.get(w) || MAP_FOCUS_LIT) : MAP_FOCUS_DIM;
+        const k = focus && w !== focus ? 1 : .5 + .5 * Math.max(0, Math.min(1, (s - .34) / .66));
         const rgb = [0, 1, 2].map(j => Math.round(96 + (base[j] - 96) * k));
         colour.set(d.pid[i], (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]);
-        share.set(w, (share.get(w) || 0) + d.size[i]);
+        share.set(w, (share.get(w) || 0) + 1);
       }
       const world = [...share.values()].reduce((a, b) => a + b, 0) || 1;
-      const rows = cats.ranked.filter(w => share.has(w)).slice(0, MAP_CATEGORY_COLOURS.length)
-        .map(w => ({word: w, name: mapWordName(w, def.field), rgb: cats.colour.get(w), frac: share.get(w) / world}));
-      const shown = rows.reduce((a, r) => a + r.frac, 0);
-      out = {def, colour, rows, other: Math.max(0, 1 - shown), cat: true};
+      // every culture or religion that leads somewhere, the one ahead in the most provinces first
+      const rows = [...share.entries()].sort((a, b) => b[1] - a[1])
+        .map(([w, n]) => ({word: w, name: w ? mapWordName(w, def.field) : 'Unknown', rgb: cats.colour.get(w) || MAP_CATEGORY_OTHER, frac: n / world, n}));
+      out = {def, colour, rows, other: 0, cat: true};
     } else {
       const vals = [];
-      for (let i = 0; i < d.n; i++) vals.push(def.key === 'p:literacy' ? d.lit[i] : d.size[i]);
+      const ex = mapProvinceExtra(date);
+      for (let i = 0; i < d.n; i++) vals.push(mapProvValue(def.key, d, i, ex));
       const sorted = vals.slice().sort((a, b) => a - b);
       const at = q => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))];
       const min = sorted[0], max = sorted[sorted.length - 1];
@@ -4179,14 +4448,20 @@ function mapProvLayerInfo(date, key) {
   mapProvLayerCache.set(ck, out);
   return out;
 }
-function mapProvinceFigure(date, pid) {
+function mapProvinceFigure(date, pid, key) {
   const d = mapProvinceData(date), i = d ? d.at.get(pid) : undefined;
   if (i === undefined) return '';
-  const key = mapLayer, pct = x => Math.round(x * 100) + '%';
+  key = key || mapLayer;
+  const pct = x => Math.round(x * 100) + '%';
   const bit = (label, text) => `<span><span class="rk">${label}</span> <b>${text}</b></span>`;
   if (key === 'p:culture') return bit('Culture', `${mapWordName(d.cw[i], 'culture')} <span class="rk">${pct(d.cs[i])}</span>`);
   if (key === 'p:religion') return bit('Religion', `${mapWordName(d.rw[i], 'religion')} <span class="rk">${pct(d.rs[i])}</span>`);
   if (key === 'p:literacy') return bit('Literacy', (d.lit[i] * 100).toFixed(1) + '%') + bit('People', Math.round(d.size[i]).toLocaleString());
+  if (key === 'p:railroad' || key === 'p:fort' || key === 'p:factories') {
+    const e = (mapProvinceExtra(date) || new Map()).get(pid) || [0, 0, 0];
+    const v = key === 'p:railroad' ? e[0] : key === 'p:fort' ? e[1] : e[2];
+    return bit(key === 'p:railroad' ? 'Railroad' : key === 'p:fort' ? 'Fort' : 'Factory levels in state', String(v));
+  }
   return bit('People', Math.round(d.size[i]).toLocaleString());
 }
 function mapRamp(t) {
@@ -4259,12 +4534,12 @@ function mapLayerLegend(date) {
     const P = mapProvLayerInfo(date);
     if (!P) { box.hidden = true; box.replaceChildren(); return; }
     box.hidden = false;
+    box.classList.toggle('cat', !!P.cat);
     if (P.cat) {
       const swatch = rgb => `<i style="display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;background:rgb(${rgb.join(',')});border:1px solid rgba(0,0,0,.45)"></i>`;
       box.innerHTML = `<div class="lg-name">${P.def.label}</div>`
-        + P.rows.map(r => `<div class="lg-row">${swatch(r.rgb)}${r.name} <span class="rk">${(r.frac * 100).toFixed(r.frac < .1 ? 1 : 0)}%</span></div>`).join('')
-        + (P.other > .005 ? `<div class="lg-row">${swatch(MAP_CATEGORY_OTHER)}Other <span class="rk">${(P.other * 100).toFixed(1)}%</span></div>` : '')
-        + `<div class="lg-note">paler = more mixed · share of people</div>`;
+        + P.rows.map(r => `<div class="lg-row${mapLayerFocus === r.word ? ' on' : ''}" data-w="${r.word}" title="Click to show only this on the map">${swatch(r.rgb)}${r.name} <span class="rk">${r.n}</span></div>`).join('')
+        + `<div class="lg-note">${P.rows.length} listed · click one to isolate it · paler = more mixed · provinces led</div>`;
     } else {
       const R = mapRampStops();
       const stops = R.map((c, i) => `rgb(${c.join(',')}) ${Math.round(i / (R.length - 1) * 100)}%`).join(',');
@@ -4277,6 +4552,7 @@ function mapLayerLegend(date) {
     return;
   }
   const L = mapLayer ? mapLayerInfo(date) : null;
+  box.classList.remove('cat');
   if (!mapLayer || !L) { box.hidden = true; box.replaceChildren(); return; }
   const R = mapRampStops();
   const stops = R.map((c, i) => `rgb(${c.join(',')}) ${Math.round(i / (R.length - 1) * 100)}%`).join(',');
@@ -4297,7 +4573,7 @@ function mapOccPalette(date) {
   book.occ.forEach((_i, p) => { if (p > top) top = p; });
   const table = new Int32Array(top + 1).fill(-1);
   book.occ.forEach((idx, pid) => {
-    const hex = MAP.colours[MAP.tags[idx]];
+    const hex = mapColourOf(MAP.tags[idx], date);
     if (hex) table[pid] = parseInt(hex.slice(1), 16);
   });
   return table;
@@ -4335,8 +4611,22 @@ function mapLevel(level) {
    pans and zoom steps; ownership changes discard coloured tiles, not geometry.
    Borders read neighbouring province owners directly, including across tile
    seams: playback never scans the full world to find political boundaries. */
-const MAP_TILE_SIZE = 256, MAP_TILE_LIMIT = 128;
+const MAP_TILE_SIZE = 256;
+/* Map quality. Standard is what the maps always did: tiles at about the
+   screen's resolution, drawn with nearest sampling, so every line is crisp.
+   Smooth paints the world tiles at the raster's finer resolution and lets the
+   browser average them down (a zoomed-out coast keeps its islands instead of
+   dropping pixels), draws political borders a few raster pixels wide so that
+   the averaging leaves them about one screen pixel wide rather than a faint
+   smudge, and keeps the finished picture so that clicking, hovering and
+   panning the overlays do not pay for the averaging again. There used to be
+   a third, Max, which only made the same thing slower. */
+let mapQuality = 0;
+try { mapQuality = Math.max(0, Math.min(1, parseInt(localStorage.getItem('mapQuality') || '0', 10) || 0)); } catch (e) {}
+const mapTileLimit = () => [128, 192][mapQuality];
+const MAP_QUALITY_NAMES = ['Standard', 'Smooth'];
 const mapTiles = new Map();
+let mapPaintCache = null;
 let mapTileDate = null, mapTilePalette = null;
 function mapSameValues(a,b) {
   if (!a || a.length!==b.length) return false;
@@ -4344,7 +4634,7 @@ function mapSameValues(a,b) {
   return true;
 }
 function mapTileState(date) {
-  if (mapTileDate === date && mapTilePalette && mapTilePalette.layer === mapLayer && mapTilePalette.ramp === mapRampName) return mapTilePalette;
+  if (mapTileDate === date && mapTilePalette && mapTilePalette.sig === mapLayerSig()) return mapTilePalette;
   mapLevel(0);
   const colours = mapPalette(date), occupation = mapOccPalette(date);
   const owners = (mapOwners[date] || {own:new Map()}).own;
@@ -4355,11 +4645,13 @@ function mapTileState(date) {
   // tiles when ownership and occupation are identical, using exact comparison
   // rather than a hash that could leave a stale border after a collision.
   if (!mapTilePalette || !mapSameValues(mapTilePalette.identity,identity)
-      || !mapSameValues(mapTilePalette.occupation,occupation) || mapTilePalette.layer !== mapLayer || mapTilePalette.ramp !== mapRampName
+      || !mapSameValues(mapTilePalette.occupation,occupation) || mapTilePalette.sig !== mapLayerSig()
+      || !mapSameValues(mapTilePalette.raw,colours)
       || (mapLayerIsProvince(mapLayer) && mapTileDate !== date)) mapTiles.clear();
   mapTilePalette = {
+    raw:colours,
     colours:mapWords(colours, (MAP_WILD[0]<<16)|(MAP_WILD[1]<<8)|MAP_WILD[2]),
-    colourCount:colours.length, occupation, layer:mapLayer, ramp:mapRampName,
+    colourCount:colours.length, occupation, layer:mapLayer, sig:mapLayerSig(),
     occupied:mapWords(occupation,0), identity,
     edge:mapWord((MAP_EDGE[0]<<16)|(MAP_EDGE[1]<<8)|MAP_EDGE[2]),
   };
@@ -4368,8 +4660,8 @@ function mapTileState(date) {
   return mapTilePalette;
 }
 
-function mapTile(level, tx, ty, palette, occupied) {
-  const key = `${level}|${tx}|${ty}|${mapShowProvinceBorders}|${occupied}`;
+function mapTile(level, tx, ty, palette, occupied, thick) {
+  const key = `${level}|${tx}|${ty}|${mapShowProvinceBorders}|${occupied}|${thick}`;
   let tile = mapTiles.get(key);
   if (tile) { mapTiles.delete(key); mapTiles.set(key,tile); return tile; }
   const idx = mapLevel(level), x0 = tx*MAP_TILE_SIZE, y0 = ty*MAP_TILE_SIZE;
@@ -4384,9 +4676,23 @@ function mapTile(level, tx, ty, palette, occupied) {
     const i=(y0+y)*idx.w+x0+x, dst=y*w+x, p=idx.prov[i];
     const right=x0+x+1<idx.w ? idx.prov[i+1] : p;
     const down=y0+y+1<idx.h ? idx.prov[i+idx.w] : p;
-    const boundary=p!==right || p!==down;
-    const edge=boundary && (mapShowProvinceBorders
-      || identity[p]!==identity[right] || identity[p]!==identity[down]);
+    let edge;
+    if (thick<2) {
+      const boundary=p!==right || p!==down;
+      edge=boundary && (mapShowProvinceBorders
+        || identity[p]!==identity[right] || identity[p]!==identity[down]);
+    } else {
+      // Both sides of a border are inked, and at 3 the diagonals too, so the
+      // line is 2-3 raster pixels wide and survives being averaged down.
+      const gx=x0+x, gy=y0+y, left=gx>0 ? idx.prov[i-1] : p, up=gy>0 ? idx.prov[i-idx.w] : p;
+      const near=(q)=>q!==p && (mapShowProvinceBorders || identity[p]!==identity[q]);
+      edge=near(right)||near(down)||near(left)||near(up);
+      if (!edge && thick>=3) {
+        const l=gx>0, r=gx+1<idx.w, u=gy>0, d=gy+1<idx.h;
+        edge=(u&&l&&near(idx.prov[i-idx.w-1]))||(u&&r&&near(idx.prov[i-idx.w+1]))
+          ||(d&&l&&near(idx.prov[i+idx.w-1]))||(d&&r&&near(idx.prov[i+idx.w+1]));
+      }
+    }
     pixels[dst]=edge ? palette.edge : colours[p<colourCount ? p : colourCount];
     if (occPixels && !edge && p<occupation.length && occupation[p]>=0) occPixels[dst]=palette.occupied[p];
   }
@@ -4397,14 +4703,14 @@ function mapTile(level, tx, ty, palette, occupied) {
     occ.getContext('2d').putImageData(occImg,0,0);
   }
   tile={base,occ}; mapTiles.set(key,tile);
-  if (mapTiles.size>MAP_TILE_LIMIT) mapTiles.delete(mapTiles.keys().next().value);
+  if (mapTiles.size>mapTileLimit()) mapTiles.delete(mapTiles.keys().next().value);
   return tile;
 }
 
 function mapPaintTiles(ctx, sc, date, s, cw, ch, dpr) {
   // Choose a stable resolution near physical screen pixels, not an arbitrary
   // zoom=1 special case. Cap density at 2 for bounded work on high-DPI screens.
-  let level=Math.max(0,Math.floor(Math.log2(1/(s*Math.min(dpr,2)))));
+  let level=Math.max(0,Math.floor(Math.log2(1/(s*Math.min(dpr,2)*(mapQuality?2:1)))));
   const maxLevel=Math.ceil(Math.log2(Math.max(MAP.w,MAP.h)));
   level=Math.min(level,maxLevel);
   const x0=Math.max(0,mapOX), y0=Math.max(0,mapOY);
@@ -4414,7 +4720,7 @@ function mapPaintTiles(ctx, sc, date, s, cw, ch, dpr) {
   while (level<maxLevel) {
     const span=MAP_TILE_SIZE*2**level;
     const count=(Math.ceil(x1/span)-Math.floor(x0/span))*(Math.ceil(y1/span)-Math.floor(y0/span));
-    if (count<=MAP_TILE_LIMIT/2) break;
+    if (count<=mapTileLimit()/2) break;
     level++;
   }
   const idx=mapLevel(level), step=idx.step;
@@ -4423,10 +4729,34 @@ function mapPaintTiles(ctx, sc, date, s, cw, ch, dpr) {
   const endX=Math.ceil(x1/step/MAP_TILE_SIZE), endY=Math.ceil(y1/step/MAP_TILE_SIZE);
   // Align shared edges to device pixels and use nearest sampling. This avoids
   // translucent hairlines between tiles and keeps boundaries crisp at any zoom.
-  ctx.imageSmoothingEnabled=false;
-  if(sc) sc.imageSmoothingEnabled=false;
+  // Smoothing only where tiles are shrunk (a larger-than-screen level), so zoomed in it stays blocky.
+  const shrink = mapQuality > 0 && step * s * dpr < 0.999;
+  // Borders are inked a few raster pixels wide where the tiles are averaged
+  // down, so that they come out about one screen pixel wide.
+  const thick = mapQuality > 0 ? Math.max(1, Math.min(3, Math.round(0.9 / (step * s * dpr)))) : 1;
+  // Smooth keeps the finished picture: averaging a whole raster down is the
+  // expensive part, and a click, a hover or a toggle that moves only the
+  // overlays should not pay for it again. Panning and zooming change the key.
+  const cacheable = mapQuality > 0 && !sc;
+  const ckey = cacheable ? [date, mapQuality, mapShowProvinceBorders, mapOX, mapOY, s, dpr, cw, ch, ctx.canvas.width, ctx.canvas.height].join('|') : '';
+  if (cacheable && mapPaintCache && mapPaintCache.key === ckey && mapPaintCache.palette === palette) {
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(mapPaintCache.canvas,0,0); ctx.restore();
+    return;
+  }
+  let target = ctx;
+  if (cacheable) {
+    if (!mapPaintCache) mapPaintCache = {canvas: document.createElement('canvas'), key: '', palette: null};
+    const c = mapPaintCache.canvas;
+    if (c.width !== ctx.canvas.width || c.height !== ctx.canvas.height) { c.width = ctx.canvas.width; c.height = ctx.canvas.height; }
+    target = c.getContext('2d');
+    target.setTransform(1,0,0,1,0,0); target.clearRect(0,0,c.width,c.height);
+    target.setTransform(dpr,0,0,dpr,0,0);
+    mapPaintCache.key = ''; mapPaintCache.palette = null;
+  }
+  target.imageSmoothingEnabled=shrink; if(shrink) target.imageSmoothingQuality='high';
+  if(sc){ sc.imageSmoothingEnabled=shrink; if(shrink) sc.imageSmoothingQuality='high'; }
   for(let ty=firstY;ty<endY;ty++) for(let tx=firstX;tx<endX;tx++) {
-    const tile=mapTile(level,tx,ty,palette,!!sc);
+    const tile=mapTile(level,tx,ty,palette,!!sc,thick);
     const lx=tx*MAP_TILE_SIZE, ly=ty*MAP_TILE_SIZE;
     const sx=Math.max(0,x0/step-lx), sy=Math.max(0,y0/step-ly);
     const ex=Math.min(tile.base.width,x1/step-lx), ey=Math.min(tile.base.height,y1/step-ly);
@@ -4434,8 +4764,12 @@ function mapPaintTiles(ctx, sc, date, s, cw, ch, dpr) {
     const dy=Math.round(((ly+sy)*step-mapOY)*s*dpr)/dpr;
     const dw=Math.round(((lx+ex)*step-mapOX)*s*dpr)/dpr-dx;
     const dh=Math.round(((ly+ey)*step-mapOY)*s*dpr)/dpr-dy;
-    ctx.drawImage(tile.base,sx,sy,ex-sx,ey-sy,dx,dy,dw,dh);
+    target.drawImage(tile.base,sx,sy,ex-sx,ey-sy,dx,dy,dw,dh);
     if(sc) sc.drawImage(tile.occ,sx,sy,ex-sx,ey-sy,dx,dy,dw,dh);
+  }
+  if (cacheable) {
+    mapPaintCache.key = ckey; mapPaintCache.palette = palette;
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(mapPaintCache.canvas,0,0); ctx.restore();
   }
 }
 
@@ -4685,12 +5019,12 @@ function mapWorldPop(date) {
    that would run over another already placed is dropped, biggest piece first. */
 const MAP_NAME_CELL = 6;
 let mapNameCaches = new Map(), mapNameWidth = new Map(), mapProvStats = null, mapNameFontCache = '';
+/* Map labels are set in the report's condensed face, the way a printed atlas
+   sets them: narrow enough that a long name takes a little less of a small
+   country, and with a thin halo instead of the heavy outline that made the
+   letters look swollen. */
 function mapNameFont() {
-  if (!mapNameFontCache) {
-    try { mapNameFontCache = getComputedStyle(document.body).fontFamily || ''; } catch (e) {}
-    if (!mapNameFontCache) mapNameFontCache = 'Segoe UI, Helvetica, Arial, sans-serif';
-  }
-  return mapNameFontCache;
+  return '"Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif';
 }
 function mapNameMeasure(ctx, text) {
   let w = mapNameWidth.get(text);
@@ -4937,9 +5271,9 @@ function mapDrawNameSet(ctx, labels, o) {
     for (const it of items) {
       const h = it.size * .9, yy = cursor + h / 2;
       cursor += h;
-      ctx.font = `${it.value ? 700 : 600} ${it.size}px ${family}`;
-      ctx.lineWidth = Math.max(2 * k, it.size * .2);
-      ctx.strokeStyle = 'rgba(10,16,22,.72)';
+      ctx.font = `600 ${it.size}px ${family}`;
+      ctx.lineWidth = Math.max(1.5 * k, it.size * .13);
+      ctx.strokeStyle = it.value ? 'rgba(10,16,22,.8)' : 'rgba(10,16,22,.78)';
       ctx.strokeText(it.text, sx, yy);
       ctx.fillStyle = it.value ? 'rgba(255,230,150,.97)' : 'rgba(255,248,232,.94)';
       ctx.fillText(it.text, sx, yy);
@@ -5063,7 +5397,7 @@ function mapRender() {
       const r = Math.max(1.6, half * 0.42);
       ctx.beginPath();
       ctx.arc(dot.sx, dot.sy, r, 0, Math.PI * 2);
-      ctx.fillStyle = mapDim(MAP.colours[dot.stacks[0].tag] || '#ffffff');
+      ctx.fillStyle = mapDim(mapColourOf(dot.stacks[0].tag, mapSaveDate()) || '#ffffff');
       ctx.fill();
       ctx.lineWidth = Math.min(1.2, .5 * grow);
       ctx.strokeStyle = dot.fighting ? '#ff5c33' : 'rgba(255,240,214,.75)';
@@ -5071,7 +5405,7 @@ function mapRender() {
       continue;
     }
     placed.push({x: dot.sx, y: dot.sy, reach});
-    const ink = t => mapDim(MAP.colours[t] || '#ffffff');
+    const ink = t => mapDim(mapColourOf(t, mapSaveDate()) || '#ffffff');
     const x0 = dot.sx - hw, y0 = dot.sy - hh, ww = hw * 2, hgt = hh * 2;
 
     /* Somewhere fought over since the last save gets a burst behind its
@@ -5237,7 +5571,7 @@ function landBits(pid) {
   const tagOf = idx => (idx === undefined ? null : MAP.tags[idx]);
   const own = tagOf(book.own.get(pid)), occ = tagOf(book.occ.get(pid));
   const chip = (label, tag) => `<span><span class="rk">${label}</span> `
-    + `<b style="color:${MAP.colours[tag] || '#fff'}">${tag}</b>`
+    + `<b style="color:${mapColourOf(tag, mapSaveDate()) || '#fff'}">${tag}</b>`
     + (nameOf(tag) === tag ? '' : ` <span class="rk">${nameOf(tag)}</span>`)
     + `</span>`;
   if (!own) return [`<span class="rk">unclaimed</span>`];
@@ -5249,12 +5583,51 @@ function landBits(pid) {
              : [chip('owned by', own), figure];
 }
 
+/* The little box that follows the pointer: the province, who owns it, and
+   whatever the map is being coloured by, so the figure is under the cursor
+   instead of in a panel that is shut by default. */
+/* Names as the saves have them. The mod's own names are the starting point,
+   but GFM renames provinces and states depending on who holds them, and the
+   save records the name in force: the scanner sends only the changes, by date. */
+function mapNameAt(table, pid, date) {
+  const list = table && table[pid];
+  if (!list) return null;
+  const at = DATA.dates.indexOf(date);
+  let found = null;
+  for (const [d, n] of list) { if (DATA.dates.indexOf(d) <= at) found = n; else break; }
+  return found;
+}
+const mapSaveDate = () => document.getElementById('mapsave').value || DATA.lastDate;
+const mapProvinceName = (pid, date) => mapNameAt(MAP.provinceNameChanges, pid, date || mapSaveDate())
+  || (MAP.names && MAP.names[pid]) || ('Province ' + pid);
+function mapStateName(pid, date) {
+  const custom = mapNameAt(MAP.stateNameChanges, pid, date || mapSaveDate());
+  if (custom) return custom;
+  const r = (MAP.provinceRegions || {})[pid];
+  return r ? ((MAP.stateNames || {})[r] || '') : '';
+}
+function mapTipHide() { const tip = document.getElementById('maptip'); if (tip) tip.hidden = true; }
+function mapTipShow(e, pid) {
+  const tip = document.getElementById('maptip');
+  if (!tip) return;
+  if (pid < 0 || mapSea.has(pid) || !mapOwnerAt(pid)) { tip.hidden = true; return; }
+  const name = mapProvinceName(pid), state = mapStateName(pid);
+  tip.innerHTML = `<span class="tip-name">${name}</span>`
+    + (state && state !== name ? `<span><span class="rk">state</span> ${state}</span>` : '') + landBits(pid).join('');
+  tip.hidden = false;
+  const host = tip.parentElement.getBoundingClientRect();
+  let x = e.clientX - host.left + 16, y = e.clientY - host.top + 16;
+  if (x + tip.offsetWidth > host.width - 8) x = e.clientX - host.left - tip.offsetWidth - 14;
+  if (y + tip.offsetHeight > host.height - 8) y = e.clientY - host.top - tip.offsetHeight - 14;
+  tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px';
+}
+
 /* Land with no army on it still has an owner worth naming. */
 function mapShowLand(pid) {
   if (pid < 0 || mapSea.has(pid)) return mapIdle();
-  const name = (MAP.names && MAP.names[pid]) || ('province ' + pid);
+  const name = mapProvinceName(pid), state = mapStateName(pid);
   document.getElementById('mapreadout').innerHTML =
-    `<span class="rk">${name}</span>` + landBits(pid).join('')
+    `<span class="rk">${name}</span>` + (state && state !== name ? `<span><span class="rk">state</span> ${state}</span>` : '') + landBits(pid).join('')
     + (mapOwnerAt(pid) ? `<span class="rk">Shift-click to open it in Population</span>` : '');
 }
 
@@ -5284,7 +5657,7 @@ function mapOpenPopulation(pid) {
 
 function mapShow(dot) {
   if (!dot) return mapIdle();
-  const name = (MAP.names && MAP.names[dot.pid]) || ('province ' + dot.pid);
+  const name = mapProvinceName(dot.pid);
   const row = s => {
     const mix = s.mix.split(';').map(part => {
       const c = part.lastIndexOf(':');
@@ -5294,7 +5667,7 @@ function mapShow(dot) {
     // so the share is quoted where it is not a round hundred per cent.
     const full = s.n * (MAP.regimentSize || 3000);
     const pct = full ? Math.round(s.men / full * 100) : 100;
-    return `<b style="color:${MAP.colours[s.tag] || '#fff'}">${s.tag}</b>`
+    return `<b style="color:${mapColourOf(s.tag, mapSaveDate()) || '#fff'}">${s.tag}</b>`
          + `<b class="num">${s.men.toLocaleString()}</b>`
          + `<span class="rk num">${s.n.toLocaleString()} `
          + `${s.n === 1 ? 'bde' : 'bdes'}</span>`
@@ -5467,12 +5840,19 @@ if (MAP) {
     const province = document.createElement('optgroup'); province.label = 'By province';
     for (const l of MAP_LAYERS) {
       const there = l.level === 'province'
-        ? Object.keys(MAP.provinceLayers || {}).length > 0
+        ? Object.keys(MAP.provinceLayers || {}).length > 0 && (!l.extra || Object.keys(MAP.provinceExtra || {}).length > 0)
         : (mapLayerInfo(date, l.key) || DATA.dates.some(d => mapLayerInfo(d, l.key)));
       if (there) (l.level === 'province' ? province : country).append(new Option(l.label, l.key));
     }
     for (const g of [country, province]) if (g.children.length) layerSel.append(g);
-    layerSel.onchange = () => { mapLayer = layerSel.value; mapTileDate = null; mapRender(); };
+    layerSel.onchange = () => { mapLayer = layerSel.value; mapLayerFocus = 0; mapTileDate = null; mapRender(); };
+    document.getElementById('maplegend').addEventListener('click', e => {
+      const row = e.target.closest ? e.target.closest('.lg-row[data-w]') : null;
+      if (!row) return;
+      const w = Number(row.dataset.w);
+      mapLayerFocus = mapLayerFocus === w ? 0 : w;
+      mapTileDate = null; mapRender();
+    });
   }
   const valuesBtn = document.getElementById('mapvalues');
   valuesBtn.onclick = () => {
@@ -5482,6 +5862,16 @@ if (MAP) {
   };
   const rampSel = document.getElementById('mapramp');
   rampSel.onchange = () => { mapRampName = rampSel.value; mapLayerCache.clear(); mapProvLayerCache.clear(); mapTileDate = null; mapRender(); };
+  const setQuality = v => {
+    mapQuality = Math.max(0, Math.min(1, v | 0));
+    try { localStorage.setItem('mapQuality', String(mapQuality)); } catch (e) {}
+    for (const id of ['mapquality', 'popquality']) { const el = document.getElementById(id); if (el) el.value = String(mapQuality); }
+    mapTiles.clear(); mapRender(); refreshPopulation();
+  };
+  for (const id of ['mapquality', 'popquality']) {
+    const el = document.getElementById(id);
+    if (el) { el.value = String(mapQuality); el.onchange = () => setQuality(+el.value); }
+  }
   const namesBtn = document.getElementById('mapnames');
   namesBtn.onclick = () => {
     mapShowNames = !mapShowNames;
@@ -5540,6 +5930,7 @@ if (MAP) {
   canvas.addEventListener('pointermove', e => {
     const p = mapAt(e);
     if (drag) {
+      mapTipHide();
       const s = mapFit() * mapZoom;
       if (Math.abs(p.x - drag.x) + Math.abs(p.y - drag.y) > 3) drag.moved = true;
       mapOX = drag.ox - (p.x - drag.x) / s;
@@ -5547,9 +5938,9 @@ if (MAP) {
       mapRenderSoon();
       return;
     }
-    if (mapPinned) return;
+    if (mapPinned) { mapTipHide(); return; }
     const hit = mapPick(p);
-    if (hit) mapShow(hit); else mapShowLand(mapProvinceAt(p));
+    if (hit) { mapShow(hit); mapTipHide(); } else { const pid = mapProvinceAt(p); mapShowLand(pid); mapTipShow(e, pid); }
   });
   canvas.addEventListener('pointerup', e => {
     const moved = drag && drag.moved;
@@ -5563,7 +5954,7 @@ if (MAP) {
     mapPinned = (mapPinned && hit && mapPinned.pid === hit.pid) ? null : hit;
     mapRender();
   });
-  canvas.addEventListener('pointerleave', () => { if (!mapPinned) mapIdle(); });
+  canvas.addEventListener('pointerleave', () => { mapTipHide(); if (!mapPinned) mapIdle(); });
   window.addEventListener('resize', () => { if (MAP) mapRenderSoon(); });
 } else {
   // No --mod-path, so there is no province bitmap and no country order: hide the
@@ -5911,6 +6302,10 @@ let warBattleSort = {key: 'date', dir: 1};
 // parsed once and only ever reordered, never recreated, so the object itself
 // is a stable key across re-sorts -- no need to invent a string id for it.
 let expandedBattles = new Set();
+let warNationMode = 'lost';            // 'lost' or 'dealt'
+let warNationSort = {key: 'men', dir: -1};
+let legacyTab = 'battles';             // 'battles' or 'nations'
+let legacyShown = [];
 
 function warFlag(tag) {
   const src = (DATA.flags || {})[tag + '|'];
@@ -6091,11 +6486,12 @@ function warBattleSites(w) {
     if (!c) continue;
     let site = sites.get(+b.province);
     if (!site) {
-      site = {x:c[0], y:c[1], name:b.name, losses:0, count:0, date:''};
+      site = {x:c[0], y:c[1], name:b.name, losses:0, count:0, date:'', battles:[]};
       sites.set(+b.province, site);
     }
     site.losses += Math.max(0, b.a[2]) + Math.max(0, b.d[2]);
     site.count++;
+    site.battles.push(b);
     if (b.date && (!site.date || dateYear(b.date) > dateYear(site.date))) site.date = b.date;
   }
   return [...sites.values()];
@@ -6130,60 +6526,298 @@ function warTheatre(w) {
   if (!date) { warTheatreCache.set(w,null); return null; }
   const own = mapOwners[date].own, palette = mapPalette(date, true);
   const fighters = new Set(w.attackers.concat(w.defenders));
-  const canvas = document.createElement('canvas'); canvas.width = 720; canvas.height = 360;
-  const ctx = canvas.getContext('2d'), img = ctx.createImageData(720,360);
-  const wrap = x => ((Math.floor(x)%MAP.w)+MAP.w)%MAP.w;
-  const province = (x,y) => mapProv[Math.min(MAP.h-1,Math.max(0,Math.floor(y)))*MAP.w+wrap(x)];
-  const owner = p => own.has(p) ? own.get(p) : -1;
-  const isBoundary = (p,q) => mapSea.has(p) !== mapSea.has(q) || owner(p) !== owner(q);
-  for (let y=0; y<360; y++) for (let x=0; x<720; x++) {
-    const mx=x0+x*width/720, my=y0+y*height/360, p=province(mx,my);
-    let rgb = mapSea.has(p) ? [30,47,61] : [112,108,88];
-    if (!mapSea.has(p) && fighters.has(MAP.tags[owner(p)])) {
-      const colour=palette[p]; rgb=[(colour>>16)&255,(colour>>8)&255,colour&255];
-      // mapPalette already applies the shared softer land colours.
-    }
-    if (isBoundary(p,province(mx+width/720,my)) || isBoundary(p,province(mx,my+height/360))) rgb=[35,32,28];
-    const i=(y*720+x)*4; img.data.set([...rgb,255],i);
+  // One colour and one "who holds it" key per province, so a frame is a
+  // lookup per pixel and zooming stays smooth.
+  mapLevel(0);
+  const top = mapMaxProvince + 1;
+  const key = new Int32Array(top).fill(-1), rgb = new Uint32Array(top);
+  const pack = (r, g, b) => ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
+  const LAND = pack(112,108,88), SEA = pack(30,47,61);
+  for (let p = 0; p < top; p++) {
+    if (mapSea.has(p)) { key[p] = -2; rgb[p] = SEA; continue; }
+    const o = own.has(p) ? own.get(p) : -1;
+    key[p] = o;
+    if (o >= 0 && fighters.has(MAP.tags[o])) {
+      const c = palette[p];
+      rgb[p] = pack((c >> 16) & 255, (c >> 8) & 255, c & 255);
+    } else rgb[p] = LAND;
   }
-  ctx.putImageData(img,0,0);
-  const visible = sites.map(p=>({...p,px:(centre.x+dx(p.x,centre.x)-x0)*720/width,py:(p.y-y0)*360/height}))
-    .filter(p=>p.px>=0 && p.px<=720 && p.py>=0 && p.py<=360).sort((a,b)=>a.losses-b.losses);
-  const peak = Math.max(1,...visible.map(p=>p.losses));
-  for (const p of visible) {
-    ctx.beginPath(); ctx.arc(p.px,p.py,3+9*Math.sqrt(p.losses/peak),0,Math.PI*2);
-    ctx.fillStyle='rgba(239,186,77,.75)'; ctx.fill(); ctx.strokeStyle='#2a1714'; ctx.lineWidth=1.5; ctx.stroke();
-  }
-  // Label only a few major sites; leave overlapping labels out.
-  const labels=[]; ctx.font='bold 13px sans-serif';
-  for (const p of [...visible].reverse()) {
-    if (labels.length>=3) break;
-    const label=p.name || 'Battle site', tw=ctx.measureText(label).width;
-    const x=Math.max(6,Math.min(714-tw,p.px+12)), y=Math.max(18,Math.min(350,p.py-14));
-    if (labels.some(q=>Math.abs(y-q.y)<22 && x<q.x+q.w+8 && x+tw+8>q.x)) continue;
-    ctx.fillStyle='rgba(21,29,33,.85)'; ctx.fillRect(x-4,y-14,tw+8,20);
-    ctx.fillStyle='#fff0cd'; ctx.fillText(label,x,y); labels.push({x,y,w:tw});
-  }
-  const n=visible.reduce((n,p)=>n+p.count,0), losses=visible.reduce((n,p)=>n+p.losses,0);
   const outside = dateYear(date)<dateYear(w.start) || (!w.active && w.end && dateYear(date)>dateYear(w.end));
-  const caption=`Fighting around ${centre.name || 'the main battle sites'} · ${n} recorded battle${n===1?'':'s'}, ${losses.toLocaleString()} casualties in view. `
-    + `Ownership: ${longDate(date)}${outside?' (outside the war’s dates)':''}. `
-    + 'Gold circles show battle sites across the war, sized by casualties; borders show ownership, not a reconstructed frontline.';
-  // Bound retained canvas memory when browsing a long campaign.
+  const result = {sites, key, rgb, date, outside, centre,
+    view0: {cx: x0 + width / 2, cy: y0 + height / 2, width}};
+  // Bound retained memory when browsing a long campaign.
   if (warTheatreCache.size >= 8) warTheatreCache.delete(warTheatreCache.keys().next().value);
-  const result={canvas,caption}; warTheatreCache.set(w,result); return result;
+  warTheatreCache.set(w, result); return result;
+}
+
+const WT_BORDER = ((255 << 24) | (28 << 16) | (32 << 8) | 35) >>> 0;
+function warTheatreMount(slot, w, T) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const wrap = document.createElement('div'); wrap.className = 'wtwrap';
+  const canvas = document.createElement('canvas');
+  canvas.setAttribute('role', 'img'); canvas.tabIndex = 0;
+  const tip = document.createElement('div'); tip.className = 'map-tip wttip'; tip.hidden = true;
+  const ctl = document.createElement('div'); ctl.className = 'wtctl';
+  const mk = (text, title, fn) => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = text;
+    b.title = title; b.setAttribute('aria-label', title); b.onclick = fn; ctl.appendChild(b); return b;
+  };
+  const caption = document.createElement('figcaption');
+  const hint = document.createElement('div'); hint.className = 'wthint';
+  hint.textContent = 'Scroll or pinch to zoom · drag to pan · click a circle for its battles';
+  wrap.append(canvas, ctl, tip, hint);
+  slot.append(wrap, caption);
+  const dropHint = () => { hint.hidden = true; };
+  canvas.addEventListener('pointerdown', dropHint, {once: true});
+  canvas.addEventListener('wheel', dropHint, {once: true, passive: true});
+
+  const W = MAP.w, H = MAP.h;
+  const minW = Math.max(40, W * .01), maxW = Math.min(W, H * 2);
+  const st = {view: {...T.view0}, provLines: false, hl: null, hits: [], pinned: null};
+  let grid = null, img = null;
+  const norm = v => ((v % W) + W) % W;
+  const cssW = () => Math.max(240, Math.round(canvas.clientWidth || slot.clientWidth || 720));
+  function size() {
+    const w = Math.round(cssW() * dpr);
+    if (canvas.width !== w) { canvas.width = w; canvas.height = Math.round(w / 2); grid = null; }
+  }
+  const clampView = () => {
+    const v = st.view, h = v.width * canvas.height / canvas.width;
+    v.width = Math.max(minW, Math.min(maxW, v.width));
+    v.cx = norm(v.cx);
+    const hh = v.width * canvas.height / canvas.width;
+    v.cy = hh >= H ? H / 2 : Math.max(hh / 2, Math.min(H - hh / 2, v.cy));
+    return h;
+  };
+  function render() {
+    size(); clampView();
+    const w = canvas.width, h = canvas.height, v = st.view;
+    const sxs = v.width / w, hgt = v.width * h / w, sys = hgt / h;
+    const x0 = v.cx - v.width / 2, y0 = v.cy - hgt / 2;
+    if (!grid || grid.length !== (w + 1) * (h + 1)) grid = new Int32Array((w + 1) * (h + 1));
+    const cols = new Int32Array(w + 1);
+    for (let i = 0; i <= w; i++) cols[i] = Math.floor(norm(x0 + (i + .5) * sxs));
+    for (let j = 0; j <= h; j++) {
+      const row = Math.min(H - 1, Math.max(0, Math.floor(y0 + (j + .5) * sys))) * W, o = j * (w + 1);
+      for (let i = 0; i <= w; i++) grid[o + i] = mapProv[row + cols[i]];
+    }
+    const ctx = canvas.getContext('2d');
+    if (!img || img.width !== w || img.height !== h) img = ctx.createImageData(w, h);
+    const px = new Uint32Array(img.data.buffer), key = T.key, rgb = T.rgb, g1 = w + 1;
+    const thick = dpr >= 1.5;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const at = j * g1 + i, p = grid[at], k = key[p];
+      let c = rgb[p];
+      if (k !== key[grid[at + 1]] || k !== key[grid[at + g1]]
+          || (thick && ((i > 0 && k !== key[grid[at - 1]]) || (j > 0 && k !== key[grid[at - g1]])))) c = WT_BORDER;
+      else if (st.provLines && (p !== grid[at + 1] || p !== grid[at + g1])) {
+        // A province line: the province's colour, darkened.
+        c = (0xFF000000 | ((((c >> 16) & 255) * .78) << 16) | ((((c >> 8) & 255) * .78) << 8) | ((c & 255) * .78)) >>> 0;
+      }
+      px[j * w + i] = c;
+    }
+    ctx.putImageData(img, 0, 0);
+
+    // Battle sites, sized by casualties.
+    const zoom = T.view0.width / v.width;
+    const half = W / 2, hits = [];
+    const place = s => {
+      let d = s.x - v.cx; d = ((d + W * 1.5) % W) - half;
+      return [(d / v.width + .5) * w, ((s.y - y0) / hgt) * h];
+    };
+    const visible = [];
+    for (const s of T.sites) {
+      const [x, y] = place(s);
+      if (x >= -20 && x <= w + 20 && y >= -20 && y <= h + 20) visible.push({s, x, y});
+    }
+    visible.sort((a, b) => a.s.losses - b.s.losses);
+    const peak = Math.max(1, ...T.sites.map(s => s.losses));
+    const grow = 1 + .12 * Math.log2(Math.max(1, zoom));
+    for (const e of visible) {
+      e.r = (3 + 9 * Math.sqrt(e.s.losses / peak)) * dpr * grow;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(239,186,77,.75)'; ctx.fill();
+      ctx.strokeStyle = '#2a1714'; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+      hits.push(e);
+    }
+    for (const mark of [st.hl, st.pinned]) {
+      const e = mark && visible.find(q => q.s === mark);
+      if (!e) continue;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 3 * dpr, 0, Math.PI * 2);
+      ctx.strokeStyle = '#fff0cd'; ctx.lineWidth = 2.2 * dpr; ctx.stroke();
+    }
+    st.hits = hits;
+    // Names: the biggest sites first, a few more the closer you look.
+    const maxLabels = Math.min(24, Math.round(3 * Math.max(1, zoom)));
+    const labels = []; ctx.font = `600 ${14 * dpr}px ${mapNameFont()}`; ctx.textBaseline = 'alphabetic';
+    for (const e of [...visible].reverse()) {
+      if (labels.length >= maxLabels) break;
+      const text = e.s.name || 'Battle site', tw = ctx.measureText(text).width, pad = 4 * dpr;
+      const lx = Math.max(6 * dpr, Math.min(w - tw - 6 * dpr, e.x + e.r + 5 * dpr));
+      const ly = Math.max(18 * dpr, Math.min(h - 6 * dpr, e.y - e.r - 4 * dpr));
+      if (labels.some(q => Math.abs(ly - q.y) < 20 * dpr && lx < q.x + q.w + 8 * dpr && lx + tw + 8 * dpr > q.x)) continue;
+      ctx.fillStyle = 'rgba(21,29,33,.85)'; ctx.fillRect(lx - pad, ly - 14 * dpr, tw + 2 * pad, 20 * dpr);
+      ctx.fillStyle = '#fff0cd'; ctx.fillText(text, lx, ly); labels.push({x: lx, y: ly, w: tw});
+    }
+    // The caption follows the view: what is on screen is what it counts.
+    let n = 0, losses = 0;
+    for (const e of visible) if (e.x >= 0 && e.x <= w && e.y >= 0 && e.y <= h) { n += e.s.count; losses += e.s.losses; }
+    caption.textContent = `${zoom > 1.05 ? 'In view' : 'Fighting around ' + (T.centre.name || 'the main battle sites')} · `
+      + `${n} recorded battle${n === 1 ? '' : 's'}, ${losses.toLocaleString()} casualties in view. `
+      + `Ownership: ${longDate(T.date)}${T.outside ? ' (outside the war’s dates)' : ''}. `
+      + 'Gold circles show battle sites across the war, sized by casualties; borders show ownership, not a reconstructed frontline.';
+    canvas.setAttribute('aria-label', caption.textContent);
+  }
+  let queued = false;
+  const soon = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; render(); }); } };
+
+  // ---- view changes
+  const toCanvas = (cx, cy) => { const r = canvas.getBoundingClientRect(); return [(cx - r.left) * canvas.width / r.width, (cy - r.top) * canvas.height / r.height]; };
+  function zoomAt(factor, x, y) {
+    const v = st.view, w = canvas.width, h = canvas.height;
+    const before = v.width, hb = before * h / w;
+    const mx = v.cx - before / 2 + (x / w) * before, my = v.cy - hb / 2 + (y / h) * hb;
+    v.width = Math.max(minW, Math.min(maxW, before / factor));
+    const ha = v.width * h / w;
+    v.cx = mx - (x / w - .5) * v.width; v.cy = my - (y / h - .5) * ha;
+    soon();
+  }
+  const atMin = () => st.view.width <= minW * 1.001, atMax = () => st.view.width >= maxW * .999;
+  canvas.addEventListener('wheel', e => {
+    const zoomOut = e.deltaY > 0;
+    // Let the page scroll when there is nothing left to zoom out of.
+    if (zoomOut && atMax()) return;
+    e.preventDefault();
+    const [x, y] = toCanvas(e.clientX, e.clientY);
+    zoomAt(Math.exp(-e.deltaY * (e.deltaMode === 1 ? .05 : .0016)), x, y);
+  }, {passive: false});
+  canvas.addEventListener('dblclick', e => { const [x, y] = toCanvas(e.clientX, e.clientY); zoomAt(2, x, y); });
+  const pointers = new Map();
+  let pinch = 0, dragMoved = false, last = null;
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    dragMoved = false; last = [e.clientX, e.clientY];
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); }
+    canvas.style.cursor = 'grabbing';
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (pointers.has(e.pointerId)) {
+      const prev = pointers.get(e.pointerId);
+      pointers.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch > 0 && d > 0) { const [x, y] = toCanvas((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); zoomAt(d / pinch, x, y); }
+        pinch = d; dragMoved = true; tip.hidden = true; return;
+      }
+      if (Math.abs(e.clientX - last[0]) + Math.abs(e.clientY - last[1]) > 3) dragMoved = true;
+      if (dragMoved) {
+        const r = canvas.getBoundingClientRect(), v = st.view;
+        const per = v.width / r.width;               // map pixels per CSS pixel
+        v.cx -= (e.clientX - prev[0]) * per; v.cy -= (e.clientY - prev[1]) * per;
+        tip.hidden = true; soon();
+      }
+      return;
+    }
+    hover(e);
+  });
+  const release = e => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch = 0; canvas.style.cursor = 'grab'; };
+  canvas.addEventListener('pointercancel', release);
+  canvas.addEventListener('pointerup', e => {
+    const wasClick = !dragMoved && pointers.size === 1;
+    release(e);
+    if (wasClick) {
+      const hit = siteAt(e);
+      st.pinned = hit && st.pinned !== hit.s ? hit.s : null;
+      focusBattles(st.pinned); soon();
+    }
+  });
+  canvas.addEventListener('pointerleave', () => { tip.hidden = true; if (st.hl) { st.hl = null; soon(); } });
+  canvas.style.cursor = 'grab';
+  function siteAt(e) {
+    const [x, y] = toCanvas(e.clientX, e.clientY);
+    let best = null, bd = Infinity;
+    for (const h of st.hits) {
+      const d = Math.hypot(h.x - x, h.y - y);
+      if (d <= h.r + 4 * dpr && d < bd) { best = h; bd = d; }
+    }
+    return best;
+  }
+  function describe(s) {
+    const lines = [`<span class="tip-name">${s.name || 'Battle site'}</span>`,
+      `<span>${s.count} battle${s.count === 1 ? '' : 's'} · ${s.losses.toLocaleString()} casualties</span>`];
+    const list = s.battles.slice().sort((a, b) => dateYear(a.date || '9999.1.1') - dateYear(b.date || '9999.1.1'));
+    for (const b of list.slice(0, 6)) {
+      const win = b.won ? b.a[0] : b.d[0];
+      lines.push(`<span>${b.date || 'undated'} · ${b.sea ? 'naval' : 'land'} · won by ${win} · ${(b.a[2] + b.d[2]).toLocaleString()} lost</span>`);
+    }
+    if (list.length > 6) lines.push(`<span>and ${list.length - 6} more</span>`);
+    return lines.join('');
+  }
+  function hover(e) {
+    const hit = siteAt(e);
+    if (!hit) { tip.hidden = true; if (st.hl) { st.hl = null; soon(); } canvas.style.cursor = 'grab'; return; }
+    canvas.style.cursor = 'pointer';
+    if (st.hl !== hit.s) { st.hl = hit.s; soon(); }
+    tip.innerHTML = describe(hit.s); tip.hidden = false;
+    const host = wrap.getBoundingClientRect();
+    let x = e.clientX - host.left + 14, y = e.clientY - host.top + 14;
+    if (x + tip.offsetWidth > host.width - 6) x = e.clientX - host.left - tip.offsetWidth - 12;
+    if (y + tip.offsetHeight > host.height - 6) y = e.clientY - host.top - tip.offsetHeight - 12;
+    tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px';
+  }
+
+  // ---- the battle tables beside the map
+  const layout = slot.closest('.warlayout');
+  const dry = w.battles.filter(b => !b.sea), sea = w.battles.filter(b => b.sea);
+  const rowOf = b => layout && layout.querySelector(
+    `tr.battlerow[data-bkind="${b.sea ? 'sea' : 'land'}"][data-bi="${(b.sea ? sea : dry).indexOf(b)}"]`);
+  const battleOf = tr => (tr.dataset.bkind === 'sea' ? sea : dry)[+tr.dataset.bi];
+  const siteOfBattle = b => T.sites.find(s => s.battles.includes(b));
+  function focusBattles(site) {
+    if (!layout) return;
+    layout.querySelectorAll('tr.battlerow.maphl').forEach(r => r.classList.remove('maphl'));
+    if (!site) return;
+    let first = null;
+    for (const b of site.battles) { const r = rowOf(b); if (r) { r.classList.add('maphl'); first = first || r; } }
+    if (first) first.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  }
+  if (layout) {
+    layout.addEventListener('mouseover', e => {
+      const tr = e.target.closest && e.target.closest('tr.battlerow');
+      const s = tr ? siteOfBattle(battleOf(tr)) : null;
+      if (s !== st.rowHl) { st.rowHl = s; st.hl = s || null; soon(); }
+    });
+  }
+
+  // ---- controls
+  const centreOn = (x, y) => { st.view.cx = x; st.view.cy = y; };
+  mk('+', 'Zoom in', () => zoomAt(1.6, canvas.width / 2, canvas.height / 2));
+  mk('−', 'Zoom out', () => zoomAt(1 / 1.6, canvas.width / 2, canvas.height / 2));
+  mk('⌂', 'Back to the theatre', () => { st.view = {...T.view0}; st.pinned = null; focusBattles(null); soon(); });
+  mk('World', 'Show the whole map', () => { st.view.width = maxW; centreOn(W / 2, H / 2); soon(); });
+  const lines = mk('Provinces', 'Show province boundaries', () => {
+    st.provLines = !st.provLines; lines.setAttribute('aria-pressed', st.provLines); soon();
+  });
+  lines.setAttribute('aria-pressed', 'false');
+  canvas.addEventListener('keydown', e => {
+    const v = st.view, step = v.width * .12;
+    const moves = {ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step]};
+    if (moves[e.key]) { e.preventDefault(); v.cx += moves[e.key][0]; v.cy += moves[e.key][1]; soon(); }
+    else if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomAt(1.6, canvas.width / 2, canvas.height / 2); }
+    else if (e.key === '-') { e.preventDefault(); zoomAt(1 / 1.6, canvas.width / 2, canvas.height / 2); }
+  });
+  if (window.ResizeObserver) new ResizeObserver(() => { if (canvas.width !== Math.round(cssW() * dpr)) soon(); }).observe(wrap);
+  render();
+  slot.__wt = {st, render, zoomAt};
 }
 
 function drawWarTheatre(w) {
-  const slot=document.getElementById('wartheatre');
+  const slot = document.getElementById('wartheatre');
   if (!slot) return;
-  const view=warTheatre(w);
+  const view = warTheatre(w);
   if (!view) { slot.remove(); return; }
-  const canvas=document.createElement('canvas'); canvas.width=720; canvas.height=360;
-  canvas.setAttribute('role','img'); canvas.setAttribute('aria-label',view.caption);
-  canvas.getContext('2d').drawImage(view.canvas,0,0);
-  const caption=document.createElement('figcaption'); caption.textContent=view.caption;
-  slot.append(canvas,caption);
+  warTheatreMount(slot, w, view);
 }
 
 // Past a handful, the rest of a list folds away behind a count.
@@ -6331,8 +6965,9 @@ function warInfobox(w) {
     body += band('Casualties and losses') + cols(lost.cols[0], lost.cols[1])
       + `<div class="ibcaption" style="padding:10px 14px;border-top:1px solid var(--grid)">Total casualties: <b>${w.battles.reduce((n, b) => n + b.a[2] + b.d[2], 0).toLocaleString()}</b></div>`;
     notes.push('Casualties are each side&rsquo;s losses in its battles, men and ships '
-      + 'together. They are not split by nation: a save records one loss figure for '
-      + 'each side of a battle, under the nation leading it, whoever&rsquo;s troops died.');
+      + 'together. By nation they are the losses of the armies each nation led, in the '
+      + 'table below: a save records one loss figure for each side of a battle, under '
+      + 'the nation leading it, whoever&rsquo;s troops died.');
     if (lost.unplaced)
       notes.push(`${lost.unplaced.toLocaleString()} more were lost by armies `
         + `neither side&rsquo;s list could place.`);
@@ -6363,7 +6998,180 @@ function sideUnits(s) {
   return {units, army: units.reduce((sum, [, n]) => sum + n, 0)};
 }
 
-function battleDetail(b) {
+/* ---------------- losses by nation ---------------- */
+
+/* One row per nation that fought: its battles, wins, and the men and ships it
+   lost and dealt. A save keeps one loss figure per side of a battle under the
+   nation leading that army, so these are the losses of the armies each nation
+   led -- allies' troops in them included -- and the casualties dealt are what
+   the army across the field lost. */
+function warNationRows(w) {
+  const sides = warSides(w), rows = new Map();
+  const row = tag => {
+    let r = rows.get(tag);
+    if (!r) rows.set(tag, r = {tag, side: 0, battles: 0, won: 0, lostB: 0,
+      menLost: 0, shipsLost: 0, menDealt: 0, shipsDealt: 0});
+    return r;
+  };
+  for (const side of ['attacker', 'defender'])
+    for (const p of belParties(w, side)) { const r = row(p.tag); if (!r.side) r.side = side === 'attacker' ? 1 : -1; }
+  for (const b of w.battles) {
+    const marks = sides.battle(b);
+    const take = (mine, theirs, mark, win) => {
+      const r = row(mine[0]);
+      if (!r.side && mark) r.side = mark;
+      r.battles++; if (win) r.won++; else r.lostB++;
+      if (b.sea) { r.shipsLost += mine[2]; r.shipsDealt += theirs[2]; }
+      else { r.menLost += mine[2]; r.menDealt += theirs[2]; }
+    };
+    take(b.a, b.d, marks[0], b.won);
+    take(b.d, b.a, marks[1], !b.won);
+  }
+  return [...rows.values()];
+}
+function warNationInner(w) {
+  const dealt = warNationMode === 'dealt';
+  const rows = warNationRows(w).map(r => ({...r,
+    men: dealt ? r.menDealt : r.menLost, ships: dealt ? r.shipsDealt : r.shipsLost,
+    ratio: r.menLost > 0 ? r.menDealt / r.menLost : null, name: nameOf(r.tag)}));
+  const key = warNationSort.key, dir = warNationSort.dir;
+  rows.sort((a, b) => {
+    const x = a[key], y = b[key];
+    if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+    return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir || b.men - a.men;
+  });
+  const peak = Math.max(1, ...rows.map(r => r.men));
+  const head = [['name', 'Nation', ''], ['side', 'Side', ''], ['battles', 'Battles', 'num'], ['won', 'Won–lost', 'num'],
+    ['men', dealt ? 'Men killed' : 'Men lost', 'num wn-men'], ['ships', dealt ? 'Ships sunk' : 'Ships lost', 'num'],
+    ['ratio', 'Dealt/lost', 'num']];
+  const sideLabel = s => s > 0 ? '<span class="wn-side att">Attacker</span>' : s < 0 ? '<span class="wn-side def">Defender</span>' : '<span class="rk">—</span>';
+  const sum = (s, k) => rows.filter(r => r.side === s).reduce((n, r) => n + r[k], 0);
+  const foot = (label, s) => `<tr><td colspan="4">${label}</td><td class="num">${sum(s, 'men').toLocaleString()}</td>`
+    + `<td class="num">${sum(s, 'ships').toLocaleString()}</td><td></td></tr>`;
+  return `<div class="wn-head"><div class="segments" role="group" aria-label="Which figure">`
+    + `<button type="button" data-wn-mode="lost" aria-pressed="${!dealt}">Losses</button>`
+    + `<button type="button" data-wn-mode="dealt" aria-pressed="${dealt}">Casualties dealt</button></div>`
+    + `<span class="rk">${dealt ? 'what the enemy army lost in the battles this nation led' : 'what the armies this nation led lost'}</span></div>`
+    + `<div class="tablewrap"><table class="mini wntable"><thead><tr>`
+    + head.map(([k, label, cls]) => `<th data-wn-sort="${k}"${cls ? ` class="${cls}"` : ''}`
+        + (key === k ? ` aria-sort="${dir < 0 ? 'descending' : 'ascending'}"` : '') + `>${label}</th>`).join('')
+    + `</tr></thead><tbody>`
+    + rows.map(r => `<tr${r.battles ? '' : ' class="idle"'}><td>${warTag(r.tag)} <span class="rk">${r.name}</span></td>`
+        + `<td>${sideLabel(r.side)}</td><td class="num">${r.battles || '—'}</td>`
+        + `<td class="num">${r.battles ? r.won + '–' + r.lostB : '—'}</td>`
+        + `<td class="num wn-men">${r.men ? r.men.toLocaleString() : '—'}`
+        +   (r.men ? `<i class="wn-bar" style="width:${Math.max(2, r.men / peak * 100)}%;background:${colourFor(r.tag)}"></i>` : '') + `</td>`
+        + `<td class="num">${r.ships ? r.ships.toLocaleString() : '—'}</td>`
+        + `<td class="num">${r.ratio == null ? '—' : r.ratio.toFixed(2)}</td></tr>`).join('')
+    + `</tbody><tfoot>${foot('Attackers, together', 1)}${foot('Defenders, together', -1)}</tfoot></table></div>`
+    + `<p class="note">A save records one loss figure for each side of a battle, under the nation leading it, `
+    + `so a nation here carries the losses of every army it led, its allies&rsquo; men included. `
+    + `Dealt per lost is men killed over men lost, land battles only.</p>`;
+}
+const warNation = w => `<div class="wnation">${warNationInner(w)}</div>`;
+function bindWarNation(root, w) {
+  const host = root.querySelector('.wnation');
+  if (!host) return;
+  const wire = () => {
+    host.querySelectorAll('[data-wn-mode]').forEach(b => b.onclick = () => {
+      warNationMode = b.dataset.wnMode; host.innerHTML = warNationInner(w); wire();
+    });
+    host.querySelectorAll('th[data-wn-sort]').forEach(th => th.onclick = () => {
+      const k = th.dataset.wnSort;
+      if (warNationSort.key === k) warNationSort.dir *= -1;
+      else warNationSort = {key: k, dir: k === 'name' || k === 'side' ? 1 : -1};
+      host.innerHTML = warNationInner(w); wire();
+    });
+  };
+  wire();
+}
+
+/* ---------------- one battle, in full ---------------- */
+
+const warNearestSave = date => {
+  if (!date || !DATA.dates.length) return DATA.dates[0] || '';
+  const y = dateYear(date);
+  let at = 0;
+  DATA.years.forEach((v, i) => { if (v <= y) at = i; });
+  return DATA.dates[at];
+};
+const battleOrderMemo = new WeakMap();
+function battleOrder(w) {
+  if (battleOrderMemo.has(w)) return battleOrderMemo.get(w);
+  const list = w.battles.map((b, i) => ({b, i}))
+    .sort((x, y) => (x.b.date ? dateYear(x.b.date) : 1e9) - (y.b.date ? dateYear(y.b.date) : 1e9) || x.i - y.i)
+    .map(x => x.b);
+  battleOrderMemo.set(w, list);
+  return list;
+}
+function battleArmy(b, key, label, won) {
+  const s = b[key], o = b[key === 'a' ? 'd' : 'a'];
+  const {units, army} = sideUnits(s);
+  const what = b.sea ? 'ships' : 'men';
+  const rate = army ? (s[2] / army * 100).toFixed(1) + '% of its ' + what : '';
+  return `<div class="bt-army${won ? ' won' : ''}"><div class="bt-role">${label}${won ? ' · victor' : ''}</div>`
+    + `<div class="bt-nation">${warTag(s[0])} <span>${nameOf(s[0])}</span></div>`
+    + `<dl class="bt-facts"><dt>Commander</dt><dd>${s[1] || '—'}</dd>`
+    + `<dt>Engaged</dt><dd>${army.toLocaleString()} ${what}</dd>`
+    + `<dt>Lost</dt><dd>${s[2].toLocaleString()}${rate ? ` <span class="rk">&middot; ${rate}</span>` : ''}</dd>`
+    + `<dt>Inflicted</dt><dd>${o[2].toLocaleString()}</dd></dl>`
+    + (units.length ? `<table class="bt-units">${units.map(([kind, n]) =>
+        `<tr><td>${kind}</td><td class="num">${n.toLocaleString()}</td>`
+        + `<td class="bar"><i style="width:${army ? Math.max(2, n / army * 100) : 0}%"></i></td></tr>`).join('')}</table>`
+      : '<span class="rk">No composition recorded.</span>')
+    + `</div>`;
+}
+function battleBox() {
+  let d = document.getElementById('battlebox');
+  if (!d) {
+    d = document.createElement('dialog'); d.id = 'battlebox'; d.className = 'battlebox';
+    d.setAttribute('aria-label', 'Battle record');
+    document.body.append(d);
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+  }
+  return d;
+}
+function openBattle(w, b) {
+  const d = battleBox();
+  const order = battleOrder(w), at = order.indexOf(b);
+  const sides = warSides(w), marks = sides.battle(b);
+  const aArmy = sideUnits(b.a).army, dArmy = sideUnits(b.d).army;
+  const winner = b.won ? b.a : b.d, loser = b.won ? b.d : b.a;
+  const ratio = winner[2] > 0 ? loser[2] / winner[2] : null;
+  const state = MAP && b.province ? mapStateName(b.province, warNearestSave(b.date || w.start)) : '';
+  const sideName = m => m > 0 ? 'attacking side of the war' : m < 0 ? 'defending side of the war' : '';
+  const tile = (l, v) => `<div><div class="l">${l}</div><div class="v">${v}</div></div>`;
+  const same = order.filter(x => x !== b && x.province && x.province === b.province);
+  d.innerHTML = `<div class="bt-top"><h3>Battle of ${b.name}</h3>`
+    + `<span class="rk">${b.sea ? 'Naval' : 'Land'} battle · ${w.name}</span>`
+    + `<button type="button" class="bt-close" aria-label="Close">Close</button></div>`
+    + `<div class="bt-body"><div class="bt-sum">`
+    + tile('Result', (b.won ? 'Attacker' : 'Defender') + ' won')
+    + tile('Date', b.date ? longDate(b.date) : '<span class="rk">not recorded</span>')
+    + tile('Place', (state ? state + ' · ' : '') + (b.province ? 'province ' + b.province : '—'))
+    + tile('Engaged', (aArmy + dArmy).toLocaleString() + ' ' + (b.sea ? 'ships' : 'men'))
+    + tile('Lost', (b.a[2] + b.d[2]).toLocaleString())
+    + tile('Loss ratio', ratio == null ? '—' : `1 : ${ratio.toFixed(2)}`)
+    + `</div><div class="bt-armies">`
+    + battleArmy(b, 'a', 'Attacking army' + (sideName(marks[0]) ? ' · ' + sideName(marks[0]) : ''), b.won)
+    + battleArmy(b, 'd', 'Defending army' + (sideName(marks[1]) ? ' · ' + sideName(marks[1]) : ''), !b.won)
+    + `</div>`
+    + (same.length ? `<div class="bt-more">Also fought here in this war: `
+        + same.map(x => `<button type="button" data-bt-other="${order.indexOf(x)}">${x.date || 'undated'} · ${x.won ? 'attacker' : 'defender'} won</button>`).join('') + `</div>` : '')
+    + `<div class="bt-nav"><button type="button" class="bt-prev"${at > 0 ? '' : ' disabled'}>&larr; Earlier</button>`
+    + `<span class="rk">battle ${at + 1} of ${order.length}, by date${w.dated < w.battles.length ? ' (undated ones last)' : ''}</span>`
+    + `<button type="button" class="bt-next"${at < order.length - 1 ? '' : ' disabled'}>Later &rarr;</button></div>`
+    + `<p class="note">Losses are the save&rsquo;s own figure for each side, under the nation leading it. `
+    + `Composition is what each army fielded.</p></div>`;
+  d.querySelector('.bt-close').onclick = () => d.close();
+  const go = i => { if (order[i]) openBattle(w, order[i]); };
+  d.querySelector('.bt-prev').onclick = () => go(at - 1);
+  d.querySelector('.bt-next').onclick = () => go(at + 1);
+  d.querySelectorAll('[data-bt-other]').forEach(bt => bt.onclick = () => go(+bt.dataset.btOther));
+  if (!d.open) d.showModal();
+}
+
+function battleDetail(b, kind, index) {
   const side = (label, s) => {
     const {units, army} = sideUnits(s);
     return `<div class="battleside"><div class="sidehead">${label}</div>`
@@ -6378,7 +7186,7 @@ function battleDetail(b) {
   };
   return `<tr class="battledetail"><td colspan="8"><div class="battlesides">`
     + side('Defender', b.d) + side('Attacker', b.a)
-    + `</div></td></tr>`;
+    + `</div><button type="button" class="battle-open" data-bkind="${kind}" data-bi="${index}">Full record &rarr;</button></td></tr>`;
 }
 
 function warBattleTable(list, title, kind) {
@@ -6429,7 +7237,7 @@ function warBattleTable(list, title, kind) {
           + `<td>${warTag(b.a[0])}</td>`
           + `<td class="num">${b.a[2].toLocaleString()}</td>`
           + `<td class="num">${(b.a[2] + b.d[2]).toLocaleString()}</td></tr>`
-          + (open ? battleDetail(b) : '');
+          + (open ? battleDetail(b, kind, list.indexOf(b)) : '');
       }).join('')
     + `</tbody></table></div>`;
 }
@@ -6592,6 +7400,7 @@ function legacyBattles(w) {
     const a = get(x), b = get(y);
     return (a < b ? -1 : a > b ? 1 : 0) * legacyBattleSort.dir;
   });
+  legacyShown = rows;
   const head = [['name', 'Battle'], ['date', 'Date'], ['attacker', 'Attacker'],
                 ['defender', 'Defender'], ['type', 'Type'], ['result', 'Result'],
                 ['total', 'Total losses']];
@@ -6602,7 +7411,7 @@ function legacyBattles(w) {
         + (legacyBattleSort.key === k ? ` aria-sort="${legacyBattleSort.dir < 0
             ? 'descending' : 'ascending'}"` : '') + `>${label}</th>`).join('')
     + `</tr></thead><tbody>`
-    + rows.map(b => `<tr><td>${b.name}</td>`
+    + rows.map((b, i) => `<tr class="lgrow" data-li="${i}" title="Double-click for the full record"><td>${b.name}</td>`
         + `<td class="num">${b.date || '<span class="rk">unknown</span>'}</td>`
         + `<td>${warTag(b.a[0])}</td><td>${warTag(b.d[0])}</td>`
         + `<td>${b.sea ? 'Naval' : 'Land'}</td><td>${b.won ? 'Yes' : 'No'}</td>`
@@ -6623,9 +7432,9 @@ function warLegacy(w) {
                    ['Total ships lost', sea.toLocaleString()],
                    ['Has ended', w.active ? 'No' : 'Yes']];
   const notes = ['Losses are men lost in land battles, ships lost those sunk in naval '
-    + 'ones. A side&rsquo;s totals are its battles&rsquo; losses; they are not split by '
-    + 'nation, since a save records one loss figure for each side of a battle, under '
-    + 'the nation leading it.'];
+    + 'ones. A side&rsquo;s totals are its battles&rsquo; losses. By nation they are the '
+    + 'losses of the armies each nation led: a save records one loss figure for each '
+    + 'side of a battle, under the nation leading it.'];
   if (lost.land[0] || lost.sea[0])
     notes.push(`${lost.land[0].toLocaleString()} men and ${lost.sea[0].toLocaleString()} `
       + `ships were lost by armies neither side&rsquo;s list could place.`);
@@ -6634,8 +7443,13 @@ function warLegacy(w) {
     + `<div class="lgcentre"><div class="lgpanel"><h3 class="lgtitle">${w.name}</h3>`
     + `<div class="lgcols"><div><div class="lgcap">General information</div>${grid(general)}</div>`
     + `<div><div class="lgcap">Original wargoal</div>${grid(legacyGoal(w))}</div></div></div>`
-    + `<div class="lgpanel">${w.battles.length ? legacyBattles(w)
-        : '<span class="rk">No battles recorded.</span>'}`
+    + `<div class="lgpanel">`
+    + (w.battles.length ? `<div class="segments lgtabs" role="group" aria-label="Battles or losses">`
+        + `<button type="button" data-lgtab="battles" aria-pressed="${legacyTab === 'battles'}">Battles <span class="rk">${w.battles.length}</span></button>`
+        + `<button type="button" data-lgtab="nations" aria-pressed="${legacyTab === 'nations'}">Losses by nation</button></div>` : '')
+    + (!w.battles.length ? '<span class="rk">No battles recorded.</span>'
+        : legacyTab === 'nations' ? warNation(w)
+        : legacyBattles(w) + '<p class="note">Double-click a battle for its full record.</p>')
     + notes.map(n => `<p class="note">${n}</p>`).join('') + `</div></div>`
     + legacySide(w, 'defender', lost, -1)
     + `</div>`;
@@ -6656,6 +7470,13 @@ function drawWarDetail() {
     document.getElementById('warview-' + view).setAttribute('aria-pressed', warView === view);
   if (warView === 'legacy') {
     box.innerHTML = warLegacy(w);
+    box.querySelectorAll('[data-lgtab]').forEach(bt => {
+      bt.onclick = () => { legacyTab = bt.dataset.lgtab; drawWarDetail(); };
+    });
+    bindWarNation(box, w);
+    box.querySelectorAll('tr.lgrow').forEach(tr => {
+      tr.ondblclick = () => openBattle(w, legacyShown[+tr.dataset.li]);
+    });
     box.querySelectorAll('th[data-lk]').forEach(th => {
       th.onclick = () => {
         const k = th.dataset.lk;
@@ -6690,6 +7511,8 @@ function drawWarDetail() {
   box.innerHTML =
     `<div class="warlayout">${warInfobox(w)}<div class="warmain">`
     + `<div class="techsub">War goals</div>${goals}`
+    + (w.battles.length ? `<div class="techsub" style="margin-top:12px">Losses by nation</div>${warNation(w)}` : '')
+    + (w.battles.length ? '<p class="note">Click a battle for its units; double-click it, or use <b>Full record</b>, for the whole battle.</p>' : '')
     + warBattleTable(dry, 'Land battles', 'land')
     + warBattleTable(sea, 'Naval battles', 'sea')
     + (undated ? `<p class="note">${undated} battle${undated === 1 ? ' has' : 's have'} no recorded date.</p>` : '')
@@ -6697,6 +7520,10 @@ function drawWarDetail() {
 
   drawWarTheatre(w);
   attachWarExport(box, w);
+  bindWarNation(box, w);
+  box.querySelectorAll('button.battle-open').forEach(bt => {
+    bt.onclick = e => { e.stopPropagation(); openBattle(w, (bt.dataset.bkind === 'sea' ? sea : dry)[+bt.dataset.bi]); };
+  });
 
   box.querySelectorAll('th[data-bk]').forEach(th => {
     th.onclick = () => {
@@ -6710,6 +7537,7 @@ function drawWarDetail() {
   // The row's own list ('land' or 'sea') is looked up fresh here rather than
   // trusting a captured closure, since dry/sea are rebuilt every draw.
   box.querySelectorAll('tr.battlerow').forEach(tr => {
+    tr.ondblclick = () => openBattle(w, (tr.dataset.bkind === 'sea' ? sea : dry)[+tr.dataset.bi]);
     tr.onclick = () => {
       const b = (tr.dataset.bkind === 'sea' ? sea : dry)[+tr.dataset.bi];
       if (expandedBattles.has(b)) expandedBattles.delete(b);
@@ -6750,7 +7578,39 @@ let populationBoundsDate = '', populationBounds = new Map();
 const populationCountrySelect = document.getElementById('popcountry');
 const populationRegionSelect = document.getElementById('popregion');
 const populationRegionOf = p => String((MAP.provinceRegions || {})[p] || ('province:' + p));
-const populationRegionName = r => (MAP.stateNames || {})[r] || r.replace('province:', 'Province ').replace(/_/g,' ');
+const populationDefaultName = r => (MAP.stateNames || {})[r] || r.replace('province:', 'Province ').replace(/_/g,' ');
+let populationRegionProvinces = null;
+const populationProvincesOf = r => {
+  if (!populationRegionProvinces) {
+    populationRegionProvinces = new Map();
+    for (const [p, reg] of Object.entries(MAP.provinceRegions || {})) {
+      const list = populationRegionProvinces.get(String(reg));
+      if (list) list.push(+p); else populationRegionProvinces.set(String(reg), [+p]);
+    }
+  }
+  return populationRegionProvinces.get(r) || (r.startsWith('province:') ? [+r.slice(9)] : []);
+};
+/* The name a state has in this save under this country: GFM renames a state
+   by who holds it, so the same region is Catalonia in one hand and another
+   name in another. The most common custom name among the country's provinces
+   in the region wins; with none, the mod's own name. */
+const populationNameMemo = new Map();
+function populationRegionName(r) {
+  if (!MAP.stateNameChanges || !populationCountry) return populationDefaultName(r);
+  const date = popSave.value, index = MAP.tags.indexOf(populationCountry), key = date + '|' + index + '|' + r;
+  if (populationNameMemo.has(key)) return populationNameMemo.get(key);
+  const own = (mapOwners[date] || {own: new Map()}).own, tally = new Map();
+  for (const p of populationProvincesOf(r)) {
+    if (own.get(p) !== index) continue;
+    const n = mapNameAt(MAP.stateNameChanges, p, date);
+    if (n) tally.set(n, (tally.get(n) || 0) + 1);
+  }
+  let best = '', most = 0;
+  for (const [n, c] of tally) if (c > most) { best = n; most = c; }
+  const out = best || populationDefaultName(r);
+  populationNameMemo.set(key, out);
+  return out;
+}
 // Province bounds and land neighbours are fixed across saves.
 let populationProvinces = null;
 function populationGeometry(date) {
@@ -6926,23 +7786,29 @@ function paintPopulationAtlas(ctx, W, H, view, st) {
     if (o === st.index) cls0[p] = populationRegion && populationRegionOf(p) === populationRegion ? 5 : 4;
     else cls0[p] = st.subj.has(o) ? 3 : 2;
   }
-  const s = W / view.width, k = s < .3 ? 4 : s < .5 ? 3 : s < .85 ? 2 : 1, kk = k * k;
+  const s = W / view.width, k = s < .3 ? 4 : s < .5 ? 3 : s < 1.5 ? 2 : 1, kk = k * k;
+  /* Magnified past one and a half screen pixels to the map pixel, a coast is a
+     staircase of map pixels, and blurring a staircase only rounds its corners.
+     So there the land and sea shares are read with the bilinear weights of the
+     four nearest map pixels instead of counted by sampling, which turns each
+     step into a straight diagonal. `unit` is what a full pixel adds up to. */
+  const bil = s > 1.5, unit = bil ? 255 : kk;
   // Zoomed out, a coast is a few map pixels per screen pixel, and a blur wide enough
   // to smooth a big country's coast also washes out islands and thin straits. So
   // the blur narrows as the view widens, and the sea counts for a little less
   // than land, which keeps small islands on the map.
   const wide = s < .5, passes = wide ? 1 : 2;
-  const r = s < 1 ? 1 : Math.max(2, Math.min(5, Math.round(.8 * s))), n = 2 * r + 1;
+  const r = s < 1.3 ? 1 : Math.max(2, Math.min(4, Math.round(.55 * s))), n = 2 * r + 1;
   const seaW = s < .5 ? .55 : s < 1 ? .75 : 1;
   const ls = st.scale;
   // 1. class shares
-  const cnt = [0, 1, 2, 3, 4, 5].map(() => new Uint8Array(N));
+  const cnt = [0, 1, 2, 3, 4, 5].map(() => new Uint16Array(N));
   const lab = new Int32Array(N);
   const stepX = view.width / W, stepY = view.height / H, mid = k >> 1, smoothLab = s > 1.2;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
-      for (let a = 0; a < k; a++) {
+      for (let a = 0; a < (bil ? 0 : k); a++) {
         const iy = Math.floor(view.y0 + (y + (a + .5) / k) * stepY);
         for (let b = 0; b < k; b++) {
           const ix = Math.floor(view.x0 + (x + (b + .5) / k) * stepX);
@@ -6969,13 +7835,17 @@ function paintPopulationAtlas(ctx, W, H, view, st) {
           if (sum > top1 + 1e-9) { top1 = sum; win = ids[q]; }
         }
         lab[i] = win;
+        if (bil) for (let q = 0; q < 4; q++) {
+          const p = ids[q], c = p < 0 ? 0 : cls0[p];
+          cnt[c][i] += Math.round(ws[q] * 255);
+        }
       }
     }
   }
   // 2. blur each share and keep the two leading classes
   const best1 = new Float32Array(N), best2 = new Float32Array(N);
   const c1 = new Uint8Array(N), c2 = new Uint8Array(N);
-  const f = new Float32Array(N), tmp = new Float32Array(N), inv = 1 / kk;
+  const f = new Float32Array(N), tmp = new Float32Array(N), inv = 1 / unit;
   for (let c = 0; c < 6; c++) {
     const src = cnt[c];
     const wgt = c === 0 ? inv * seaW : inv;
@@ -6990,7 +7860,7 @@ function paintPopulationAtlas(ctx, W, H, view, st) {
   // the shallows: land share, blurred wide
   const sea0 = cnt[0], halo = f;
   for (let i = 0; i < N; i++) halo[i] = 1 - sea0[i] * inv;
-  const hr = wide ? Math.max(2, Math.round(3 * ls)) : Math.max(3, Math.round(6 * ls));
+  const hr = wide ? Math.max(2, Math.round(3 * ls)) : Math.max(2, Math.round(4 * ls));
   atlasBlur(halo, tmp, W, H, hr); atlasBlur(halo, tmp, W, H, hr);
   // 3. colour, then lines
   const img = ctx.createImageData(W, H), d = img.data;
@@ -6998,7 +7868,7 @@ function paintPopulationAtlas(ctx, W, H, view, st) {
   const tint = o => {
     let v = ownerRgb.get(o);
     if (!v) {
-      const hex = MAP.colours[MAP.tags[o]];
+      const hex = mapColourOf(MAP.tags[o], st.date);
       if (hex) { const bc = mapLandColour(hex); v = [0, 1, 2].map(j => Math.round(ATLAS_WILD[j] * .62 + ((bc >> (16 - 8 * j)) & 255) * .38)); }
       else v = ATLAS_WILD;
       ownerRgb.set(o, v);
@@ -7029,6 +7899,11 @@ function paintPopulationAtlas(ctx, W, H, view, st) {
         else if (c === 4) v = own;
         else v = ATLAS_HIGHLIGHT;
         R = v[0] + nz; G = v[1] + nz; B = v[2] + nz;
+        if (st.layer && c >= 3) {
+          // Colour by the chosen statistic, province by province.
+          const p = lab[i], q = p >= 0 && p <= top ? st.layer.rgb[p] : -1, z = q >= 0 ? q : st.layer.none;
+          R = ((z >> 16) & 255) + nz; G = ((z >> 8) & 255) + nz; B = (z & 255) + nz;
+        }
       }
       // boundaries between the two leading classes
       if (best2[i] > .02) {
@@ -7064,6 +7939,79 @@ function paintPopulationAtlas(ctx, W, H, view, st) {
   }
   ctx.putImageData(img, 0, 0);
 }
+/* The country map's view: how far in, and how far the centre has been moved
+   from where the fitted frame had it, in map pixels. Reset whenever the
+   frame itself changes (another country, a state, all possessions). */
+let popLayer='', popZoom=1, popPanX=0, popPanY=0, popAuto=null, popPainted=null, popRepaintTimer=0, popDragMoved=false;
+function populationViewFrame(z,px,py){
+  const a=popAuto, width=a.width/z, height=width*a.aspect;
+  return {x0:a.cx+px-width/2,y0:a.cy+py-height/2,width,height};
+}
+function popResetView(){popZoom=1;popPanX=0;popPanY=0;}
+/* Move the view and show it at once by stretching what is already painted;
+   the real repaint follows when the hand stops (or at once, `now`). */
+function popSetView(z,px,py,now){
+  const canvas=document.getElementById('popcountrymap');
+  if(!popAuto||!populationCountry||!popPainted)return;
+  const a=popAuto, maxZ=a.width/48;
+  z=Math.max(.5,Math.min(maxZ,z));
+  let cx=Math.max(0,Math.min(MAP.w,a.cx+px)), cy=Math.max(0,Math.min(MAP.h,a.cy+py));
+  popZoom=z;popPanX=cx-a.cx;popPanY=cy-a.cy;
+  const F=populationViewFrame(popZoom,popPanX,popPanY), P=popPainted;
+  const box=document.getElementById('popmapbox'), W=box.clientWidth, H=canvas.clientHeight;
+  const k=P.width/F.width;
+  canvas.style.transform=`translate(${(P.x0-F.x0)/F.width*W}px,${(P.y0-F.y0)/F.height*H}px) scale(${k})`;
+  clearTimeout(popRepaintTimer);
+  popRepaintTimer=setTimeout(()=>{if(populationCountry)drawPopulationAtlas(canvas,populationCountry);},now?0:140);
+}
+function popZoomAt(fx,fy,factor){
+  const F=populationViewFrame(popZoom,popPanX,popPanY), a=popAuto;
+  if(!a)return;
+  const mx=F.x0+fx*F.width, my=F.y0+fy*F.height, z=Math.max(.5,Math.min(a.width/48,popZoom*factor));
+  const width=a.width/z, height=width*a.aspect;
+  popSetView(z,(mx-fx*width+width/2)-a.cx,(my-fy*height+height/2)-a.cy,false);
+}
+function populationFillLayers(){
+  const sel=document.getElementById('poplayer');
+  if(sel.dataset.ready)return;
+  const has=Object.keys(MAP.provinceLayers||{}).length>0, hasX=Object.keys(MAP.provinceExtra||{}).length>0;
+  for(const l of MAP_LAYERS){
+    if(l.level!=='province'||(l.extra&&!hasX))continue;
+    if(has)sel.add(new Option(l.label,l.key));
+  }
+  sel.disabled=!has;sel.dataset.ready='1';
+}
+/* What the colours mean on the country map: for a category, the shares of this
+   country's people; for a number, the scale the whole world is drawn on. */
+function populationLegend(date,index,owners){
+  const box=document.getElementById('poplegend');
+  const off=()=>{box.hidden=true;box.replaceChildren();};
+  if(!popLayer||index<0)return off();
+  const P=mapProvLayerInfo(date,popLayer,0);
+  if(!P)return off();
+  box.hidden=false;box.classList.toggle('cat',false);
+  if(P.cat){
+    const d=P.data,cats=mapCategoryColours(P.def.field),by=new Map();let total=0;
+    for(let i=0;i<d.n;i++){
+      if(owners.get(d.pid[i])!==index)continue;
+      const w=P.def.field==='culture'?d.cw[i]:d.rw[i];
+      by.set(w,(by.get(w)||0)+d.size[i]);total+=d.size[i];
+    }
+    const rows=[...by.entries()].sort((a,b)=>b[1]-a[1]);
+    const swatch=rgb=>`<i style="display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;background:rgb(${rgb.join(',')});border:1px solid rgba(0,0,0,.45)"></i>`;
+    box.innerHTML=`<div class="lg-name">${P.def.label}</div>`
+      +rows.slice(0,8).map(([w,n])=>`<div class="lg-row">${swatch(cats.colour.get(w)||MAP_CATEGORY_OTHER)}${w?mapWordName(w,P.def.field):'Unknown'} <span class="rk">${total?Math.round(100*n/total):0}%</span></div>`).join('')
+      +`<div class="lg-note">share of people in the provinces shown${rows.length>8?' · '+(rows.length-8)+' more':''}</div>`;
+    return;
+  }
+  const R=mapRampStops();
+  const stops=R.map((c,i)=>`rgb(${c.join(',')}) ${Math.round(i/(R.length-1)*100)}%`).join(',');
+  const fmt=v=>P.def.kind==='pct'?(v*100).toFixed(0)+'%':mapLayerFormat({def:{kind:'count'}},v);
+  box.innerHTML=`<div class="lg-name">${P.def.label}</div>`
+    +`<div class="lg-bar" style="background:linear-gradient(90deg,${stops})"></div>`
+    +`<div class="lg-ends"><span>${P.lo>P.min?'≤ ':''}${fmt(P.lo)}</span><span>${fmt(P.hi)}</span></div>`
+    +`<div class="lg-note">${P.log?'log scale · ':''}same scale as the world map</div>`;
+}
 function drawPopulationAtlas(canvas, tag) {
   if (!MAP) return;
   const date=popSave.value; populationGeometry(date);
@@ -7098,10 +8046,14 @@ function drawPopulationAtlas(canvas, tag) {
     // Keep the required span even at world edges; ocean margins letterbox it.
     height=width/2;x0=cx-width/2;y0=cy-height/2;
   }
+  // The fitted frame is what zoom and pan are measured from.
+  popAuto={cx:x0+width/2,cy:y0+height/2,width,aspect:height/width};
+  if(tag){({x0,y0,width,height}=populationViewFrame(popZoom,popPanX,popPanY));}
+  popPainted={x0,y0,width,height};
   // A selected country is painted as wide as the screen it is shown on (see
   // paintPopulationAtlas); the all-countries picker stays at 960.
   const cssW=canvas.clientWidth||960, dpr=Math.min(window.devicePixelRatio||1,2);
-  const W=tag?Math.max(960,Math.min(1800,Math.round(cssW*dpr))):960;
+  const W=tag?Math.max(960,Math.min([2400,3400][mapQuality],Math.round(cssW*dpr*[1.5,2.2][mapQuality]))):960;
   canvas.width=W;canvas.height=Math.round(W*height/width);
   const ctx=canvas.getContext('2d'),pal=mapPalette(date,true);
   const regionIds=new Map(); let next=0;
@@ -7112,14 +8064,24 @@ function drawPopulationAtlas(canvas, tag) {
   // A subject's land is the overlord's own colour, lightened: mixed 45% of
   // the way to white, which keeps it apart from both the sea and unowned land.
   let lite=null;
-  if(subj.size&&MAP.colours[tag]){
-    const base=mapLandColour(MAP.colours[tag]);
+  if(subj.size&&mapColourOf(tag,date)){
+    const base=mapLandColour(mapColourOf(tag,date));
     lite=[(base>>16)&255,(base>>8)&255,base&255].map(v=>Math.round(v+(255-v)*.45));
   }
   if(tag){
-    const hex=MAP.colours[tag], base=hex?mapLandColour(hex):null;
+    const hex=mapColourOf(tag,date), base=hex?mapLandColour(hex):null;
+    let layer=null;
+    if(popLayer&&mapProvinceData(date)){
+      const P=mapProvLayerInfo(date,popLayer,0);
+      if(P){
+        const rgb=new Int32Array(populationProvinceTop()+1).fill(-1);
+        P.colour.forEach((v,p)=>{if(p>=0&&p<rgb.length)rgb[p]=v;});
+        layer={rgb,none:MAP_NO_DATA};
+      }
+    }
+    populationLegend(date,index,owners);
     paintPopulationAtlas(ctx,canvas.width,canvas.height,{x0,y0,width,height},
-      {owners,index,subj,group,lite,scale:canvas.width/cssW,
+      {owners,index,subj,group,lite,date,layer,scale:canvas.width/cssW,
        tagRgb:base===null?null:[(base>>16)&255,(base>>8)&255,base&255]});
     /* Names for the neighbours and the subjects, laid out over what the frame
        shows, so a country cut off by the edge is named on the part that is
@@ -7128,6 +8090,10 @@ function drawPopulationAtlas(canvas, tag) {
       const win={x0,y0,x1:x0+width,y1:y0+height};
       mapDrawNameSet(ctx,mapNameLayout(ctx,date,win),
         {x0,y0,s:canvas.width/width,k:canvas.width/cssW,W:canvas.width,H:canvas.height,skip:new Set([index]),maxFs:22});
+    }
+    if(popShowStates){
+      const labels=populationStateLabels(ctx,owners,index,date);
+      mapDrawNameSet(ctx,labels,{x0,y0,s:canvas.width/width,k:canvas.width/cssW,W:canvas.width,H:canvas.height,maxFs:20});
     }
   }else{
     const img=ctx.createImageData(canvas.width,canvas.height);
@@ -7143,17 +8109,56 @@ function drawPopulationAtlas(canvas, tag) {
     }
     ctx.putImageData(img,0,0);
   }
+  canvas.style.transform='';canvas.classList.remove('dragging');
+  if(!tag)populationLegend(date,-1,owners);
   const hit=e=>{const r=canvas.getBoundingClientRect();return get(x0+(e.clientX-r.left)/r.width*width,y0+(e.clientY-r.top)/r.height*height);};
   canvas.onclick=e=>{
+    if(popDragMoved){popDragMoved=false;return;}
     const p=hit(e),t=MAP.tags[owners.get(p)];if(!t||sea(p))return;
     if(!tag)openPopulationCountry(t);
-    else if(t===tag){populationAllLand=false;populationRegion=populationRegionOf(p);populationRegionSelect.value=populationRegion;refreshPopulation();}
+    else if(t===tag){populationAllLand=false;populationRegion=populationRegionOf(p);populationRegionSelect.value=populationRegion;popResetView();refreshPopulation();}
   };
   canvas.onmousemove=e=>{
     const p=hit(e),o=owners.get(p),t=MAP.tags[o];
     canvas.title=t?(tag?populationRegionName(populationRegionOf(p))+' · ':'')+nameOf(t)
-      +(subj.has(o)?' · '+POP_SUBJECT_KINDS[subj.get(o)]+' of '+nameOf(tag):''):'Sea / unowned land';
+      +(subj.has(o)?' · '+POP_SUBJECT_KINDS[subj.get(o)]+' of '+nameOf(tag):'')
+      +(tag&&popLayer&&!sea(p)?' · '+mapProvinceFigure(date,p,popLayer).replace(/<\/span>\s*<b>/g,': ').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim():''):'Sea / unowned land';
   };
+}
+/* One label per state of the country: where its biggest province's middle is
+   (or the state's own, when that lies inside it), sized to fit the state, and
+   broken over two lines where that lets it be read. */
+function populationStateLabels(ctx,owners,index,date){
+  const ps=mapProvinceStats(), byRegion=new Map();
+  for(const [p,o] of owners){
+    if(o!==index||p<0||p>ps.top||!ps.area[p])continue;
+    const r=populationRegionOf(p);
+    let g=byRegion.get(r);
+    if(!g){g={r,area:0,sx:0,sy:0,big:p};byRegion.set(r,g);}
+    g.area+=ps.area[p];g.sx+=ps.sx[p];g.sy+=ps.sy[p];
+    if(ps.area[p]>ps.area[g.big])g.big=p;
+  }
+  const out=[];
+  for(const g of byRegion.values()){
+    let x=g.sx/g.area,y=g.sy/g.area;
+    const at=mapProv[Math.max(0,Math.min(MAP.h-1,Math.round(y)))*MAP.w+Math.max(0,Math.min(MAP.w-1,Math.round(x)))];
+    if(at<=0||populationRegionOf(at)!==g.r||owners.get(at)!==index){x=ps.sx[g.big]/ps.area[g.big];y=ps.sy[g.big]/ps.area[g.big];}
+    const name=populationRegionName(g.r), root=Math.sqrt(g.area);
+    const words=name.split(' ');
+    let lines=[name],w=mapNameMeasure(ctx,name);
+    if(words.length>1&&150*root/w<9){
+      let best=null;
+      for(let i=1;i<words.length;i++){
+        const a=words.slice(0,i).join(' '),b=words.slice(i).join(' ');
+        const m=Math.max(mapNameMeasure(ctx,a),mapNameMeasure(ctx,b));
+        if(!best||m<best.m)best={m,lines:[a,b]};
+      }
+      lines=best.lines;w=best.m;
+    }
+    out.push({o:g.r,lines,x,y,f:Math.max(2,150*root/w),big:null,area:g.area});
+  }
+  out.sort((a,b)=>b.area-a.area);
+  return out;
 }
 function renderPopulationState(){
   const panel=document.getElementById('popstatefacts');
@@ -7162,16 +8167,19 @@ function renderPopulationState(){
   panel.textContent=populationRegionName(populationRegion)+(row?' · '+row[0].toLocaleString()+' population · '+(row[1]===null?'literacy unavailable':(row[1]*100).toFixed(1)+'% literacy'):' · State population data is unavailable in this report.');
 }
 function openPopulationCountry(tag){
-  populationCountry=tag;populationRegion='';populationAllLand=false;refreshPopulation();
+  populationCountry=tag;populationRegion='';populationAllLand=false;popResetView();refreshPopulation();
   document.getElementById('popback').focus();
 }
 function refreshPopulation(){
   const date=popSave.value,facts=DATA.facts[date]||{};
   document.getElementById('popcountrymap').hidden=!MAP;
+  document.getElementById('popmapbox').hidden=!MAP;
+  if(MAP)populationFillLayers();
   populationRegionSelect.disabled=!MAP;
   document.getElementById('popallland').disabled=!MAP;
   document.getElementById('popsubjects').disabled=!MAP;
   document.getElementById('popnames').disabled=!MAP;
+  document.getElementById('popstatenames').disabled=!MAP;
   const tags=new Set(Object.keys(facts));
   if(MAP){mapDecoded();for(const owner of mapOwners[date].own.values())tags.add(MAP.tags[owner]);}
   populationCountrySelect.replaceChildren(new Option('Choose a country',''));
@@ -7270,11 +8278,870 @@ function renderPopulationDetails(){
   }else{popTag.value=populationCountry;drawPopChart();}
 }
 populationCountrySelect.onchange=()=>openPopulationCountry(populationCountrySelect.value);
-populationRegionSelect.onchange=()=>{populationAllLand=false;populationRegion=populationRegionSelect.value;refreshPopulation();};
-document.getElementById('popback').onclick=()=>{populationCountry='';populationRegion='';refreshPopulation();populationCountrySelect.focus();};
+populationRegionSelect.onchange=()=>{populationAllLand=false;populationRegion=populationRegionSelect.value;popResetView();refreshPopulation();};
+document.getElementById('popback').onclick=()=>{populationCountry='';populationRegion='';popResetView();refreshPopulation();populationCountrySelect.focus();};
 document.getElementById('popsubjects').onclick=()=>{populationSubjects=!populationSubjects;refreshPopulation();};
+let popShowStates=false;
+try{popShowStates=localStorage.getItem('popStateNames')==='1';}catch(e){}
+document.getElementById('popstatenames').setAttribute('aria-pressed',popShowStates);
+document.getElementById('popstatenames').onclick=()=>{
+  popShowStates=!popShowStates;
+  document.getElementById('popstatenames').setAttribute('aria-pressed',popShowStates);
+  try{localStorage.setItem('popStateNames',popShowStates?'1':'0');}catch(e){}
+  refreshPopulation();
+};
 document.getElementById('popnames').onclick=()=>{mapShowNames=!mapShowNames;document.getElementById('popnames').setAttribute('aria-pressed',mapShowNames);const wb=document.getElementById('mapnames');if(wb)wb.setAttribute('aria-pressed',mapShowNames);refreshPopulation();};
-document.getElementById('popallland').onclick=()=>{populationAllLand=!populationAllLand;populationRegion='';refreshPopulation();};
+{
+  const canvas=document.getElementById('popcountrymap'), box=document.getElementById('popmapbox');
+  document.getElementById('poplayer').onchange=e=>{
+    popLayer=e.target.value;
+    if(populationCountry&&MAP)drawPopulationAtlas(canvas,populationCountry);
+  };
+  const centre=f=>popZoomAt(.5,.5,f);
+  document.getElementById('popzoomin').onclick=()=>centre(1.6);
+  document.getElementById('popzoomout').onclick=()=>centre(1/1.6);
+  document.getElementById('popzoomreset').onclick=()=>{popResetView();if(populationCountry)drawPopulationAtlas(canvas,populationCountry);};
+  canvas.addEventListener('wheel',e=>{
+    if(!populationCountry||!popAuto)return;
+    e.preventDefault();
+    const r=box.getBoundingClientRect(), unit=e.deltaMode===1?16:e.deltaMode===2?400:1;
+    popZoomAt((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height,Math.exp(-e.deltaY*unit*(e.ctrlKey?.012:.002)));
+  },{passive:false});
+  canvas.addEventListener('dblclick',e=>{
+    if(!populationCountry||!popAuto)return;
+    const r=box.getBoundingClientRect();
+    popZoomAt((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height,2);
+  });
+  let drag=null;
+  canvas.addEventListener('pointerdown',e=>{
+    if(e.button!==0||!populationCountry||!popAuto)return;
+    drag={x:e.clientX,y:e.clientY,px:popPanX,py:popPanY,F:populationViewFrame(popZoom,popPanX,popPanY),moved:false};
+    try{canvas.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  canvas.addEventListener('pointermove',e=>{
+    if(!drag)return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(!drag.moved&&Math.hypot(dx,dy)<4)return;
+    drag.moved=true;canvas.classList.add('dragging');
+    const r=box.getBoundingClientRect();
+    popSetView(popZoom,drag.px-dx/r.width*drag.F.width,drag.py-dy/r.height*drag.F.height,false);
+  });
+  const release=e=>{
+    if(!drag)return;
+    const moved=drag.moved;drag=null;
+    try{canvas.releasePointerCapture(e.pointerId);}catch(err){}
+    canvas.classList.remove('dragging');
+    if(moved){popDragMoved=true;setTimeout(()=>{popDragMoved=false;},0);popSetView(popZoom,popPanX,popPanY,true);}
+  };
+  canvas.addEventListener('pointerup',release);
+  canvas.addEventListener('pointercancel',release);
+}
+document.getElementById('popallland').onclick=()=>{populationAllLand=!populationAllLand;populationRegion='';popResetView();refreshPopulation();};
+
+/* =============== ECONOMY =============== */
+/* Victoria II has no GDP, and the nearest thing to one is hard to define, so
+   this tab uses the convention the older GFM Save Analyzer settled on:
+   "output" is what the factories and RGOs of a nation's provinces earned
+   (their `last_income`), "share of world output" is that over the sum for
+   every nation, and "output per capita" is output over people. Artisans are
+   shown beside it but not counted, as before. */
+const ECON_PREFS = 'vic2an.econ.v1';
+const ECON_PEOPLE = 4 / POP_SCALE;          // people per series pop unit, as the scanner's per-capita uses
+const ECON_DATES = Object.keys(DATA.econ || {})
+  .sort((a, b) => DATA.dates.indexOf(a) - DATA.dates.indexOf(b));
+const econSer = (tag, key, i) => {
+  const c = (DATA.series[tag] || {})[key];
+  const v = c ? c[i] : null;
+  return typeof v === 'number' ? v : null;
+};
+const econH = (tag, props, ...kids) => {
+  const e = document.createElement(tag);
+  if (props) for (const k in props) {
+    if (k === 'class') e.className = props[k];
+    else if (k === 'text') e.textContent = props[k];
+    else if (k.startsWith('on')) e[k] = props[k];
+    else e.setAttribute(k, props[k]);
+  }
+  for (const c of kids.flat()) if (c != null) e.append(c);
+  return e;
+};
+const econNum = v => fmtCount(Math.abs(v) >= 1000 ? Math.round(v) : v);
+const econSigned = v => (v > 0 ? '+' : v < 0 ? '−' : '') + econNum(Math.abs(v));
+const econPct = (v, d = 1) => v == null ? '—' : v.toFixed(d) + '%';
+
+const ECON_COLS = [
+  {key: 'rank', label: '#', fixed: true, num: true, fmt: v => String(v)},
+  {key: 'name', label: 'Nation', fixed: true},
+  {key: 'share', label: 'Share of world output', num: true, add: true, fmt: v => v.toFixed(2) + '%',
+   title: 'Factory and RGO output as a share of every nation’s combined output at this save'},
+  {key: 'output', label: 'Output', num: true, add: true, fmt: econNum,
+   title: 'Factory income plus RGO income across the nation’s provinces'},
+  {key: 'factory', label: 'Industrial', num: true, add: true, fmt: econNum, title: 'Factory output'},
+  {key: 'rgo', label: 'Agricultural', num: true, add: true, fmt: econNum,
+   title: 'RGO output: farms, mines and plantations'},
+  {key: 'artisan', label: 'Artisans', num: true, add: true, off: true, fmt: econNum,
+   title: 'Artisan production income. Not counted in output.'},
+  {key: 'pc', label: 'Output per capita', num: true, fmt: v => v.toFixed(3),
+   title: 'Output divided by people (pop sizes × 4)'},
+  {key: 'pop', label: 'Population', num: true, add: true, fmt: econNum},
+  {key: 'treasury', label: 'Treasury', num: true, add: true, fmt: econNum},
+  {key: 'income', label: 'Income', num: true, add: true, off: true, fmt: econNum, title: 'Daily budget income'},
+  {key: 'expenses', label: 'Expenses', num: true, add: true, off: true, fmt: econNum, title: 'Daily budget expenses'},
+  {key: 'balance', label: 'Balance', num: true, fmt: econSigned, signed: true, title: 'Daily income minus expenses'},
+  {key: 'literacy', label: 'Literacy', num: true, off: true, fmt: v => v == null ? '—' : (v * 100).toFixed(1) + '%'},
+  {key: 'prestige', label: 'Prestige', num: true, off: true, fmt: econNum},
+  {key: 'techs', label: 'Technologies', num: true, off: true, fmt: econNum},
+  {key: 'factories', label: 'Factories', num: true, add: true, off: true, fmt: econNum},
+  {key: 'brigades', label: 'Brigades', num: true, add: true, off: true, fmt: econNum},
+  {key: 'ships', label: 'Ships', num: true, add: true, off: true, fmt: econNum},
+];
+const econColOf = key => ECON_COLS.find(c => c.key === key);
+const ECON_MOVABLE = ECON_COLS.filter(c => !c.fixed).map(c => c.key);
+
+const econ = {
+  date: DATA.dates[DATA.dates.length - 1],
+  mode: 'countries',            // countries | goods
+  view: 'table',                // table | bars | pie
+  key: 'share', dir: -1, q: '', page: 0, size: 25,
+  order: ECON_MOVABLE.slice(),
+  hidden: new Set(ECON_COLS.filter(c => c.off).map(c => c.key)),
+  gkey: 'value', gdir: -1,      // the goods list
+  stack: [],                    // detail pages, newest last: {kind: 'country'|'good', id}
+  cgKey: 'value', cgDir: -1, cgAll: false,   // goods table on a country page
+  pKey: 'supply', pDir: -1, pAll: false,     // producers table on a good page
+  histKey: 'share',
+};
+try {
+  const p = JSON.parse(localStorage.getItem(ECON_PREFS) || 'null');
+  if (p && Array.isArray(p.order) && Array.isArray(p.hidden)) {
+    const known = p.order.filter(k => ECON_MOVABLE.includes(k));
+    econ.order = known.concat(ECON_MOVABLE.filter(k => !known.includes(k)));
+    econ.hidden = new Set(p.hidden.filter(k => ECON_MOVABLE.includes(k)));
+    if ([10, 25, 50, 100, 0].includes(p.size)) econ.size = p.size;
+  }
+} catch (e) { /* storage can be unavailable; defaults are fine */ }
+function econSavePrefs() {
+  try {
+    localStorage.setItem(ECON_PREFS, JSON.stringify({order: econ.order, hidden: [...econ.hidden], size: econ.size}));
+  } catch (e) { /* ignore */ }
+}
+
+/* One row per nation that exists at the save, ranked by output, plus a world row. */
+const econRowCache = new Map();
+function econData(date) {
+  if (econRowCache.has(date)) return econRowCache.get(date);
+  const i = DATA.dates.indexOf(date);
+  const rows = [];
+  for (const tag of DATA.tags) {
+    const output = econSer(tag, 'output', i);
+    if (output == null) continue;
+    const pop = econSer(tag, 'total_pop', i) || 0;
+    const provinces = econSer(tag, 'provinces', i) || 0;
+    if (!(output > 0) && !(provinces > 0) && !(pop > 0)) continue;
+    rows.push({
+      tag, name: nameOf(tag), output,
+      factory: econSer(tag, 'factory_output', i) || 0,
+      rgo: econSer(tag, 'rgo_output', i) || 0,
+      artisan: econSer(tag, 'artisan_output', i) || 0,
+      pc: econSer(tag, 'output_per_capita', i) || 0,
+      pop, treasury: econSer(tag, 'treasury', i) || 0,
+      income: econSer(tag, 'income', i) || 0, expenses: econSer(tag, 'expenses', i) || 0,
+      balance: econSer(tag, 'balance', i) || 0,
+      literacy: econSer(tag, 'avg_literacy', i),
+      prestige: econSer(tag, 'prestige', i) || 0, techs: econSer(tag, 'techs', i) || 0,
+      factories: econSer(tag, 'factory_count', i) || 0,
+      brigades: econSer(tag, 'brigades', i) || 0, ships: econSer(tag, 'ships', i) || 0,
+    });
+  }
+  rows.sort((a, b) => b.output - a.output || a.name.localeCompare(b.name));
+  const world = {tag: null, name: 'World', rank: null, share: 100, literacy: null, prestige: null, techs: null};
+  for (const k of ['output', 'factory', 'rgo', 'artisan', 'pop', 'treasury', 'income', 'expenses',
+                   'balance', 'factories', 'brigades', 'ships'])
+    world[k] = rows.reduce((s, r) => s + r[k], 0);
+  const people = world.pop * ECON_PEOPLE;
+  world.pc = people > 0 ? world.output / people : 0;
+  const lp = rows.reduce((s, r) => s + (r.literacy == null ? 0 : r.pop), 0);
+  world.literacy = lp > 0 ? rows.reduce((s, r) => s + (r.literacy == null ? 0 : r.literacy * r.pop), 0) / lp : null;
+  rows.forEach((r, k) => { r.rank = k + 1; r.share = world.output > 0 ? r.output / world.output * 100 : 0; });
+  const out = {rows, world};
+  econRowCache.set(date, out);
+  return out;
+}
+
+/* Goods: prices come from the monthly price buffer, goods detail from `econ`. */
+const econPriceIdx = date => {
+  if (!PD.length) return -1;
+  const at = PD.indexOf(date);
+  if (at >= 0) return at;
+  const y = DATA.years[DATA.dates.indexOf(date)];
+  let found = 0;
+  for (let j = 0; j < PY.length; j++) if (PY[j] <= y) found = j;
+  return found;
+};
+const econPrice = (good, date) => {
+  const j = econPriceIdx(date), col = (DATA.prices || {})[good];
+  return col && j >= 0 && typeof col[j] === 'number' ? col[j] : null;
+};
+const econGoodsDate = date => {
+  const at = DATA.dates.indexOf(date);
+  let found = null;
+  for (const d of ECON_DATES) if (DATA.dates.indexOf(d) <= at) found = d;
+  return found || ECON_DATES[0] || null;
+};
+/* The save's `domestic_supply_pool` is what a nation offers the world market,
+   but for a nation that shares another's market it holds the shared pool
+   instead, which can be many times what the nation makes. A figure above its
+   own production is that, not an export, so it is left blank. */
+const econExports = (supply, pool) => supply > 0 && pool <= supply * 1.1 ? Math.min(pool, supply) : null;
+const econWorldSupply = (good, date) => {
+  const s = (DATA.supply || {})[good];
+  const at = s && s[date];
+  return at ? at.t : null;
+};
+
+/* ---------- generic sortable table ---------- */
+const econCmp = (key, dir) => (a, b) => {
+  const x = a[key], y = b[key];
+  if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+  return dir * (typeof x === 'string' ? x.localeCompare(y) : x - y);
+};
+/* cols: {key, label, num, fmt, cell(row) -> Node, cls(row)}; state: {key, dir} */
+function econTable(host, cols, rows, state, rowClick, onSort) {
+  host.replaceChildren();
+  const table = econH('table', {class: 'strength-ledger econ-ledger'});
+  const head = econH('tr');
+  cols.forEach(c => {
+    const th = econH('th', {scope: 'col', class: c.num ? 'num' : '',
+      'aria-sort': state.key === c.key ? (state.dir < 0 ? 'descending' : 'ascending') : 'none'});
+    th.append(econH('button', {text: c.label, title: c.title || '', onclick: () => {
+      state.dir = state.key === c.key ? -state.dir : (c.num ? -1 : 1);
+      state.key = c.key; onSort();
+    }}));
+    head.append(th);
+  });
+  table.append(econH('thead', null, head));
+  const body = econH('tbody');
+  [...rows].sort(econCmp(state.key, state.dir)).forEach(r => {
+    const tr = econH('tr', {class: rowClick ? 'strength-row' : ''});
+    cols.forEach(c => {
+      const td = econH('td', {class: (c.num ? 'num ' : '') + (c.cls ? c.cls(r) : '')});
+      if (c.cell) td.append(c.cell(r));
+      else td.textContent = r[c.key] == null ? '—' : (c.fmt ? c.fmt(r[c.key]) : r[c.key]);
+      tr.append(td);
+    });
+    if (rowClick) tr.onclick = () => rowClick(r);
+    body.append(tr);
+  });
+  if (!rows.length) body.append(econH('tr', null, econH('td', {colspan: cols.length, text: 'Nothing matches.'})));
+  table.append(body);
+  host.append(econH('div', {class: 'tablewrap econ-wrap'}, table));
+}
+const econNationCell = tag => {
+  const b = econH('button', {class: 'nation-toggle', type: 'button'}, nationFlag(tag));
+  const n = econH('span', {text: nameOf(tag)}); n.style.color = colourFor(tag);
+  b.append(n);
+  return b;
+};
+const econGoodCell = good => {
+  const dot = econH('i', {class: 'econ-dot'}); dot.style.background = goodColour(good);
+  return econH('button', {class: 'nation-toggle', type: 'button'}, dot, econH('span', {text: gameName(good)}));
+};
+
+/* ---------- the countries table ---------- */
+function econVisible() {
+  return ['rank', 'name', ...econ.order.filter(k => !econ.hidden.has(k))].map(econColOf);
+}
+function econFiltered() {
+  const {rows} = econData(econ.date);
+  const q = econ.q.trim().toLowerCase();
+  const list = q ? rows.filter(r => r.name.toLowerCase().includes(q) || r.tag.toLowerCase().startsWith(q)) : rows.slice();
+  const col = econColOf(econ.key) || econColOf('share');
+  return list.sort(econCmp(col.key, econ.dir));
+}
+function econMoveColumn(key, before) {
+  if (key === before) return;
+  const order = econ.order.filter(k => k !== key);
+  const at = before == null ? order.length : order.indexOf(before);
+  order.splice(at < 0 ? order.length : at, 0, key);
+  econ.order = order; econSavePrefs(); econDrawCountries(); econDrawColMenu();
+}
+function econDrawColMenu() {
+  const host = document.getElementById('econcolmenu');
+  host.replaceChildren();
+  econ.order.forEach((key, idx) => {
+    const col = econColOf(key);
+    const box = econH('input', {type: 'checkbox', id: 'econcol-' + key});
+    box.checked = !econ.hidden.has(key);
+    box.onchange = () => {
+      if (box.checked) econ.hidden.delete(key); else econ.hidden.add(key);
+      if (econ.hidden.has(econ.key)) { econ.key = 'share'; econ.dir = -1; }
+      econSavePrefs(); econDrawCountries();
+    };
+    const up = econH('button', {type: 'button', text: '↑', title: 'Move earlier', 'aria-label': 'Move ' + col.label + ' earlier',
+      onclick: () => econMoveColumn(key, econ.order[idx - 1])});
+    const down = econH('button', {type: 'button', text: '↓', title: 'Move later', 'aria-label': 'Move ' + col.label + ' later',
+      onclick: () => econMoveColumn(key, econ.order[idx + 2])});
+    up.disabled = idx === 0; down.disabled = idx === econ.order.length - 1;
+    host.append(econH('div', {class: 'econ-colrow'},
+      econH('label', {for: 'econcol-' + key}, box, ' ' + col.label), up, down));
+  });
+  host.append(econH('button', {type: 'button', class: 'econ-reset', text: 'Reset columns', onclick: () => {
+    econ.order = ECON_MOVABLE.slice();
+    econ.hidden = new Set(ECON_COLS.filter(c => c.off).map(c => c.key));
+    econSavePrefs(); econDrawCountries(); econDrawColMenu();
+  }}));
+}
+
+function econDrawCountries() {
+  const {world, rows} = econData(econ.date);
+  const shown = econFiltered();
+  const cols = econVisible();
+  document.getElementById('econtable').closest('#econ-table-view').hidden = econ.view !== 'table';
+  document.getElementById('econ-chart-view').hidden = econ.view === 'table';
+  document.querySelectorAll('#econviews button').forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset.view === econ.view));
+  const size = econ.size || shown.length || 1;
+  const pages = Math.max(1, Math.ceil(shown.length / size));
+  econ.page = Math.min(econ.page, pages - 1);
+  const slice = econ.size ? shown.slice(econ.page * size, econ.page * size + size) : shown;
+
+  const table = document.getElementById('econtable');
+  const head = table.querySelector('thead tr'), body = table.querySelector('tbody');
+  head.replaceChildren(); body.replaceChildren();
+  cols.forEach(c => {
+    const th = econH('th', {scope: 'col', class: c.num ? 'num' : '',
+      'aria-sort': econ.key === c.key ? (econ.dir < 0 ? 'descending' : 'ascending') : 'none'});
+    if (c.title) th.title = c.title;
+    th.append(econH('button', {text: c.label, type: 'button', onclick: () => {
+      econ.dir = econ.key === c.key ? -econ.dir : (c.key === 'rank' || c.key === 'name' ? 1 : -1);
+      econ.key = c.key; econ.page = 0; econDrawCountries();
+      const again = [...document.querySelectorAll('#econtable thead th')].find(t => t.querySelector('button').textContent === c.label);
+      if (again) again.querySelector('button').focus();
+    }}));
+    if (!c.fixed) {
+      th.draggable = true; th.dataset.col = c.key;
+      th.ondragstart = e => { econ.drag = c.key; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', c.key); } catch (x) { /* ok */ } };
+      th.ondragover = e => { if (econ.drag && econ.drag !== c.key) { e.preventDefault(); th.classList.add('drop-target'); } };
+      th.ondragleave = () => th.classList.remove('drop-target');
+      th.ondrop = e => { e.preventDefault(); th.classList.remove('drop-target'); const k = econ.drag; econ.drag = null; if (k) econMoveColumn(k, c.key); };
+      th.ondragend = () => { econ.drag = null; };
+    }
+    head.append(th);
+  });
+  const cellFor = (c, r) => {
+    const td = econH('td', {class: c.num ? 'num' : ''});
+    if (c.key === 'name') {
+      if (r.tag) { td.append(econNationCell(r.tag)); }
+      else td.append(econH('strong', {text: 'World'}));
+    } else if (c.key === 'rank') td.textContent = r.rank == null ? '' : String(r.rank);
+    else {
+      const v = r[c.key];
+      td.textContent = v == null ? '—' : c.fmt(v);
+      if (c.signed && v) td.classList.add(v > 0 ? 'up' : 'down');
+    }
+    return td;
+  };
+  if (!econ.q.trim()) {
+    const tr = econH('tr', {class: 'econ-world'});
+    cols.forEach(c => tr.append(cellFor(c, world)));
+    body.append(tr);
+  }
+  slice.forEach(r => {
+    const tr = econH('tr', {class: 'strength-row', 'data-tag': r.tag});
+    cols.forEach(c => tr.append(cellFor(c, r)));
+    tr.onclick = () => econOpen('country', r.tag);
+    body.append(tr);
+  });
+  if (!slice.length) body.append(econH('tr', null, econH('td', {colspan: cols.length, text: 'No nation matches.'})));
+
+  const pager = document.getElementById('econpager');
+  pager.replaceChildren();
+  const from = shown.length ? econ.page * size + 1 : 0;
+  const to = econ.size ? Math.min(shown.length, from + size - 1) : shown.length;
+  const prev = econH('button', {type: 'button', id: 'econprev', text: '‹ Prev', onclick: () => { econ.page--; econDrawCountries(); }});
+  const next = econH('button', {type: 'button', id: 'econnext', text: 'Next ›', onclick: () => { econ.page++; econDrawCountries(); }});
+  prev.disabled = econ.page <= 0; next.disabled = econ.page >= pages - 1;
+  pager.append(prev, econH('span', {id: 'econpageinfo',
+    text: `${from}–${to} of ${shown.length} nations · page ${econ.page + 1} of ${pages}`}), next);
+  pager.hidden = econ.view !== 'table';
+
+  document.getElementById('econfoot').textContent =
+    `${rows.length} nations · world output ${econNum(world.output)} (industrial ${econNum(world.factory)}, agricultural ${econNum(world.rgo)}) · per capita ${world.pc.toFixed(3)}`;
+  if (econ.view !== 'table') econDrawChart(shown);
+}
+
+/* ---------- bar and pie views ---------- */
+function econDrawChart(shown) {
+  const svg = document.getElementById('econchart');
+  svg.textContent = '';
+  const col = econColOf(econ.key);
+  const vk = col && col.add && !col.fixed ? col.key : 'output';
+  const vc = econColOf(vk);
+  const list = shown.filter(r => r[vk] > 0).sort((a, b) => b[vk] - a[vk]);
+  const total = list.reduce((s, r) => s + r[vk], 0);
+  document.getElementById('econchartnote').textContent =
+    `${vc.label} — ${vk === col.key ? 'the column you sorted by' : 'sort by an additive column to chart it'}; percentages are of the ${list.length} nations listed. Click a nation to open its page.`;
+  if (!list.length) {
+    const t = el('text', {x: 500, y: 200, 'text-anchor': 'middle', fill: '#C9AC80', 'font-size': 14});
+    t.textContent = 'Nothing to chart.'; svg.append(t); return;
+  }
+  if (econ.view === 'bars') {
+    const top = list.slice(0, 20), peak = top[0][vk], rowH = 28;
+    svg.setAttribute('viewBox', `0 0 1000 ${top.length * rowH + 20}`);
+    top.forEach((r, k) => {
+      const y = 10 + k * rowH;
+      const g = el('g', {class: 'econ-bar', tabindex: 0, role: 'link', 'aria-label': `${r.name}: ${vc.fmt(r[vk])}`});
+      const src = (DATA.flags || {})[r.tag + '|'];
+      if (src) g.append(el('image', {href: src, x: 0, y: y + 2, width: 30, height: 20, preserveAspectRatio: 'none'}));
+      else g.append(el('rect', {x: 0, y: y + 2, width: 30, height: 20, fill: colourFor(r.tag)}));
+      const label = el('text', {x: 38, y: y + 17, fill: '#F4E7CC', 'font-size': 13}); label.textContent = r.name; g.append(label);
+      const w = Math.max(1, r[vk] / peak * 600);
+      g.append(el('rect', {x: 200, y: y + 3, width: w, height: 18, fill: colourFor(r.tag), opacity: .9}));
+      const v = el('text', {x: 200 + w + 8, y: y + 17, fill: '#C9AC80', 'font-size': 12, 'font-family': 'IBM Plex Mono, monospace'});
+      v.textContent = `${vc.fmt(r[vk])} · ${(r[vk] / total * 100).toFixed(1)}%`; g.append(v);
+      g.onclick = () => econOpen('country', r.tag);
+      g.onkeydown = e => { if (e.key === 'Enter') econOpen('country', r.tag); };
+      svg.append(g);
+    });
+  } else {
+    svg.setAttribute('viewBox', '0 0 1000 440');
+    const top = list.slice(0, 11);
+    const rest = total - top.reduce((s, r) => s + r[vk], 0);
+    const slices = top.map(r => ({label: r.name, value: r[vk], colour: colourFor(r.tag), tag: r.tag}));
+    if (rest > 0) slices.push({label: 'Other (' + (list.length - top.length) + ')', value: rest, colour: '#8A7A5A', tag: null});
+    let a0 = -Math.PI / 2;
+    const cx = 220, cy = 220, rad = 190;
+    slices.forEach((s, k) => {
+      const frac = s.value / total, a1 = a0 + frac * Math.PI * 2;
+      let d;
+      if (frac > .9999) d = `M${cx - rad} ${cy}A${rad} ${rad} 0 1 1 ${cx + rad} ${cy}A${rad} ${rad} 0 1 1 ${cx - rad} ${cy}Z`;
+      else {
+        const x0 = cx + rad * Math.cos(a0), y0 = cy + rad * Math.sin(a0), x1 = cx + rad * Math.cos(a1), y1 = cy + rad * Math.sin(a1);
+        d = `M${cx} ${cy}L${x0} ${y0}A${rad} ${rad} 0 ${frac > .5 ? 1 : 0} 1 ${x1} ${y1}Z`;
+      }
+      const path = el('path', {d, fill: s.colour, stroke: '#2A0F17', 'stroke-width': 1.5, class: 'econ-slice',
+        tabindex: s.tag ? 0 : -1, 'aria-label': `${s.label}: ${(frac * 100).toFixed(1)}%`});
+      if (s.tag) { path.onclick = () => econOpen('country', s.tag); path.onkeydown = e => { if (e.key === 'Enter') econOpen('country', s.tag); }; }
+      const tip = el('title'); tip.textContent = `${s.label}: ${vc.fmt(s.value)} (${(frac * 100).toFixed(1)}%)`; path.append(tip);
+      svg.append(path);
+      const ly = 40 + k * 29;
+      svg.append(el('rect', {x: 470, y: ly - 11, width: 16, height: 16, fill: s.colour}));
+      const t = el('text', {x: 496, y: ly + 2, fill: '#F4E7CC', 'font-size': 14}); t.textContent = s.label; svg.append(t);
+      const p = el('text', {x: 760, y: ly + 2, fill: '#C9AC80', 'font-size': 13, 'font-family': 'IBM Plex Mono, monospace'});
+      p.textContent = `${(frac * 100).toFixed(1)}%  ${vc.fmt(s.value)}`; svg.append(p);
+      a0 = a1;
+    });
+  }
+}
+
+/* ---------- goods list ---------- */
+function econGoodRows(date) {
+  const j = econPriceIdx(date);
+  const q = econ.q.trim().toLowerCase();
+  return DATA.goods.map(g => {
+    const price = econPrice(g, date);
+    const col = (DATA.prices || {})[g] || [];
+    const first = col.find(v => typeof v === 'number');
+    const supply = econWorldSupply(g, date);
+    const s = (DATA.supply || {})[g], top = s && s[date] ? s[date].n[0] : null;
+    return {
+      good: g, name: gameName(g), category: DATA.categoryLabels[DATA.goodCategory[g]] || DATA.goodCategory[g] || '',
+      price, change: price != null && first ? (price - first) / first * 100 : null,
+      supply, value: price != null && supply != null ? price * supply : null,
+      top: top ? nameOf(top[0]) : null, topShare: top && supply ? top[1] / supply * 100 : null,
+    };
+  }).filter(r => !q || r.name.toLowerCase().includes(q));
+}
+function econDrawGoods() {
+  const cols = [
+    {key: 'name', label: 'Good', cell: r => econGoodCell(r.good)},
+    {key: 'category', label: 'Category'},
+    {key: 'price', label: 'Price', num: true, fmt: v => v.toFixed(2)},
+    {key: 'change', label: 'Change', num: true, fmt: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%',
+     cls: r => r.change > .05 ? 'up' : r.change < -.05 ? 'down' : '', title: 'Price change since the first reading'},
+    {key: 'supply', label: 'World supply', num: true, fmt: econNum},
+    {key: 'value', label: 'World value', num: true, fmt: econNum, title: 'Supply times price'},
+    {key: 'top', label: 'Top producer'},
+    {key: 'topShare', label: 'Its share', num: true, fmt: v => v.toFixed(1) + '%'},
+  ];
+  const state = {key: econ.gkey, dir: econ.gdir};
+  econTable(document.getElementById('econgoodstable'), cols, econGoodRows(econ.date), state,
+    r => econOpen('good', r.good), () => { econ.gkey = state.key; econ.gdir = state.dir; econDrawGoods(); });
+  document.getElementById('econfoot').textContent = `${DATA.goods.length} goods · prices from the monthly buffer nearest this save.`;
+}
+
+/* ---------- detail pages ---------- */
+function econTile(label, value, cls) {
+  const num = econH('div', {class: 'military-stat ' + (cls || ''), text: value == null ? '—' : value});
+  return econH('div', null, econH('div', {class: 'tb-label', text: label}), num);
+}
+function econBack(label) {
+  return econH('button', {type: 'button', id: 'econ-back', text: '← ' + label, onclick: () => {
+    econ.stack.pop(); econRender();
+  }});
+}
+function econSection(title, ...kids) {
+  const box = econH('div', {class: 'ib econ-box'}, econH('div', {class: 'ibtitle', text: title}),
+    econH('div', {class: 'military-capacity-content'}, kids));
+  return box;
+}
+function econDl(rows) {
+  const dl = econH('dl');
+  rows.forEach(([k, v, cls]) => dl.append(econH('div', null, econH('dt', {text: k}), econH('dd', {text: v == null ? '—' : v, class: cls || ''}))));
+  return econH('div', {class: 'return-grid'}, dl);
+}
+function econOpen(kind, id) {
+  econ.stack.push({kind, id});
+  if (kind === 'country') { econ.cgAll = false; } else { econ.pAll = false; }
+  econRender();
+  window.scrollTo({top: document.getElementById('econ-section').offsetTop, behavior: 'auto'});
+  const back = document.getElementById('econ-back'); if (back) back.focus();
+}
+
+function econWorldSeries(key) {
+  if (!econWorldSeries.memo) econWorldSeries.memo = {};
+  if (econWorldSeries.memo[key]) return econWorldSeries.memo[key];
+  const out = DATA.dates.map((d, i) => {
+    let s = 0;
+    for (const tag of DATA.tags) { const v = econSer(tag, key, i); if (v != null) s += v; }
+    return s;
+  });
+  return econWorldSeries.memo[key] = out;
+}
+const ECON_HIST = [
+  ['share', 'Share of world output', v => v.toFixed(2) + '%'],
+  ['output', 'Output', econNum],
+  ['factory_output', 'Industrial output', econNum],
+  ['rgo_output', 'Agricultural output', econNum],
+  ['output_per_capita', 'Output per capita', v => v.toFixed(3)],
+  ['treasury', 'Treasury', econNum],
+  ['balance', 'Daily balance', econSigned],
+  ['total_pop', 'Population', econNum],
+];
+function econHistory(tag) {
+  const wrap = econH('section', {class: 'econ-history'}, econH('h2', {text: 'History'}));
+  const sel = econH('select', {id: 'econhistkey', 'aria-label': 'Measure'});
+  ECON_HIST.forEach(([k, label]) => sel.append(econH('option', {value: k, text: label})));
+  sel.value = econ.histKey;
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.id = 'econhist'; svg.setAttribute('viewBox', '0 0 1000 460'); svg.setAttribute('role', 'img');
+  const readout = econH('div', {class: 'readout', id: 'econhistreadout'});
+  const draw = () => {
+    econ.histKey = sel.value;
+    const def = ECON_HIST.find(h => h[0] === sel.value);
+    const worldOut = sel.value === 'share' ? econWorldSeries('output') : null;
+    const pts = DATA.dates.map((d, i) => {
+      const v = econSer(tag, sel.value === 'share' ? 'output' : sel.value, i);
+      if (v == null) return null;
+      return [years[i], sel.value === 'share' ? (worldOut[i] > 0 ? v / worldOut[i] * 100 : 0) : v];
+    }).filter(Boolean);
+    svg.setAttribute('aria-label', `${nameOf(tag)} · ${def[1]} over time`);
+    plot(svg, {
+      series: [{name: nameOf(tag), colour: colourFor(tag), pts}],
+      xOf: xOfSave, xTicks: saveTicks, hoverXs: saveHovers, fmt: def[2], markers: true,
+      zeroFloor: sel.value !== 'balance', readout,
+      idle: 'Hover the plot to read values at a save.', emptyMsg: 'No readings for this measure.',
+    });
+  };
+  sel.onchange = draw;
+  wrap.append(econH('figure', null, econH('div', {class: 'chart-toolbar'}, sel), svg, readout));
+  setTimeout(draw, 0);
+  return wrap;
+}
+
+/* A nation's government at a save, as the mod names it. */
+const econTitle = s => String(s || '').replace(/_/g, ' ').replace(/(^|\s)(\S)/g, (_m, a, b) => a + b.toUpperCase());
+function econGovernment(tag, date) {
+  const g = DATA.govs || {};
+  let d = g[date] ? date : null;
+  if (!d) {
+    const at = DATA.dates.indexOf(date);
+    for (const k of Object.keys(g)) if (DATA.dates.indexOf(k) <= at) d = k;
+    if (!d) d = Object.keys(g)[0];
+  }
+  const i = d && g[d] ? g[d][tag] : undefined;
+  if (i === undefined) return '';
+  const key = (DATA.govList || [])[i];
+  return (DATA.govNames || {})[key] || (DATA.names || {})[key] || econTitle(key);
+}
+/* One pie of goods by value, with a list beside it. rows: [{good, value}]. */
+function econPie(title, rows, note) {
+  const box = econH('div', {class: 'ib econ-box econ-pie'});
+  const total = rows.reduce((s, r) => s + r.value, 0);
+  box.append(econH('div', {class: 'ibtitle', text: title + (total > 0 ? ' · £' + econNum(total) : '')}));
+  const body = econH('div', {class: 'econ-piebody'});
+  box.append(body);
+  if (!(total > 0)) {
+    body.append(econH('p', {class: 'note', text: 'Nothing recorded for this nation.'}));
+    return box;
+  }
+  const sorted = rows.filter(r => r.value > 0).sort((a, b) => b.value - a.value);
+  const slices = sorted.slice(0, 11).map(r => ({good: r.good, label: gameName(r.good), value: r.value, colour: goodColour(r.good)}));
+  const rest = sorted.slice(11).reduce((s, r) => s + r.value, 0);
+  if (rest > 0) slices.push({good: null, label: 'Others (' + (sorted.length - 11) + ')', value: rest, colour: '#8d8372'});
+  const svg = el('svg', {viewBox: '0 0 220 220', role: 'img', 'aria-label': title});
+  const legend = econH('div', {class: 'econ-pieleg'});
+  const cx = 110, cy = 110, rad = 104;
+  let a0 = -Math.PI / 2;
+  for (const s of slices) {
+    const frac = s.value / total, a1 = a0 + frac * Math.PI * 2;
+    let d;
+    if (frac > .9999) d = `M${cx - rad} ${cy}A${rad} ${rad} 0 1 1 ${cx + rad} ${cy}A${rad} ${rad} 0 1 1 ${cx - rad} ${cy}Z`;
+    else {
+      const x0 = cx + rad * Math.cos(a0), y0 = cy + rad * Math.sin(a0), x1 = cx + rad * Math.cos(a1), y1 = cy + rad * Math.sin(a1);
+      d = `M${cx} ${cy}L${x0} ${y0}A${rad} ${rad} 0 ${frac > .5 ? 1 : 0} 1 ${x1} ${y1}Z`;
+    }
+    const path = el('path', {d, fill: s.colour, stroke: '#2A0F17', 'stroke-width': 1.2, class: 'econ-slice',
+      tabindex: s.good ? 0 : -1, 'aria-label': `${s.label}: ${(frac * 100).toFixed(1)}%`});
+    const tip = el('title'); tip.textContent = `${s.label}: £${econNum(s.value)} (${(frac * 100).toFixed(1)}%)`; path.append(tip);
+    const open = () => econOpen('good', s.good);
+    if (s.good) { path.onclick = open; path.onkeydown = e => { if (e.key === 'Enter') open(); }; }
+    svg.append(path);
+    const row = econH('button', {type: 'button', title: s.good ? 'Open ' + s.label : s.label},
+      econH('i'), econH('span', {text: s.label}),
+      econH('span', {class: 'v', text: `${(frac * 100).toFixed(1)}%  £${econNum(s.value)}`}));
+    row.firstChild.style.background = s.colour;
+    if (s.good) row.onclick = open; else row.style.cursor = 'default';
+    row.onmouseenter = () => path.setAttribute('stroke', '#ffe4a0');
+    row.onmouseleave = () => path.setAttribute('stroke', '#2A0F17');
+    legend.append(row);
+    a0 = a1;
+  }
+  body.append(svg, legend);
+  if (note) box.append(econH('p', {class: 'econ-pienote', text: note}));
+  return box;
+}
+
+function econCountryPage(tag) {
+  const {rows, world} = econData(econ.date);
+  const r = rows.find(x => x.tag === tag);
+  const page = econH('div', {class: 'military-country-page econ-page'});
+  const prev = econ.stack.length > 1 ? econ.stack[econ.stack.length - 2] : null;
+  const header = econH('div', {class: 'military-country-header'}, econBack(prev ? 'Back' : 'All countries'),
+    nationFlag(tag), econH('h2', {text: nameOf(tag), style: 'color:' + colourFor(tag)}),
+    econH('span', {class: 'note', text: econ.date}));
+  page.append(header);
+  {
+    const gov = econGovernment(tag, econ.date);
+    const pc = ((DATA.facts[econ.date] || {})[tag] || {}).primary_culture;
+    const bits = [gov ? `Government <b>${gov}</b>` : '', pc ? `primary culture <b>${cultureName(pc)}</b>` : ''].filter(Boolean);
+    if (bits.length) { const sub = econH('div', {class: 'econ-sub'}); sub.innerHTML = bits.join(' &middot; '); page.append(sub); }
+  }
+  if (!r) {
+    page.append(econH('p', {class: 'note', text: nameOf(tag) + ' has no economy recorded at this save.'}));
+    return page;
+  }
+  const pcRank = [...rows].sort((a, b) => b.pc - a.pc).findIndex(x => x.tag === tag) + 1;
+  const strip = econH('div', {class: 'military-strength-strip econ-strip'},
+    econTile('World rank', '#' + r.rank + ' of ' + rows.length),
+    econTile('Share of world output', r.share.toFixed(2) + '%'),
+    econTile('Output', econNum(r.output)),
+    econTile('Output per capita', r.pc.toFixed(3)),
+    econTile('Per capita rank', '#' + pcRank),
+    econTile('Prestige', econNum(r.prestige)),
+    econTile('Treasury', econNum(r.treasury)),
+    econTile('Daily income', econNum(r.income)),
+    econTile('Daily expenses', econNum(r.expenses)),
+    econTile('Daily balance', econSigned(r.balance), r.balance > 0 ? 'up' : r.balance < 0 ? 'down' : ''),
+    econTile('Population', econNum(r.pop)),
+    econTile('Literacy', r.literacy == null ? null : (r.literacy * 100).toFixed(1) + '%'),
+    econTile('Technologies', econNum(r.techs)),
+    econTile('Factories', econNum(r.factories)),
+    econTile('Brigades · ships', econNum(r.brigades) + ' · ' + econNum(r.ships)));
+  page.append(strip);
+
+  const split = (label, v, colour, wv) => econH('div', {class: 'econ-splitrow'},
+    econH('span', {text: label}), econH('span', {class: 'mono', text: `${econNum(v)} · ${r.output > 0 ? (v / r.output * 100).toFixed(1) : '0.0'}% · ${wv > 0 ? (v / wv * 100).toFixed(1) : '0.0'}% of world`}));
+  const bar = econH('div', {class: 'econ-split', role: 'img', 'aria-label': 'Industrial versus agricultural share of output'});
+  const bi = econH('span'), br = econH('span');
+  const fi = r.output > 0 ? r.factory / r.output * 100 : 0;
+  bi.style.width = fi + '%'; bi.style.background = '#E7C464'; br.style.width = (r.output > 0 ? 100 - fi : 0) + '%'; br.style.background = '#7FB069';
+  bi.title = 'Industrial'; br.title = 'Agricultural';
+  bar.append(bi, br);
+  const comp = econSection('Output composition', bar,
+    split('Industrial (factories)', r.factory, '#E7C464', world.factory),
+    split('Agricultural (RGOs)', r.rgo, '#7FB069', world.rgo),
+    econH('p', {class: 'note', text: `Artisans made a further ${econNum(r.artisan)}; they are not counted in output. Output per capita is ${world.pc > 0 ? (r.pc / world.pc).toFixed(2) + '× the world average' : 'not comparable'}.`}));
+  const budget = econSection('Budget', econDl([
+    ['Daily income', econNum(r.income)], ['Daily expenses', econNum(r.expenses)],
+    ['Daily balance', econSigned(r.balance), r.balance > 0 ? 'up' : r.balance < 0 ? 'down' : ''],
+    ['Treasury', econNum(r.treasury)], ['Tax base', econNum(econSer(tag, 'tax_base', DATA.dates.indexOf(econ.date)))],
+    ['Provinces', econNum(econSer(tag, 'provinces', DATA.dates.indexOf(econ.date)) || 0)]]));
+  page.append(econH('div', {class: 'military-country-body'}, comp, budget));
+
+  // goods
+  const gdate = econGoodsDate(econ.date);
+  const at = gdate ? (DATA.econ[gdate] || {})[tag] : null;
+  if (at) {
+    // Quantities at the world price of the save, good by good.
+    const priced = (pick) => Object.keys(at).map(g => {
+      const price = econPrice(g, gdate), q = pick(at[g]);
+      return price != null && q > 0 ? {good: g, value: q * price} : null;
+    }).filter(Boolean);
+    const sold = priced(v => v[3] || 0), exported = priced(v => { const e = econExports(v[0], v[1]); return e == null ? 0 : e; });
+    const pies = econH('div', {class: 'econ-pies'},
+      econPie('Output by good', priced(v => v[0]), 'What the nation made, at the world price.'),
+      sold.length ? econPie('Sold at home', sold, 'What its own people and factories bought from its production.') : null,
+      econPie('Offered for export', exported, 'What it put up for the world market; blank where it shares another nation’s market.'));
+    page.append(pies);
+    page.append(econH('p', {class: 'note', text: 'Imports are not recorded per nation in a save, so there is no import chart. '
+      + 'Values are quantity × the world price at ' + gdate + '.'}));
+  }
+  const goodsSec = econH('section', {class: 'econ-goods'}, econH('h2', {text: 'Goods'}));
+  if (!at) {
+    goodsSec.append(econH('p', {class: 'note', text: 'No per-good data was stored for this nation.'}));
+  } else {
+    const grows = Object.keys(at).filter(g => at[g][0] > 0 || at[g][2] > 0).map(g => {
+      const [s, p, rg] = at[g];
+      const ex = econExports(s, p);
+      const price = econPrice(g, gdate), ws = econWorldSupply(g, gdate);
+      return {good: g, name: gameName(g), supply: s, value: price != null ? s * price : null,
+        exports: ex, exportShare: ex == null ? null : ex / s * 100,
+        rgo: rg, worldShare: ws ? s / ws * 100 : null};
+    });
+    const state = {key: econ.cgKey, dir: econ.cgDir};
+    const host = econH('div', {id: 'econcountrygoods'});
+    const cols = [
+      {key: 'name', label: 'Good', cell: x => econGoodCell(x.good)},
+      {key: 'supply', label: 'Produced', num: true, fmt: econNum},
+      {key: 'value', label: 'Value', num: true, fmt: econNum, title: 'Produced quantity times the world price'},
+      {key: 'worldShare', label: 'Of world supply', num: true, fmt: v => v.toFixed(1) + '%'},
+      {key: 'exports', label: 'Exports', num: true, fmt: econNum, title: 'Quantity the nation put up for the world market (its domestic supply pool)'},
+      {key: 'exportShare', label: 'Exported share', num: true, fmt: v => v.toFixed(0) + '%'},
+      {key: 'rgo', label: 'RGO output', num: true, fmt: v => v ? econNum(v) : '—'},
+    ];
+    const redraw = () => {
+      econ.cgKey = state.key; econ.cgDir = state.dir;
+      const sorted = [...grows].sort(econCmp(state.key, state.dir));
+      const list = econ.cgAll ? sorted : sorted.slice(0, 15);
+      econTable(host, cols, list, state, x => econOpen('good', x.good), redraw);
+      if (grows.length > 15) host.append(econH('button', {type: 'button', id: 'econcgmore',
+        text: econ.cgAll ? 'Show the top 15' : `Show all ${grows.length} goods`, onclick: () => { econ.cgAll = !econ.cgAll; redraw(); }}));
+    };
+    redraw();
+    goodsSec.append(host, econH('p', {class: 'note', text:
+      `Production and exports are read from the save at ${gdate}` + (gdate !== econ.date ? ' (the nearest save with goods detail)' : '') +
+      '. Exports are the quantity offered to the world market, not what foreign buyers actually took; they are blank where the save only gives a shared market figure.'}));
+  }
+  page.append(goodsSec, econHistory(tag));
+  return page;
+}
+
+function econGoodPage(good) {
+  const date = econ.date, gdate = econGoodsDate(date);
+  const page = econH('div', {class: 'military-country-page econ-page'});
+  const dot = econH('i', {class: 'econ-dot big'}); dot.style.background = goodColour(good);
+  const prev = econ.stack.length > 1 ? econ.stack[econ.stack.length - 2] : null;
+  page.append(econH('div', {class: 'military-country-header'},
+    econBack(prev ? 'Back' : 'All goods'), dot, econH('h2', {text: gameName(good)}),
+    econH('span', {class: 'note', text: (DATA.categoryLabels[DATA.goodCategory[good]] || '') + ' · ' + date})));
+  const price = econPrice(good, date), col = (DATA.prices || {})[good] || [];
+  const first = col.find(v => typeof v === 'number');
+  const base = (DATA.basePrices || {})[good];
+  const supply = econWorldSupply(good, date);
+  const by = gdate ? DATA.econ[gdate] : null;
+  const prod = [];
+  if (by) for (const tag in by) { const e = by[tag][good]; if (e && (e[0] > 0 || e[2] > 0)) prod.push({tag, name: nameOf(tag), supply: e[0], exports: econExports(e[0], e[1]), rgo: e[2]}); }
+  const tot = prod.reduce((s, p) => s + p.supply, 0), totx = prod.reduce((s, p) => s + (p.exports || 0), 0);
+  const pPrice = gdate ? econPrice(good, gdate) : price;
+  prod.forEach(p => { p.share = tot > 0 ? p.supply / tot * 100 : null; p.value = pPrice != null ? p.supply * pPrice : null;
+    p.exportShare = p.exports == null ? null : p.exports / p.supply * 100; });
+  page.append(econH('div', {class: 'military-strength-strip econ-strip'},
+    econTile('Price', price == null ? null : price.toFixed(2)),
+    econTile('Base price', base == null ? null : Number(base).toFixed(2)),
+    econTile('Since first reading', price != null && first ? ((price - first) / first * 100 >= 0 ? '+' : '') + ((price - first) / first * 100).toFixed(1) + '%' : null),
+    econTile('World supply', supply == null ? null : econNum(supply)),
+    econTile('World value', price != null && supply != null ? econNum(price * supply) : null),
+    econTile('Producers', by ? String(prod.length) : null),
+    econTile('Offered to market', by ? econNum(totx) : null),
+    econTile('Top producer', prod.length ? [...prod].sort((a, b) => b.supply - a.supply)[0].name : null),
+    econTile('Top producer share', prod.length ? Math.max(...prod.map(p => p.share || 0)).toFixed(1) + '%' : null)));
+
+  // price history
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.id = 'econpricechart'; svg.setAttribute('viewBox', '0 0 1000 460'); svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', gameName(good) + ' price over time');
+  const readout = econH('div', {class: 'readout', id: 'econpricereadout'});
+  page.append(econH('section', null, econH('h2', {text: 'Price history'}), econH('figure', null, svg, readout)));
+  setTimeout(() => plot(svg, {
+    series: [{name: gameName(good), colour: goodColour(good), pts: PD.map((d, i) => [PY[i], col[i]]).filter(p => typeof p[1] === 'number')}],
+    xOf: pxOf, xTicks: yearTicks(pxMin, pxMax), hoverXs: PD.map((d, i) => ({v: PY[i], label: d})),
+    fmt: v => v >= 10 ? v.toFixed(0) : v.toFixed(2), thin: true, zeroFloor: false, readout,
+    idle: 'Hover the plot to read the price at a date.', emptyMsg: 'No price readings for this good.',
+  }), 0);
+
+  // producers
+  const sec = econH('section', null, econH('h2', {text: 'Producers'}));
+  if (!prod.length) {
+    const s = (DATA.supply || {})[good], at = s && s[date];
+    if (at) {
+      const list = at.n.map(([tag, amt], k) => ({rank: k + 1, tag, name: nameOf(tag), supply: amt, share: at.t ? amt / at.t * 100 : null}));
+      const cols = [
+        {key: 'rank', label: '#', num: true}, {key: 'name', label: 'Nation', cell: x => econNationCell(x.tag)},
+        {key: 'supply', label: 'Produced', num: true, fmt: econNum}, {key: 'share', label: 'Of world supply', num: true, fmt: v => v.toFixed(1) + '%'}];
+      const host = econH('div'); const st = {key: 'supply', dir: -1};
+      const draw = () => econTable(host, cols, list, st, x => econOpen('country', x.tag), draw);
+      draw(); sec.append(host, econH('p', {class: 'note', text: 'Only the largest producers are stored for this save.'}));
+    } else sec.append(econH('p', {class: 'note', text: 'Nobody is recorded producing this good at this save.'}));
+  } else {
+    prod.sort((a, b) => b.supply - a.supply).forEach((p, k) => { p.rank = k + 1; });
+    const cols = [
+      {key: 'rank', label: '#', num: true},
+      {key: 'name', label: 'Nation', cell: x => econNationCell(x.tag)},
+      {key: 'supply', label: 'Produced', num: true, fmt: econNum},
+      {key: 'share', label: 'Share', num: true, fmt: v => v.toFixed(1) + '%'},
+      {key: 'value', label: 'Value', num: true, fmt: econNum},
+      {key: 'exports', label: 'Exports', num: true, fmt: econNum},
+      {key: 'exportShare', label: 'Exported share', num: true, fmt: v => v.toFixed(0) + '%'},
+      {key: 'rgo', label: 'RGO output', num: true, fmt: v => v ? econNum(v) : '—'},
+    ];
+    const host = econH('div', {id: 'econproducers'}); const st = {key: econ.pKey, dir: econ.pDir};
+    const draw = () => {
+      econ.pKey = st.key; econ.pDir = st.dir;
+      const sorted = [...prod].sort(econCmp(st.key, st.dir));
+      econTable(host, cols, econ.pAll ? sorted : sorted.slice(0, 25), st, x => econOpen('country', x.tag), draw);
+      if (prod.length > 25) host.append(econH('button', {type: 'button', id: 'econpmore',
+        text: econ.pAll ? 'Show the top 25' : `Show all ${prod.length} producers`, onclick: () => { econ.pAll = !econ.pAll; draw(); }}));
+    };
+    draw();
+    sec.append(host, econH('p', {class: 'note', text: `Read from the save at ${gdate}` + (gdate !== date ? ' (the nearest save with goods detail)' : '') + '.'}));
+  }
+  page.append(sec);
+  return page;
+}
+
+/* ---------- wiring ---------- */
+function econRender() {
+  const top = econ.stack[econ.stack.length - 1] || null;
+  document.getElementById('econ-browse').hidden = !!top;
+  const detail = document.getElementById('econ-detail');
+  detail.hidden = !top;
+  document.getElementById('econdate').textContent = econ.date;
+  document.querySelectorAll('#econmodes button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === econ.mode));
+  document.getElementById('econ-countries').hidden = econ.mode !== 'countries';
+  document.getElementById('econ-goods').hidden = econ.mode !== 'goods';
+  document.getElementById('econ-countryonly').hidden = econ.mode !== 'countries';
+  if (top) {
+    detail.replaceChildren(top.kind === 'country' ? econCountryPage(top.id) : econGoodPage(top.id));
+  } else if (econ.mode === 'countries') econDrawCountries(); else econDrawGoods();
+}
+function econInit() {
+  const sel = document.getElementById('econsave');
+  DATA.dates.forEach(d => sel.append(econH('option', {value: d, text: d})));
+  sel.value = econ.date;
+  sel.onchange = () => { econ.date = sel.value; econ.page = 0; econRender(); };
+  const search = document.getElementById('econsearch');
+  search.oninput = () => { econ.q = search.value; econ.page = 0; econRender(); };
+  document.querySelectorAll('#econmodes button').forEach(b => b.onclick = () => {
+    econ.mode = b.dataset.mode; econ.q = ''; search.value = ''; econ.stack = []; econRender();
+  });
+  document.querySelectorAll('#econviews button').forEach(b => b.onclick = () => { econ.view = b.dataset.view; econDrawCountries(); });
+  const size = document.getElementById('econsize');
+  size.value = String(econ.size);
+  size.onchange = () => { econ.size = Number(size.value); econ.page = 0; econSavePrefs(); econDrawCountries(); };
+  econDrawColMenu();
+  econRender();
+}
 
 /* =============== TABS =============== */
 const tabs = [...document.querySelectorAll('.tab')];
@@ -7315,11 +9182,20 @@ searchSelect(document.getElementById('cultagsel'), 'search nations');
 searchSelect(document.getElementById('poptag'), 'search nations');
 drawMarketTable();
 drawSupply();
+econInit();
 searchSelect(document.getElementById('prodgood'), 'search goods');
 if (TECH) drawTechTree();
 if (WARS.length) drawWarTable();
 searchSelect(document.getElementById('techtag'), 'search nations');
 if (MAP) mapRender();
+/* The label face is a web font, and a canvas measures with whatever is
+   loaded when it asks: measure once the real face is in, not the fallback. */
+try {
+  document.fonts.load('600 20px "Barlow Condensed"').then(() => {
+    mapNameWidth.clear(); mapNameCaches.clear();
+    if (MAP) mapRender();
+  }).catch(() => {});
+} catch (e) { /* no font loading API: the fallback stays */ }
 drawGreatPowers();
 
 /* A tab with nothing behind it is worse than no tab. Technology and Wars
