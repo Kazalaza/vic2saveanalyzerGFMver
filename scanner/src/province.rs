@@ -82,6 +82,11 @@ pub(crate) struct Nation {
     pub(crate) con_weighted: f64,
     pub(crate) mil_weighted: f64,
     pub(crate) money_total: f64,
+    /// Σ the provinces' RGO `last_income`, and what each good's RGOs made.
+    pub(crate) rgo_income: f64,
+    pub(crate) rgo_by_good: Vec<(Sym, f64)>,
+    /// Σ the artisans' `production_income`.
+    pub(crate) artisan_income: f64,
     // Insertion-ordered, not sorted: the report sorts cultures by size with
     // a stable sort, so two cultures of equal size come out in the order the
     // file first mentioned them. A HashMap emitted alphabetically silently
@@ -131,6 +136,8 @@ pub(crate) struct Pop<'a> {
     pub(crate) mil: Option<&'a [u8]>,
     pub(crate) literacy: Option<&'a [u8]>,
     pub(crate) life: Option<&'a [u8]>,
+    /// An artisan pop's output for the day, which is what it sells.
+    pub(crate) production_income: Option<&'a [u8]>,
 }
 
 /// Every top-level block, as (key, content start, stop).
@@ -202,6 +209,8 @@ pub(crate) fn building_level(bytes: &[u8], open: usize, stop: usize) -> f64 {
 pub(crate) struct Scan {
     pub(crate) world_pop: i64,
     pub(crate) owners: Vec<(i64, Sym, Sym)>,
+    /// (province, the name the save gives it), for owned provinces.
+    pub(crate) names: Vec<(i64, Sym)>,
     pub(crate) nations: FxMap<Vec<u8>, Nation>,
     // The order nations were first seen, which is the order the file names
     // them. Python builds its dict that way and rows are written by walking
@@ -213,6 +222,8 @@ pub(crate) struct Scan {
     /// One row per owned province that holds people: (province, its biggest
     /// culture, its biggest religion, `layer_pack`). The map layers read it.
     pub(crate) layers: Vec<(i64, Sym, Sym, i64)>,
+    /// (province, railroad level, fort level) for the same provinces.
+    pub(crate) extra: Vec<(i64, i64, i64)>,
 }
 
 /// A province's figures in one number: its pops (up to 2^26), its literacy in
@@ -252,6 +263,10 @@ pub(crate) fn read_province(
     let mut fort = 0.0f64;
     let mut railroad = 0.0f64;
     let mut current: Option<usize> = None;
+    let mut in_rgo = false;
+    let mut rgo_income = 0.0f64;
+    let mut rgo_goods: Option<&[u8]> = None;
+    let mut pname: Option<&[u8]> = None;
 
     let mut i = at;
     while i < stop {
@@ -292,6 +307,15 @@ pub(crate) fn read_province(
             continue;
         }
 
+        if depth == 2 && in_rgo {
+            if key == b"last_income" {
+                rgo_income = to_float_b(trim_b(value));
+            } else if key == b"goods_type" {
+                rgo_goods = Some(unquote_b(trim_b(value)));
+            }
+            continue;
+        }
+
         if depth == 2 {
             if let Some(idx) = current {
                 let slot = &mut pops[idx];
@@ -317,6 +341,8 @@ pub(crate) fn read_province(
                     slot.literacy = Some(trim_end_b(value));
                 } else if key == b"life_needs" {
                     slot.life = Some(trim_end_b(value));
+                } else if key == b"production_income" {
+                    slot.production_income = Some(trim_end_b(value));
                 } else {
                     // Culture by elimination: a field the game does not name,
                     // whose value is not a number. The value must also begin
@@ -343,6 +369,7 @@ pub(crate) fn read_province(
 
         // A province-level field. Anything here closes the pop above it.
         let trimmed = trim_b(value);
+        in_rgo = key == b"rgo" && (trimmed.is_empty() || trimmed[0] == b'{');
         if !trimmed.is_empty() && trimmed[0] != b'{' {
             current = None;
             if key == b"owner" {
@@ -353,6 +380,8 @@ pub(crate) fn read_province(
                 cores.push(unquote_b(trimmed));
             } else if key == b"colonial" {
                 colonial_flag = to_int_b(trimmed);
+            } else if key == b"name" {
+                pname = Some(unquote_b(trimmed));
             }
         } else if pop_types.iter().any(|t| t.as_slice() == key) {
             pops.push(Pop { kind: key, ..Default::default() });
@@ -376,7 +405,7 @@ pub(crate) fn read_province(
         }
     }
 
-    let parts = Parts { owner, controller, colonial_flag, cores, pops, naval_base, fort, railroad };
+    let parts = Parts { owner, controller, colonial_flag, cores, pops, naval_base, fort, railroad, rgo_income, rgo_goods, name: pname };
     accumulate(parts, pid, mob_types, scan, rules, referenced_pops, population_groups);
 }
 
@@ -391,6 +420,9 @@ pub(crate) struct Parts<'a> {
     pub(crate) naval_base: f64,
     pub(crate) fort: f64,
     pub(crate) railroad: f64,
+    pub(crate) rgo_income: f64,
+    pub(crate) rgo_goods: Option<&'a [u8]>,
+    pub(crate) name: Option<&'a [u8]>,
 }
 
 /// A province's pops to its owner's record, and its owner, its pop ids and
@@ -405,7 +437,7 @@ pub(crate) fn accumulate(
     referenced_pops: &FxSet<i64>,
     population_groups: &FxMap<i64, i64>,
 ) {
-    let Parts { owner, controller, colonial_flag, cores, pops, naval_base, fort, railroad } = parts;
+    let Parts { owner, controller, colonial_flag, cores, pops, naval_base, fort, railroad, rgo_income, rgo_goods, name } = parts;
     // Counted before the owner check: land nobody has colonised still holds
     // people, and they are still part of the world.
     for pop in &pops {
@@ -419,6 +451,11 @@ pub(crate) fn accumulate(
     let owner_name = names::intern(owner);
     let held_name = if held == owner { owner_name } else { names::intern(held) };
     scan.owners.push((pid, owner_name, held_name));
+    if let Some(n) = name {
+        if !n.is_empty() {
+            scan.names.push((pid, names::intern(n)));
+        }
+    }
 
     if !scan.nations.contains_key(owner) {
         scan.seen.push(owner.to_vec());
@@ -443,6 +480,17 @@ pub(crate) fn accumulate(
     }
     nat.fort_levels += fort;
     nat.railroad_levels += railroad;
+    if rgo_income != 0.0 {
+        nat.rgo_income += rgo_income;
+        let good = names::intern(rgo_goods.unwrap_or(b""));
+        match nat.rgo_by_good.iter_mut().find(|(g, _)| *g == good) {
+            Some(slot) => slot.1 += rgo_income,
+            None => nat.rgo_by_good.push((good, rgo_income)),
+        }
+    }
+    for pop in &pops {
+        nat.artisan_income += pop.production_income.map_or(0.0, to_float_b);
+    }
 
     let country = rules.get(owner);
     let home = !country.is_some_and(|r| r.colonial.contains(&pid));
@@ -537,6 +585,7 @@ pub(crate) fn accumulate(
         let none = names::intern(b"");
         scan.layers.push((pid, c.map_or(none, |x| x.0), r.map_or(none, |x| x.0),
             layer_pack(province_pop, province_literate / province_pop as f64, share(c), share(r))));
+        scan.extra.push((pid, railroad as i64, fort as i64));
     }
     let nat = scan.nations.get_mut(owner).unwrap();
     if province_pop > 0 {
@@ -555,8 +604,8 @@ mod tests {
     use super::*;
 
     fn scan() -> Scan {
-        Scan { world_pop: 0, owners: Vec::new(), nations: FxMap::default(), pop_ids: Vec::new(),
-               pop_kinds: Vec::new(), seen: Vec::new(), layers: Vec::new() }
+        Scan { world_pop: 0, owners: Vec::new(), names: Vec::new(), nations: FxMap::default(), pop_ids: Vec::new(),
+               pop_kinds: Vec::new(), seen: Vec::new(), layers: Vec::new(), extra: Vec::new() }
     }
 
     /// As `PROVINCE_FIELDS` reads a pop: a field with no value is no field,

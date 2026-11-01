@@ -208,9 +208,9 @@ impl Shape {
         use Shape::*;
         match (self, key) {
             (All, _) => Some(All),
-            (State, b"provinces" | b"is_colonial") => Some(All),
+            (State, b"provinces" | b"is_colonial" | b"name") => Some(All),
             (State, b"state_buildings") => Some(Factory),
-            (Factory, b"level") => Some(All),
+            (Factory, b"level" | b"last_income") => Some(All),
             (Units, b"location") => Some(All),
             (Units, b"army" | b"navy") => Some(Units),
             (Units, b"regiment") => Some(Regiment),
@@ -341,14 +341,26 @@ pub struct Country {
     pub country_flags: Vec<String>,
     pub modifiers: Vec<Sym>,
     pub goods_supply: Vec<(String, f64)>,
+    /// `domestic_supply_pool`: what the country offers the world market.
+    pub goods_pool: Vec<(String, f64)>,
+    /// `actual_sold_domestic`: what the country's own people and factories bought at home.
+    pub goods_sold: Vec<(String, f64)>,
     pub invention_ids: Vec<i64>,
     pub mobilizing: i64,
     pub states: i64,
     pub province_state: Vec<(i64, i64)>,
+    /// (name, provinces) of each state the save gives a name of its own.
+    pub state_names: Vec<(String, Vec<i64>)>,
+    /// (province, factory levels in its state), for states that have any.
+    pub state_factories: Vec<(i64, i64)>,
     pub colonial_provinces: Vec<i64>,
     pub colonial_level: Vec<(i64, i64)>,
     pub factory_count: i64,
     pub factory_levels: i64,
+    /// Σ the factories' `last_income`, and the day's income and expenses.
+    pub factory_income: f64,
+    pub income: f64,
+    pub expenses: f64,
     pub techs: i64,
     pub tech_list: Vec<Sym>,
     pub army_techs: i64,
@@ -669,6 +681,14 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
                     }
                 }
             }
+            b"incomes" | b"expenses" => {
+                let block = parse_block(&mut tok, &[]);
+                let total: f64 = bare_values(&block).iter().map(|v| match v {
+                    Value::Text(s) => to_float(s),
+                    _ => 0.0,
+                }).sum();
+                if key == b"incomes" { out.income = total; } else { out.expenses = total; }
+            }
             b"saved_country_supply" => {
                 if let Value::Dict(d) = parse_block(&mut tok, &[]) {
                     for (g, v) in &d.pairs {
@@ -679,6 +699,36 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
                             let n = to_float(s);
                             if n > 0.0 {
                                 out.goods_supply.push((latin1(g), n));
+                            }
+                        }
+                    }
+                }
+            }
+            b"actual_sold_domestic" => {
+                if let Value::Dict(d) = parse_block(&mut tok, &[]) {
+                    for (g, v) in &d.pairs {
+                        if g.first() == Some(&b'_') {
+                            continue;
+                        }
+                        if let Value::Text(s) = v {
+                            let n = to_float(s);
+                            if n > 0.0 {
+                                out.goods_sold.push((latin1(g), n));
+                            }
+                        }
+                    }
+                }
+            }
+            b"domestic_supply_pool" => {
+                if let Value::Dict(d) = parse_block(&mut tok, &[]) {
+                    for (g, v) in &d.pairs {
+                        if g.first() == Some(&b'_') {
+                            continue;
+                        }
+                        if let Value::Text(s) = v {
+                            let n = to_float(s);
+                            if n > 0.0 {
+                                out.goods_pool.push((latin1(g), n));
                             }
                         }
                     }
@@ -725,6 +775,12 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
                     let level = if colonial {
                         to_int_or(d.text(b"is_colonial"), 0)
                     } else { 0 };
+                    if let Some(n) = d.text(b"name") {
+                        if !n.is_empty() {
+                            out.state_names.push((latin1(n), ids.clone()));
+                        }
+                    }
+                    let ids_all = ids.clone();
                     for pid in ids {
                         out.province_state.push((pid, ordinal));
                         if colonial {
@@ -733,9 +789,18 @@ pub fn read_country(bytes: &[u8], at: usize, stop: usize, tag: &str,
                         }
                     }
                     if let Some(v) = d.get(b"state_buildings") {
+                        let mut here = 0i64;
                         for bld in sub_blocks(v) {
                             out.factory_count += 1;
-                            out.factory_levels += to_int_or(bld.text(b"level"), 1);
+                            let lv = to_int_or(bld.text(b"level"), 1);
+                            out.factory_levels += lv;
+                            here += lv;
+                            out.factory_income += to_float_or(bld.text(b"last_income"), 0.0);
+                        }
+                        if here > 0 {
+                            for pid in &ids_all {
+                                out.state_factories.push((*pid, here));
+                            }
                         }
                     }
                 }
