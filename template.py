@@ -1090,6 +1090,7 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
               <button id="popnames" aria-pressed="true" title="Name the neighbouring countries on the map">Names</button>
               <button id="popstatenames" aria-pressed="false" title="Write each state's name on the map, as it is called in this save">State names</button>
               <select id="poplayer" aria-label="Colour the map by" title="Colour the map by a statistic, province by province"><option value="">Nation colours</option></select>
+              <button id="poplayerscope" aria-pressed="true" title="Scale the layer's colours to this country's own provinces, so a small country is not all one colour next to the whole world">Country scale</button>
               <select id="popquality" class="mapq" aria-label="Map quality" title="Smooth antialiases coastlines and borders; Standard is the crisp pixel map and the fastest">
                 <option value="0">Standard (crisp)</option><option value="1">Smooth</option></select></div>
             <div id="popmapbox" class="popmapbox">
@@ -1303,7 +1304,7 @@ const slow = setTimeout(() => bootNote('Unpacking the campaign\u2026'), 200);
 /* One Victoria II pop stands for this many people. */
 const POP_SCALE = 4;
 /* The measures that are headcounts, and so are scaled. */
-const POP_KEYS = ['total_pop', 'accepted_pop', 'primary_culture_pop',
+const POP_KEYS = ['total_pop', 'pop_noncolonial', 'accepted_pop', 'primary_culture_pop',
   'pop_gain', 'accepted_gain', 'pop_poor', 'pop_middle', 'pop_rich',
   'life_unmet', 'starving', 'mobilization_pool', 'soldiers_noncolonial'];
 const DATA = PACKED_URL ? await unpackFrom(PACKED_URL) : await unpack(PACKED);
@@ -2292,7 +2293,7 @@ const metricSel = document.getElementById('metric');
 // Families keep related readings together without changing the underlying data.
 const metricGroups = [
   ['Population', [
-    ['Population', ['total_pop','accepted_pop','primary_culture_pop'], 'People living in the nation, with culture-specific views.'],
+    ['Population', ['total_pop','pop_noncolonial','accepted_pop','primary_culture_pop'], 'People living in the nation, with the colonies left out, or by culture.'],
     ['Accepted share', ['accepted_pct'], 'Percentage of the population belonging to an accepted culture.'],
     ['Literacy', ['avg_literacy','avg_literacy_stated'], 'Average literacy, across the nation or its own states.'],
     ['Population growth', ['pop_growth','accepted_growth'], 'Annualized percentage change between saves.'],
@@ -2335,7 +2336,7 @@ const familySel = document.getElementById('metric-family');
 const metricMemory = new Map();
 const familyMemory = new Map();
 const variantLabels = {
-  total_pop:'Total', accepted_pop:'Accepted culture', primary_culture_pop:'Primary culture',
+  total_pop:'Total', pop_noncolonial:'Excluding colonies', accepted_pop:'Accepted culture', primary_culture_pop:'Primary culture',
   avg_literacy:'All population', avg_literacy_stated:'Own states',
   brigades:'All fielded', regular_brigades:'Standing', mobilized_brigades:'Mobilized', mobilizing:'Queued',
   life_unmet:'People', life_unmet_pct:'% of population', starving:'People', starving_pct:'% of population',
@@ -3672,6 +3673,8 @@ function drawPopTable() {
     {key: 'tag', label: 'Tag', colour: r => colourFor(r.tag)},
     {key: 'name', label: 'Nation', render: r => nationIdentity(r.tag)},
     {key: 'total', label: 'Total pop', fmt: v => v.toLocaleString()},
+    {key: 'home', label: 'Excl. colonies', fmt: v => v.toLocaleString(),
+     title: 'People living in the nation\u2019s own states, with its colonies and protectorates left out.'},
     {key: 'accepted_pct', label: 'Accepted', fmt: v => v.toFixed(1) + '%'},
     /* The nation's own states, not its empire. A colony's pops are in the
        national average and drag it down without saying anything about the
@@ -3695,6 +3698,7 @@ function drawPopTable() {
     const row = {
       tag, name: nameOf(tag),
       total: f.total_pop || 0,
+      home: f.pop_noncolonial == null ? f.total_pop || 0 : f.pop_noncolonial,
       accepted_pct: f.accepted_pct || 0,
       avg_literacy_stated: f.avg_literacy_stated || 0,
       avg_militancy: f.avg_militancy || 0,
@@ -4400,10 +4404,12 @@ function mapProvValue(key, d, i, ex) {
   return key === 'p:railroad' ? e[0] : key === 'p:fort' ? e[1] : e[2];
 }
 const mapProvLayerCache = new Map();
-function mapProvLayerInfo(date, key, focus) {
+function mapProvLayerInfo(date, key, focus, scope) {
   key = key || mapLayer;
   if (focus === undefined) focus = mapLayerFocus;
-  const ck = date + '|' + key + '|' + mapRampName + '|' + focus;
+  // `scope`: a nation's index, to scale the colours to its own provinces
+  // instead of every province in the world.
+  const ck = date + '|' + key + '|' + mapRampName + '|' + focus + '|' + (scope === undefined ? '' : scope);
   if (mapProvLayerCache.has(ck)) return mapProvLayerCache.get(ck);
   const def = MAP_LAYERS.find(l => l.key === key), d = mapProvinceData(date);
   let out = null;
@@ -4428,8 +4434,15 @@ function mapProvLayerInfo(date, key, focus) {
     } else {
       const vals = [];
       const ex = mapProvinceExtra(date);
-      for (let i = 0; i < d.n; i++) vals.push(mapProvValue(def.key, d, i, ex));
-      const sorted = vals.slice().sort((a, b) => a - b);
+      const own = scope === undefined ? null : (mapOwners[date] || {own: new Map()}).own;
+      const mine = [];
+      for (let i = 0; i < d.n; i++) {
+        const v = mapProvValue(def.key, d, i, ex);
+        vals.push(v);
+        if (own && own.get(d.pid[i]) === scope) mine.push(v);
+      }
+      const scoped = mine.length >= 2;
+      const sorted = (scoped ? mine : vals).slice().sort((a, b) => a - b);
       const at = q => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))];
       const min = sorted[0], max = sorted[sorted.length - 1];
       let lo = at(.02), hi = def.scale === 'log' ? max : at(.98);
@@ -4441,7 +4454,7 @@ function mapProvLayerInfo(date, key, focus) {
         const rgb = mapRamp(fhi > flo ? (f(vals[i]) - flo) / (fhi - flo) : .5);
         colour.set(d.pid[i], (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]);
       }
-      out = {def, colour, lo, hi, min, log, count: d.n, fraction: true, value: null};
+      out = {def, colour, lo, hi, min, log, count: scoped ? mine.length : d.n, fraction: true, value: null, scoped};
     }
     out.data = d;
   }
@@ -6242,7 +6255,7 @@ function drawWarTable() {
          t.toLowerCase() === q || nameOf(t).toLowerCase().includes(q)));
   const get = {
     name: w => w.name.toLowerCase(),
-    start: w => w.start || '',
+    start: w => dateKey(w.start),
     losses: warLosses,
     battles: w => w.battles.length,
     land: w => w.transfers.length,
@@ -6329,6 +6342,13 @@ function belParties(w, side) {
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
                 'August', 'September', 'October', 'November', 'December'];
+/* `1870.1.7` as a number that sorts the way the calendar does (18700107), and
+   a date that is missing or unreadable after every real one. Compared as text,
+   1870.1.15 would come before 1870.1.7. */
+function dateKey(d) {
+  const p = String(d || '').split('.').map(Number);
+  return p.length === 3 && p.every(Number.isFinite) ? p[0] * 10000 + p[1] * 100 + p[2] : 99999999;
+}
 // `1845.12.23` the way a reader writes it: 23 December 1845.
 function longDate(d) {
   const p = String(d || '').split('.');
@@ -7192,12 +7212,12 @@ function battleDetail(b, kind, index) {
 function warBattleTable(list, title, kind) {
   if (!list.length) return '';
   const get = {
-    date: b => b.date || '9999',
+    date: b => dateKey(b.date),
     name: b => b.name.toLowerCase(),
     alost: b => b.a[2],
     dlost: b => b.d[2],
     total: b => b.a[2] + b.d[2],
-  }[warBattleSort.key] || (b => b.date || '9999');
+  }[warBattleSort.key] || (b => dateKey(b.date));
   const rows = list.slice().sort((x, y) => {
     const a = get(x), b = get(y);
     return (a < b ? -1 : a > b ? 1 : 0) * warBattleSort.dir;
@@ -7942,7 +7962,7 @@ function paintPopulationAtlas(ctx, W, H, view, st) {
 /* The country map's view: how far in, and how far the centre has been moved
    from where the fitted frame had it, in map pixels. Reset whenever the
    frame itself changes (another country, a state, all possessions). */
-let popLayer='', popZoom=1, popPanX=0, popPanY=0, popAuto=null, popPainted=null, popRepaintTimer=0, popDragMoved=false;
+let popLayer='', popScaleCountry=true, popZoom=1, popPanX=0, popPanY=0, popAuto=null, popPainted=null, popRepaintTimer=0, popDragMoved=false;
 function populationViewFrame(z,px,py){
   const a=popAuto, width=a.width/z, height=width*a.aspect;
   return {x0:a.cx+px-width/2,y0:a.cy+py-height/2,width,height};
@@ -7987,7 +8007,7 @@ function populationLegend(date,index,owners){
   const box=document.getElementById('poplegend');
   const off=()=>{box.hidden=true;box.replaceChildren();};
   if(!popLayer||index<0)return off();
-  const P=mapProvLayerInfo(date,popLayer,0);
+  const P=mapProvLayerInfo(date,popLayer,0,popScaleCountry?index:undefined);
   if(!P)return off();
   box.hidden=false;box.classList.toggle('cat',false);
   if(P.cat){
@@ -8010,7 +8030,7 @@ function populationLegend(date,index,owners){
   box.innerHTML=`<div class="lg-name">${P.def.label}</div>`
     +`<div class="lg-bar" style="background:linear-gradient(90deg,${stops})"></div>`
     +`<div class="lg-ends"><span>${P.lo>P.min?'≤ ':''}${fmt(P.lo)}</span><span>${fmt(P.hi)}</span></div>`
-    +`<div class="lg-note">${P.log?'log scale · ':''}same scale as the world map</div>`;
+    +`<div class="lg-note">${P.log?'log scale · ':''}${P.scoped?'scaled to this country\u2019s provinces':'same scale as the world map'}</div>`;
 }
 function drawPopulationAtlas(canvas, tag) {
   if (!MAP) return;
@@ -8072,7 +8092,7 @@ function drawPopulationAtlas(canvas, tag) {
     const hex=mapColourOf(tag,date), base=hex?mapLandColour(hex):null;
     let layer=null;
     if(popLayer&&mapProvinceData(date)){
-      const P=mapProvLayerInfo(date,popLayer,0);
+      const P=mapProvLayerInfo(date,popLayer,0,popScaleCountry?index:undefined);
       if(P){
         const rgb=new Int32Array(populationProvinceTop()+1).fill(-1);
         P.colour.forEach((v,p)=>{if(p>=0&&p<rgb.length)rgb[p]=v;});
@@ -8259,7 +8279,9 @@ function renderPopulationDetails(){
   const count=v=>v==null?'Unavailable':v.toLocaleString();
   const percent=v=>v==null?'Unavailable':(v*100).toFixed(1)+'%';
   const accepted=populationRegion?(row?.[3]?.length&&total?cultures.reduce((n,c)=>n+(c[2]?c[1]:0),0)/total:null):f?.accepted_pct==null?null:f.accepted_pct/100;
-  const entries=[['Population',count(total)],...(populationRegion? [['Literacy',percent(row?.[1])]]:[['Literacy · states excluding colonies',percent(f?.avg_literacy_stated)],['Literacy · whole country',percent(f?.avg_literacy)]]),['Accepted cultures',percent(accepted)],[populationRegion?'Provinces with population':'Provinces',count(populationRegion?row?.[4]:f?.provinces)],['Date',longDate(date)]];
+  const home=populationRegion||f?.pop_noncolonial==null?null:f.pop_noncolonial;
+  const colonial=home==null||total==null?0:Math.max(0,total-home);
+  const entries=[['Population',count(total)],...(home==null?[]:[['Population · excluding colonies',count(home)]]),...(colonial>0?[['Living in colonies',count(colonial)+' · '+(colonial/total*100).toFixed(1)+'%']]:[]),...(populationRegion? [['Literacy',percent(row?.[1])]]:[['Literacy · states excluding colonies',percent(f?.avg_literacy_stated)],['Literacy · whole country',percent(f?.avg_literacy)]]),['Accepted cultures',percent(accepted)],[populationRegion?'Provinces with population':'Provinces',count(populationRegion?row?.[4]:f?.provinces)],['Date',longDate(date)]];
   const host=document.getElementById('popcountryfacts');
   host.innerHTML='<div class="ibtitle"></div><dl class="ibfacts">'+entries.map(([k,v])=>'<dt>'+k+'</dt><dd>'+v+'</dd>').join('')+'</dl>';
   host.querySelector('.ibtitle').appendChild(nationIdentity(populationCountry));
@@ -8293,6 +8315,13 @@ document.getElementById('popstatenames').onclick=()=>{
 document.getElementById('popnames').onclick=()=>{mapShowNames=!mapShowNames;document.getElementById('popnames').setAttribute('aria-pressed',mapShowNames);const wb=document.getElementById('mapnames');if(wb)wb.setAttribute('aria-pressed',mapShowNames);refreshPopulation();};
 {
   const canvas=document.getElementById('popcountrymap'), box=document.getElementById('popmapbox');
+  const scopeBtn=document.getElementById('poplayerscope');
+  scopeBtn.onclick=()=>{
+    popScaleCountry=!popScaleCountry;
+    scopeBtn.setAttribute('aria-pressed',popScaleCountry);
+    scopeBtn.textContent=popScaleCountry?'Country scale':'World scale';
+    if(populationCountry&&MAP)drawPopulationAtlas(canvas,populationCountry);
+  };
   document.getElementById('poplayer').onchange=e=>{
     popLayer=e.target.value;
     if(populationCountry&&MAP)drawPopulationAtlas(canvas,populationCountry);
