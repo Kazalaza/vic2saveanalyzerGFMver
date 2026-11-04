@@ -852,7 +852,172 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
 #poptable th:nth-child(2),#poptable td:nth-child(2){text-align:left}
 #popcountryfacts .ibtitle .military-flag{width:42px;height:28px}
 #popcountryfacts .ibtitle .nation-identity{justify-content:center}
+
+/* =====================================================================
+   Classic look: a late-1990s Windows program. Switched on by the button at
+   the end of the tab row, which puts `classic` on <html>; everything here
+   sits below that class, so without it the page is untouched.
+   ===================================================================== */
+.themebtn{margin-left:auto;align-self:center;font-size:12px;padding:5px 10px}
+html.classic{
+  --ground:#C0C0C0; --ground-deep:#008080; --panel:#C0C0C0;
+  --rule:#808080; --grid:#A0A0A0;
+  --ink:#000000; --ink-dim:#404040;
+  --brass:#000080; --minium:#800000;
+  --gilt-hi:#FFFFFF; --gilt-lo:#808080;
+  --parchment:#FFFFE1;
+  --sheet-pad:6px;
+  --bevel-out:inset -1px -1px #404040,inset 1px 1px #FFFFFF,inset -2px -2px #808080,inset 2px 2px #DFDFDF;
+  --bevel-in:inset -1px -1px #FFFFFF,inset 1px 1px #404040,inset -2px -2px #DFDFDF,inset 2px 2px #808080;
+  --bevel-field:inset -1px -1px #FFFFFF,inset 1px 1px #808080,inset -2px -2px #DFDFDF,inset 2px 2px #404040;
+  color-scheme:light;
+}
+html.classic,html.classic body{background:#008080}
+html.classic *{
+  border-radius:0 !important;text-shadow:none !important;
+  font-family:Tahoma,"MS Sans Serif",Verdana,"DejaVu Sans",Arial,sans-serif !important;
+  letter-spacing:normal !important;
+}
+html.classic .mono,html.classic pre,html.classic code,html.classic td.num,
+html.classic .tb-value.mono,html.classic .endlab{
+  font-family:"Lucida Console","Courier New",monospace !important}
+html.classic body{font-size:12px;line-height:1.35;-webkit-font-smoothing:auto;color:#000}
+
+/* the program window */
+html.classic .sheet{
+  background:#C0C0C0;border:0;max-width:min(1800px,98vw);margin:8px auto;
+  padding:3px 3px 8px;min-height:0;
+  box-shadow:inset -1px -1px #404040,inset 1px 1px #DFDFDF,inset -2px -2px #808080,inset 2px 2px #FFFFFF,3px 3px 0 rgba(0,0,0,.45) !important;
+}
+html.classic .titleblock{
+  background:linear-gradient(90deg,#000080,#1084D0);border:0;
+  display:flex;align-items:center;gap:18px;padding:3px 4px;margin-bottom:6px;color:#fff;
+}
+html.classic .titleblock>div{padding:0;border:0;display:flex;align-items:baseline;gap:6px}
+html.classic .tb-label{color:#404040;margin:0;font-size:11px;text-transform:none}
+html.classic .titleblock .tb-label{color:#C0D8F8}
+html.classic .titleblock .tb-label::after{content:":"}
+html.classic #mapworld{color:#C0D8F8}
+html.classic .tb-value,html.classic h1.tb-value{
+  color:#fff;font-size:12px;font-weight:700;line-height:1.2}
+html.classic .titleblock>div:first-child{margin-right:auto}
+html.classic .titleblock>div:first-child .tb-label{display:none}
+html.classic h1.tb-value::before{content:"\25A3\00A0"}
+
+/* property-sheet tabs */
+html.classic .tabs{border-bottom:2px solid #FFFFFF;margin:0 0 0;padding:4px 4px 0;position:relative;gap:0;align-items:flex-end}
+html.classic .tab{
+  background:#C0C0C0;color:#000;text-transform:none;font-size:12px;font-weight:400;
+  border:0;padding:4px 12px 3px;margin:0 -1px -2px 0;position:relative;top:0;
+  box-shadow:inset 1px 1px #FFFFFF,inset -1px 0 #404040,inset -2px 0 #808080,inset 2px 2px #DFDFDF !important;
+}
+html.classic .tab[aria-selected="true"]{
+  background:#C0C0C0;color:#000;font-weight:700;padding:6px 14px 5px;margin-top:-2px;z-index:2;
+  box-shadow:inset 1px 1px #FFFFFF,inset -1px 0 #404040,inset -2px 0 #808080,inset 2px 2px #DFDFDF !important;
+}
+html.classic .tab:focus-visible,html.classic button:focus-visible,html.classic select:focus-visible,
+html.classic input:focus-visible{outline:1px dotted #000;outline-offset:-4px}
+html.classic [role="tabpanel"]{
+  background:#C0C0C0;padding:10px 8px 4px;margin:0 4px 0;
+  box-shadow:inset -1px -1px #404040,inset 1px 1px #FFFFFF,inset -2px -2px #808080;
+  border-top:0;
+}
+
+/* section headings become small title bars */
+html.classic section{margin-bottom:14px}
+html.classic h2{
+  background:linear-gradient(90deg,#000080,#1084D0);color:#fff;text-transform:none;
+  font-size:12px;font-weight:700;padding:2px 5px;margin:0 0 6px;border:0;
+}
+html.classic h3,html.classic h4{color:#000;text-transform:none}
+
+/* buttons, lists, fields */
+html.classic select,html.classic button,html.classic input[type=search],html.classic input[type=text],
+html.classic input[type=number]{
+  font-size:12px;color:#000;background:#C0C0C0;background-image:none;border:0;padding:4px 9px;
+  box-shadow:var(--bevel-out);
+}
+html.classic button:active,html.classic button[aria-pressed="true"],
+html.classic .controls > button[aria-pressed="true"],html.classic .chart-toolbar > button[aria-pressed="true"]{
+  background:#C0C0C0;color:#000;font-weight:700;border:0;box-shadow:var(--bevel-in);padding:5px 8px 3px 10px}
+html.classic .controls > button:disabled,html.classic .chart-toolbar > button:disabled,
+html.classic button:disabled{color:#808080;background:#C0C0C0;border:0;opacity:1;
+  text-shadow:1px 1px #fff !important;box-shadow:var(--bevel-out)}
+html.classic input[type=search],html.classic input[type=text],html.classic input[type=number],
+html.classic select{background:#fff;box-shadow:var(--bevel-field)}
+html.classic select{padding:3px 4px}
+html.classic option{background:#fff;color:#000}
+html.classic option:checked{background:#000080;color:#fff}
+html.classic .picker-panel{background:#C0C0C0;border:0;box-shadow:var(--bevel-out),2px 2px 0 rgba(0,0,0,.45) !important}
+html.classic .picker-opt{color:#000;border-bottom:0;background:#fff}
+html.classic .picker-opt:hover,html.classic .picker-opt[aria-selected="true"]{background:#000080;color:#fff}
+html.classic .picker-list{background:#fff;border:0;box-shadow:var(--bevel-field)}
+html.classic .timeline::-webkit-slider-runnable-track{background:#808080;height:4px;border:1px solid #fff;border-color:#404040 #fff #fff #404040}
+html.classic .timeline::-moz-range-track{background:#808080;height:4px}
+html.classic .timeline::-webkit-slider-thumb{background:#C0C0C0;border:0;box-shadow:var(--bevel-out);width:11px;height:20px;margin-top:-9px}
+html.classic .timeline::-moz-range-thumb{background:#C0C0C0;border:1px solid #404040;width:11px;height:20px}
+
+/* panels */
+html.classic .chart-toolbar{border-bottom:1px solid #808080;background:#C0C0C0;padding:5px 6px}
+html.classic .table-frame,html.classic .ib,html.classic .lgpanel,html.classic .military-strength-strip,
+html.classic .bt-army{
+  background:#C0C0C0;border:0;box-shadow:var(--bevel-field)}
+html.classic .ibtitle,html.classic .ibband,html.classic .bt-top,html.classic .military-identity{
+  background:linear-gradient(90deg,#000080,#1084D0);color:#fff;border:0}
+html.classic .ibtitle *,html.classic .ibband *,html.classic .bt-top *{color:#fff}
+html.classic .groupcell{background:#DFDFDF !important;color:#000}
+html.classic .note,html.classic .rk{color:#404040}
+html.classic .mapwrap,html.classic .popmapbox{box-shadow:var(--bevel-field);border:0;padding:2px;background:#808080}
+html.classic svg#chart,html.classic svg#popchart,html.classic svg#econchart,html.classic svg#pricechart,
+html.classic .plotframe svg{background:#fff;box-shadow:var(--bevel-field);padding:2px}
+html.classic .axis text{fill:#000}
+html.classic .map-overlay,html.classic .map-tip,html.classic .wthint{
+  background:#FFFFE1;color:#000;border:1px solid #000}
+html.classic dialog,html.classic #battlebox{background:#C0C0C0;color:#000;border:0;padding:3px;
+  box-shadow:var(--bevel-out),4px 4px 0 rgba(0,0,0,.5) !important}
+html.classic dialog::backdrop{background:rgba(0,0,0,.35)}
+
+/* tables: white cells, raised grey header, thin grey grid */
+html.classic .tablewrap{background:#fff;border:0;box-shadow:var(--bevel-field);padding:2px}
+html.classic table{background:#fff;color:#000;border-collapse:collapse}
+html.classic th{
+  background:#C0C0C0 !important;color:#000 !important;font-weight:400;text-transform:none;
+  border:0 !important;box-shadow:inset -1px -1px #404040,inset 1px 1px #fff,inset -2px -2px #808080 !important;
+  padding:3px 6px;position:sticky;top:0}
+html.classic td{border:0 !important;border-bottom:1px solid #C0C0C0 !important;border-right:1px solid #E0E0E0 !important;color:#000}
+html.classic tr:hover td{background:#E8E8FF !important}
+html.classic tr[aria-selected="true"] td,html.classic tr.sel td,html.classic tr.selected td{background:#000080 !important;color:#fff !important}
+html.classic tfoot td{background:#DFDFDF !important;font-weight:700}
+html.classic a{color:#0000EE}
+html.classic ::selection{background:#000080;color:#fff}
+
+/* scrollbars, as far as the browser allows */
+html.classic ::-webkit-scrollbar{width:16px;height:16px}
+html.classic ::-webkit-scrollbar-track{
+  background-color:#fff;
+  background-image:linear-gradient(45deg,#C0C0C0 25%,transparent 25%,transparent 75%,#C0C0C0 75%),
+                   linear-gradient(45deg,#C0C0C0 25%,transparent 25%,transparent 75%,#C0C0C0 75%);
+  background-size:2px 2px;background-position:0 0,1px 1px}
+html.classic ::-webkit-scrollbar-thumb{background:#C0C0C0;box-shadow:var(--bevel-out)}
+html.classic ::-webkit-scrollbar-corner{background:#C0C0C0}
+html.classic ::-webkit-scrollbar-button{display:block;width:16px;height:16px;background:#C0C0C0;box-shadow:var(--bevel-out)}
+html.classic *{scrollbar-color:#C0C0C0 #fff}
+
+/* leftovers: surfaces the page paints dark by hand */
+html.classic{--ground-deep:#C0C0C0}
+html.classic figure,html.classic .readout,html.classic .map-inspection .readout,html.classic .map-inspection>summary,
+html.classic .tablewrap thead th,html.classic .battledetail td,html.classic .bt-sum>div,
+html.classic .econ-split,html.classic .return-details>td{background:#C0C0C0 !important;color:#000}
+html.classic figure{border:0;box-shadow:var(--bevel-field)}
+html.classic .readout{box-shadow:var(--bevel-field);border:0}
+html.classic .endlab{stroke:#fff}
+html.classic .map-overlay{background:#C0C0C0;border:0;box-shadow:var(--bevel-out);backdrop-filter:none;color:#000}
+html.classic .wtctl button{background:#C0C0C0}
+html.classic .map-overlay h2,html.classic .map-overlay .ibtitle{color:#fff}
+html.classic .groupcell{background:#DFDFDF !important}
+html.classic .tab-count,html.classic .badge{background:#000080;color:#fff}
 </style>
+<script>try{if(localStorage.getItem('classicLook')==='1')document.documentElement.classList.add('classic');}catch(e){}</script>
 </head>
 <body>
 <main class="sheet">
@@ -873,6 +1038,7 @@ footer{color:var(--ink-dim);font-size:12.5px;border-top:1px solid var(--rule);
     <button class="tab" role="tab" id="tab-tech" aria-controls="panel-tech" aria-selected="false">Technology</button>
     <button class="tab" role="tab" id="tab-economy" aria-controls="panel-economy" aria-selected="false">Economy</button>
     <button class="tab" role="tab" id="tab-market" aria-controls="panel-market" aria-selected="false">Market</button>
+    <button type="button" class="themebtn" id="themebtn" aria-pressed="false" title="Switch between this look and a late-1990s Windows one">Classic look</button>
   </div>
 
   <!-- ============ NATIONS ============ -->
@@ -4346,6 +4512,16 @@ const MAP_RELIGION_FAMILIES = [
   [/shinto|confuc|tao|folk|ancestor/, 352, 62],
   [/jew|judais|hebrew|samarit/, 278, 46],
   [/animis|pagan|tribal|shaman|fetish|totem|voodoo|polythe|spirit/, 24, 34]];
+/* Religions that sit next to each other on the map, in colours chosen to be told apart: each Christian
+   branch has a hue of its own rather than a shade of one blue. Anything not named here falls back to the family. */
+const MAP_RELIGION_FIXED = {
+  catholic:'#F2C230', protestant:'#3F7FE0', reformed:'#1B3F9A', anglican:'#8EC3F2', lutheran:'#62A8D6',
+  orthodox:'#8E3FBF', miaphysite:'#C2338F', coptic:'#C2338F', nestorian:'#2BB6A3', moravian:'#7FD0E0',
+  sunni:'#2E8B3E', shiite:'#A5D63F', ibadi:'#1F6B5A', yazidi:'#8C7A2F', druze:'#6FBF8E',
+  hindu:'#F07F1E', jain:'#FFB066', sikh:'#E0A030',
+  mahayana:'#D2691E', theravada:'#B8860B', gelugpa:'#8B4513', vajrayana:'#A0522D',
+  confucian:'#D9534F', shinto:'#FF9EB5', tengri:'#6FA8A0', animist:'#A68A64', fetishist:'#5C4A32',
+  jewish:'#F5F5F5', zoroastrian:'#FF4500'};
 const MAP_RELIGION_SHADES = {catholic: 48, protestant: 66, orthodox: 36, sunni: 40, shiite: 60, ibadi: 52};
 function mapCategoryColours(field) {
   if (mapCategoryRank[field]) return mapCategoryRank[field];
@@ -4366,14 +4542,19 @@ function mapCategoryColours(field) {
     let other = 0;
     ranked.forEach(w => {
       const raw = String((MAP.layerWords || [])[w] || '').toLowerCase();
+      const fixed = MAP_RELIGION_FIXED[raw];
+      if (fixed) { colour.set(w, [1, 3, 5].map(k => parseInt(fixed.slice(k, k + 2), 16))); return; }
       const fi = MAP_RELIGION_FAMILIES.findIndex(f => f[0].test(raw));
       if (fi < 0) { colour.set(w, mapHsl((other++ * 137.508 + 300) % 360, 40, [58, 70, 46][other % 3])); return; }
       const n = used[fi]++, shade = MAP_RELIGION_SHADES[raw];
       const light = shade || [52, 40, 64, 46, 58, 34, 70][n % 7];
-      colour.set(w, mapHsl((MAP_RELIGION_FAMILIES[fi][1] + ((n % 3) - 1) * (shade ? 0 : 9) + 360) % 360, MAP_RELIGION_FAMILIES[fi][2], light));
+      colour.set(w, mapHsl((MAP_RELIGION_FAMILIES[fi][1] + ((n % 5) - 2) * (shade ? 0 : 26) + 360) % 360, MAP_RELIGION_FAMILIES[fi][2], light));
     });
   } else {
     ranked.forEach((w, i) => {
+      // the colour the mod's cultures.txt gives it, so the map matches the game's own
+      const given = (MAP.cultureColours || {})[String((MAP.layerWords || [])[w] || '')];
+      if (given) { colour.set(w, [1, 3, 5].map(k => parseInt(given.slice(k, k + 2), 16))); return; }
       if (i >= MAP_CATEGORY_COLOURS.length) MAP_CATEGORY_COLOURS.push(mapHsl((i * 137.508 + 20) % 360, [60, 46, 72][i % 3], [58, 68, 46][(i >> 1) % 3]));
       colour.set(w, MAP_CATEGORY_COLOURS[i]);
     });
@@ -9173,6 +9354,16 @@ function econInit() {
 }
 
 /* =============== TABS =============== */
+{
+  const root = document.documentElement, btn = document.getElementById('themebtn');
+  const sync = () => { const on = root.classList.contains('classic'); btn.setAttribute('aria-pressed', on); btn.textContent = on ? 'Modern look' : 'Classic look'; };
+  btn.onclick = () => {
+    root.classList.toggle('classic');
+    try { localStorage.setItem('classicLook', root.classList.contains('classic') ? '1' : '0'); } catch (e) {}
+    sync();
+  };
+  sync();
+}
 const tabs = [...document.querySelectorAll('.tab')];
 function selectTab(id) {
   if (id !== 'tab-nations') mapStopPlay();
