@@ -114,6 +114,8 @@ pub struct Mod {
     pub colours: FxMap<String, String>,
     /// Per-government colours a country file gives: tag -> government -> hex.
     pub gov_colours: FxMap<String, FxMap<String, String>>,
+    /// Culture name -> hex, from `common/cultures.txt`.
+    pub culture_colours: FxMap<String, String>,
     pub sea: Vec<i64>,
     pub positions: Vec<(i64, f64, f64)>,
     pub flag_styles: FxMap<String, (String, bool)>,
@@ -337,6 +339,7 @@ impl Mod {
             tech_count: j.at("tech_count").int(),
             technologies: strings(j.at("technologies")).into_iter().collect(),
             colours: texts(j.at("colours")),
+            culture_colours: texts(j.at("culture_colours")),
             gov_colours: j.at("gov_colours").pairs().iter().map(|(t, g)| (t.clone(), texts(g))).collect(),
             sea: j.at("sea").list().iter().map(|x| x.int()).collect(),
             positions: j.at("positions").list().iter().map(|p| {

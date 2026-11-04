@@ -479,7 +479,22 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         }
         push_json_str(&mut j, names::text(*w));
     }
-    j.push_str("],\"provinceLayers\":{");
+    // `cultureColours`: the colour the mod's cultures.txt gives each culture
+    // that leads a province somewhere in these saves.
+    j.push_str("],\"cultureColours\":{");
+    {
+        let mut first = true;
+        for (w, _) in words.iter() {
+            if let Some(c) = m.culture_colours.get(names::text(*w)) {
+                if !first { j.push(','); }
+                first = false;
+                push_json_str(&mut j, names::text(*w));
+                j.push(':');
+                push_json_str(&mut j, c);
+            }
+        }
+    }
+    j.push_str("},\"provinceLayers\":{");
     for (si, k) in parsed.iter().enumerate() {
         if si > 0 {
             j.push(',');

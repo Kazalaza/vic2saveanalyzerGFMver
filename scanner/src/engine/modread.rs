@@ -1410,6 +1410,56 @@ impl Reader {
         Ok(())
     }
 
+    /// The `color = { r g b }` of each culture block in one cultures.txt,
+    /// as "#rrggbb", set into `out` (a later file's colour replaces an
+    /// earlier one's when `replace`, else only fills what is missing).
+    fn culture_colours_in(&self, target: &str, out: &mut OMap<Vec<u8>, String>, replace: bool) -> D<()> {
+        for (_group, block) in self.clausewitz(target)?.iter() {
+            if !is_dict(block) {
+                continue;
+            }
+            for (name, body) in pairs(block) {
+                if name.first() == Some(&b'_') || NOT_A_CULTURE.contains(&name.as_slice()) {
+                    continue;
+                }
+                let dict = match body {
+                    V::Dict(_) => Some(body),
+                    V::List(x) | V::Multi(x) => x.first().filter(|f| is_dict(f)),
+                    _ => None,
+                };
+                let Some(dict) = dict else { continue };
+                let parts = crate::clause::as_list(get(dict, b"color"));
+                if parts.len() != 3 {
+                    continue;
+                }
+                let mut s = String::from("#");
+                let mut ok = true;
+                for p in parts {
+                    let v = to_int(Some(p), -1)?;
+                    if v < 0 { ok = false; break; }
+                    s.push_str(&format!("{:02x}", v.min(255)));
+                }
+                if ok && (replace || !out.contains_key(name)) {
+                    out.set(name.clone(), s);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// `culture -> "#rrggbb"`: what each culture block gives itself in
+    /// `common/cultures.txt`, the mod's over the game's.
+    fn culture_colours(&self) -> D<J> {
+        let mut out: OMap<Vec<u8>, String> = OMap::new();
+        for root in self.game_then_mod() {
+            let target = joins(root, &["common", "cultures.txt"]);
+            if is_file(&target) {
+                self.culture_colours_in(&target, &mut out, true)?;
+            }
+        }
+        Ok(J::Obj(out.iter().map(|(k, v)| (l1(k), J::Str(v.clone()))).collect()))
+    }
+
     fn continents(&self) -> D<Vec<(i64, Vec<u8>)>> {
         let target = self.map_file("continent.txt");
         let mut out: OMap<i64, Vec<u8>> = OMap::new();
@@ -2122,6 +2172,34 @@ pub fn facts(root: &str) -> D<Facts> {
     Ok(Facts { tags, pops, techs, inventions, provinces })
 }
 
+/// Colours for cultures that the mod itself gives none: the other mods in
+/// the game's mod folder are looked through, in name order, for a
+/// `common/cultures.txt` that does. A sub-mod that adds cultures to the mod
+/// the campaign was played on lives in a folder of its own, which the run is
+/// never pointed at. Only fills; a colour the mod or game gave stays.
+pub fn sibling_culture_colours(path: &str) -> Vec<(String, String)> {
+    let r = Reader::new(path);
+    let Some(base) = r.base.clone() else { return Vec::new() };
+    let folder = joins(&base, &["mod"]);
+    let mut names = match listdir(&folder) {
+        Ok(Some(n)) => n,
+        _ => return Vec::new(),
+    };
+    names.sort_by_cached_key(|n| lower(n));
+    let mut out: OMap<Vec<u8>, String> = OMap::new();
+    for name in names {
+        let home = join(&folder, &name);
+        if !is_dir(&home) || lower(&home) == lower(path.trim_end_matches(|c| c == '/' || c == '\\')) {
+            continue;
+        }
+        let target = joins(&home, &["common", "cultures.txt"]);
+        if is_file(&target) {
+            let _ = r.culture_colours_in(&target, &mut out, false);
+        }
+    }
+    out.iter().map(|(k, v)| (l1(k), v.clone())).collect()
+}
+
 /// `mod_reader.invention_files(path)`: {invention: the file it is defined
 /// in}, the first file in load order that defines it.
 pub fn invention_files(path: &str) -> D<OMap<String, String>> {
@@ -2293,6 +2371,7 @@ pub fn export(path: &str) -> D<J> {
     // not turned into a sentence: handed back, not refused.
     let later = |d: Decline| Decline(format!("the map or the flags: {}", d.0.trim_start_matches(RAISED)));
     put("colours", if has_map { r.country_colours().map_err(later)? } else { J::Obj(Vec::new()) });
+    put("culture_colours", r.culture_colours().map_err(later)?);
     put("gov_colours", if has_map { r.government_colours().map_err(later)? } else { J::Obj(Vec::new()) });
     put("sea", J::List(if has_map {
         r.sea_provinces().map_err(later)?.into_iter().map(J::Int).collect()

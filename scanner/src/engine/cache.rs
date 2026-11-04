@@ -610,7 +610,7 @@ impl Store {
 
 // ------------------------------------------------------------- the mod
 
-const MOD_MAGIC: &[u8] = b"V2ENGM02";
+const MOD_MAGIC: &[u8] = b"V2ENGM04";
 
 /// Where the mod read from `path` is kept, when Python has signed its files
 /// (`mod_reader.mod_signature`, which it takes for the stamp anyway): keyed

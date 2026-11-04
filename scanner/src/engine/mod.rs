@@ -795,7 +795,19 @@ fn load_mod(mod_path: &Option<String>, signature: &Option<String>,
         }
         None => decline("no mod was named"),
     };
-    Mod::from_json(&j)
+    let mut m = Mod::from_json(&j)?;
+    // Read afresh each run, not kept with the mod: it depends on folders
+    // the mod's own signature does not cover.
+    if let Some(path) = mod_path {
+        let path = path.clone();
+        let extra = std::thread::Builder::new().stack_size(256 << 20)
+            .spawn(move || modread::sibling_culture_colours(&path))
+            .ok().and_then(|h| h.join().ok()).unwrap_or_default();
+        for (k, v) in extra {
+            m.culture_colours.entry(k).or_insert(v);
+        }
+    }
+    Ok(m)
 }
 
 /// The mod folder read (`modread`).
