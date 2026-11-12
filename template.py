@@ -518,18 +518,18 @@ dialog.battlebox::backdrop{background:rgba(10,5,8,.68)}
 .popmapbox .popatlas.dragging{cursor:grabbing}
 .popviewbtns{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:4px;z-index:3}
 .popviewbtns button{width:30px;height:30px;padding:0;line-height:1;font-size:16px}
-#poplegend{right:10px;bottom:10px;width:190px;padding:9px 12px;font-size:10px;letter-spacing:.03em;pointer-events:none}
-#poplegend{right:14px;bottom:14px;width:190px;padding:9px 12px;font-size:10px;letter-spacing:.03em;pointer-events:none}
-#poplegend[hidden]{display:none}
-#poplegend.cat{pointer-events:auto;max-height:min(340px,60%);overflow-y:auto}
-#poplegend .lg-row[data-w]{cursor:pointer;padding:1px 3px;margin:1px -3px;border-radius:2px}
-#poplegend .lg-row[data-w]:hover{background:rgba(255,255,255,.1)}
-#poplegend .lg-row.on{background:rgba(224,191,103,.28)}
-#poplegend .lg-name{color:var(--brass);margin-bottom:5px;font-size:11px}
-#poplegend .lg-bar{height:9px;border:1px solid rgba(0,0,0,.5);border-radius:1px}
-#poplegend .lg-ends{display:flex;justify-content:space-between;margin-top:3px;opacity:.9}
-#poplegend .lg-note{opacity:.65;margin-top:4px}
-#poplegend .lg-row{margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#popmaplegend{right:10px;bottom:10px;width:190px;padding:9px 12px;font-size:10px;letter-spacing:.03em;pointer-events:none}
+#popmaplegend{right:14px;bottom:14px;width:190px;padding:9px 12px;font-size:10px;letter-spacing:.03em;pointer-events:none}
+#popmaplegend[hidden]{display:none}
+#popmaplegend.cat{pointer-events:auto;max-height:min(340px,60%);overflow-y:auto}
+#popmaplegend .lg-row[data-w]{cursor:pointer;padding:1px 3px;margin:1px -3px;border-radius:2px}
+#popmaplegend .lg-row[data-w]:hover{background:rgba(255,255,255,.1)}
+#popmaplegend .lg-row.on{background:rgba(224,191,103,.28)}
+#popmaplegend .lg-name{color:var(--brass);margin-bottom:5px;font-size:11px}
+#popmaplegend .lg-bar{height:9px;border:1px solid rgba(0,0,0,.5);border-radius:1px}
+#popmaplegend .lg-ends{display:flex;justify-content:space-between;margin-top:3px;opacity:.9}
+#popmaplegend .lg-note{opacity:.65;margin-top:4px}
+#popmaplegend .lg-row{margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .popcountrylayout{align-items:start;display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,2fr);gap:24px;margin-bottom:28px}
 .popcountrylayout .ib{max-width:none}
 #popcountryfacts section{padding:0 16px 16px;margin:0}
@@ -1084,8 +1084,6 @@ html.classic .tab-count,html.classic .badge{background:#000080;color:#fff}
               <button id="mapvalues" aria-pressed="true" title="Write each country's figure under its name when colouring by a statistic">Values</button>
               <select id="mapramp" aria-label="Colour scale" title="Colour scale for the statistic">
                 <option value="rg">Red to green</option><option value="by">Blue to yellow</option></select>
-              <select id="mapquality" class="mapq" aria-label="Map quality" title="Smooth antialiases coastlines and borders; Standard is the crisp pixel map and the fastest">
-                <option value="0">Standard (crisp)</option><option value="1">Smooth</option></select>
               <button id="mapreset" title="Back to the whole world">Reset</button>
               <span class="rk" id="mapzoom">1.0&times;</span>
               <span id="pick-map"></span>
@@ -1252,13 +1250,17 @@ html.classic .tab-count,html.classic .badge{background:#000080;color:#fff}
           <figure>
             <div class="chart-toolbar" role="group" aria-label="Population map controls"><select id="popregion" aria-label="State" title="State"><option value="">Choose a state</option></select>
               <button id="popallland" aria-pressed="false">All possessions</button>
+              <button id="popinsets" aria-pressed="true" title="Show far-off territories and subjects in small windows in the corner, as an atlas does">Insets</button>
               <button id="popsubjects" aria-pressed="true" title="Show puppets, personal unions and substates in a lighter shade of this country's colour">Puppets</button>
               <button id="popnames" aria-pressed="true" title="Name the neighbouring countries on the map">Names</button>
               <button id="popstatenames" aria-pressed="false" title="Write each state's name on the map, as it is called in this save">State names</button>
+              <button id="popcname" aria-pressed="false" title="Write the country's own name across its land">Country name</button>
+              <button id="popborders" aria-pressed="true" title="Draw the borders between this country's states">State borders</button>
+              <button id="popcities" aria-pressed="false" title="Mark the largest cities in view with a dot and a name: the most populous provinces of this country">Cities</button>
+              <button id="popgray" aria-pressed="false" title="Paint every other country in plain grey, so only this country stands out">Gray out others</button>
+              <button id="popvalues" aria-pressed="true" title="Write each state's figure on the map when colouring by a statistic">Values</button>
               <select id="poplayer" aria-label="Colour the map by" title="Colour the map by a statistic, province by province"><option value="">Nation colours</option></select>
-              <button id="poplayerscope" aria-pressed="true" title="Scale the layer's colours to this country's own provinces, so a small country is not all one colour next to the whole world">Country scale</button>
-              <select id="popquality" class="mapq" aria-label="Map quality" title="Smooth antialiases coastlines and borders; Standard is the crisp pixel map and the fastest">
-                <option value="0">Standard (crisp)</option><option value="1">Smooth</option></select></div>
+              <button id="poplayerscope" aria-pressed="true" title="Scale the layer's colours to this country's own provinces, so a small country is not all one colour next to the whole world">Country scale</button></div>
             <div id="popmapbox" class="popmapbox">
               <canvas id="popcountrymap" class="popatlas" role="img" aria-label="Selected country; scroll to zoom, drag to move, click a state for population and literacy"></canvas>
               <div class="popviewbtns" role="group" aria-label="Map view">
@@ -1266,7 +1268,7 @@ html.classic .tab-count,html.classic .badge{background:#000080;color:#fff}
                 <button id="popzoomout" title="Zoom out" aria-label="Zoom out">&minus;</button>
                 <button id="popzoomreset" title="Back to the whole country" aria-label="Reset view">&#8634;</button>
               </div>
-              <div id="poplegend" class="map-overlay" hidden></div>
+              <div id="popmaplegend" class="map-overlay" hidden></div>
             </div>
             <div id="popstatefacts" class="readout">Click a state or choose one above.</div></figure>
           <p class="note">Highlighted land belongs to this country at the selected save. State figures cover its owned portion.<span id="popsubjectnote"></span></p>
@@ -1622,7 +1624,26 @@ const el = (n, a) => { const e = document.createElementNS(SVGNS, n);
 // and a stack of them has nowhere to go but on top of each other.
 const W = 1000, H = 460, M = {t: 20, r: 58, b: 40, l: 80};
 
-const nameOf = t => DATA.tagNames[t] || t;
+/* The save the page is looking at: the one selected on the tab in view, or none for the tabs that run
+   across all of them. A nation's name and flag follow it (Russia, then the Soviet Union), so the date
+   a nation is shown at is the one its page is open on rather than the last one in the report. */
+const VIEW_SAVE_SELECTS = {'tab-nations': 'mapsave', 'tab-pops': 'popsave', 'tab-military': 'milsave',
+  'tab-tech': 'techsave', 'tab-economy': 'econsave', 'tab-market': 'prodsave'};
+function viewSave() {
+  const tab = document.querySelector('.tab[aria-selected="true"]');
+  const sel = tab && VIEW_SAVE_SELECTS[tab.id] && document.getElementById(VIEW_SAVE_SELECTS[tab.id]);
+  return sel && sel.value ? sel.value : null;
+}
+const nameOf = (t, date) => {
+  const h = DATA.nameHistory && DATA.nameHistory[t];
+  if (h) { const n = h[date || viewSave()]; if (n) return n; }
+  return DATA.tagNames[t] || t;
+};
+const flagSrc = (t, date) => {
+  const h = DATA.flagHistory && DATA.flagHistory[t];
+  if (h) { const k = h[date || viewSave()]; if (k && (DATA.flags || {})[k]) return DATA.flags[k]; }
+  return (DATA.flags || {})[t + '|'];
+};
 /* A nation is drawn in its own colour out of the mod, so the report reads like
    the game. Half of them are unusable as ink on a burgundy page, though --
    Prussia is nearly black, Russia a deep green -- so each is lifted until it
@@ -3254,7 +3275,7 @@ function strengthDetails(sections, note) {
 
 // Use the report's embedded flags; a nation-colour swatch is the honest fallback.
 function nationFlag(tag) {
-  const src = (DATA.flags || {})[tag + '|'];
+  const src = flagSrc(tag);
   const flag = document.createElement(src ? 'img' : 'span');
   flag.className = 'military-flag' + (src ? '' : ' blank');
   if (src) { flag.src = src; flag.alt = ''; }
@@ -4366,7 +4387,10 @@ function mapLandColour(hex) {
     | (soften((rgb >> 8) & 255) << 8) | soften(rgb & 255);
 }
 
+let mapIdentityOverride = null;  // lets the country map draw its states as separate areas
+let mapPaletteOverride = null;   // set while the country map paints with the world map's tiles
 function mapPalette(date, plain) {
+  if (mapPaletteOverride && !plain) return mapPaletteOverride;
   const book = mapOwners[date] || {own: new Map(), occ: new Map()};
   const owners = new Map(book.own);
   let top = 0;
@@ -4443,6 +4467,11 @@ const MAP_LAYERS = [
   {key: 'p:railroad', label: 'Railroad level by province', level: 'province', kind: 'count', scale: 'lin', extra: true},
   {key: 'p:fort', label: 'Fort level by province', level: 'province', kind: 'count', scale: 'lin', extra: true},
   {key: 'p:factories', label: 'Factory levels (by state)', level: 'province', kind: 'count', scale: 'log', extra: true},
+  // What a state made in a day: its provinces' RGOs and artisans, and its factories.
+  {key: 'p:gdp', label: 'Output by state', level: 'province', kind: 'count', scale: 'log', output: true},
+  {key: 'p:gdppc', label: 'Output per 1,000 people (by state)', level: 'province', kind: 'count', scale: 'lin', output: true},
+  // What each state's people believe politically: the ideology with the most of them, as in the game's own map mode.
+  {key: 'p:ideology', label: 'Ideology (largest in state)', level: 'province', kind: 'cat', field: 'ideology', ideology: true},
 ];
 const mapLayerIsProvince = key => { const d = MAP_LAYERS.find(l => l.key === key); return !!(d && d.level === 'province'); };
 
@@ -4481,7 +4510,7 @@ function mapProvinceData(date) {
   let out = null;
   if (flat && flat.length) {
     const n = flat.length / 5;
-    out = {n, pid: new Int32Array(n), cw: new Int32Array(n), rw: new Int32Array(n),
+    out = {n, date, pid: new Int32Array(n), cw: new Int32Array(n), rw: new Int32Array(n),
            size: new Float64Array(n), lit: new Float32Array(n), cs: new Float32Array(n), rs: new Float32Array(n),
            at: new Map()};
     for (let i = 0; i < n; i++) {
@@ -4495,7 +4524,60 @@ function mapProvinceData(date) {
   mapProvData.set(date, out);
   return out;
 }
+/* Ideology. Each pop carries its share of every ideology the game has, numbered from 1; the scanner adds
+   them up per province (`provinceIdeology`, thousandths, ideology 1 first). The numbers are the game's own
+   order, not alphabetical: worked out from the saves by matching each country's upper house to its people,
+   which gives 3 reactionary, 4 conservative, 5 socialist, 6 communist, 7 liberal and 8 radical. 1 and 2 are
+   not used by any pop in the saves seen (fascism, not yet allowed in them, would be one of the two). */
+const MAP_IDEOLOGY = {
+  3: ['Reactionary', [92, 134, 150]], 4: ['Conservative', [62, 111, 217]], 5: ['Socialist', [217, 69, 59]],
+  6: ['Communist', [140, 29, 47]], 7: ['Liberal', [227, 195, 43]], 8: ['Radical', [232, 132, 42]],
+  1: ['Ideology 1', [150, 120, 96]], 2: ['Ideology 2', [120, 96, 150]]};
+for (let n = 9; n <= 16; n++) MAP_IDEOLOGY[n] = ['Ideology ' + n, [140, 140, 130]];
+/* A state's people by ideology: its provinces' shares added up, weighted by their people, for every province of
+   every state of every owner. Returns province -> {lead, share, shares[]}, the same object for a whole state. */
+const mapIdeoCache = new Map();
+function mapIdeologyStates(date, d) {
+  if (mapIdeoCache.has(date)) return mapIdeoCache.get(date);
+  mapDecoded();
+  const flat = (MAP.provinceIdeology || {})[date], n = MAP.ideologyCount || 0;
+  let out = null;
+  if (flat && flat.length && n) {
+    const own = (mapOwners[date] || {own: new Map()}).own, states = new Map();
+    for (let i = 0; i + n < flat.length; i += n + 1) {
+      const pid = flat[i], o = own.get(pid);
+      if (o === undefined) continue;
+      const j = d && d.at.get(pid), w = j === undefined || j === null ? 1 : d.size[j];
+      const key = o + '|' + populationRegionOf(pid);
+      let s = states.get(key);
+      if (!s) { s = {v: new Float64Array(n), w: 0, pids: []}; states.set(key, s); }
+      for (let k = 0; k < n; k++) s.v[k] += flat[i + 1 + k] * w;
+      s.w += w; s.pids.push(pid);
+    }
+    out = new Map();
+    for (const s of states.values()) {
+      let lead = 0, best = 0;
+      for (let k = 0; k < n; k++) if (s.v[k] > best) { best = s.v[k]; lead = k + 1; }
+      const e = {lead, share: s.w > 0 ? best / s.w / 1000 : 0, shares: Array.from(s.v, x => s.w > 0 ? x / s.w / 1000 : 0)};
+      for (const pid of s.pids) out.set(pid, e);
+    }
+  }
+  mapIdeoCache.set(date, out);
+  return out;
+}
+/* The word and share arrays a category layer reads, by province. */
+function mapCatArrays(d, field) {
+  if (field === 'culture') return {w: d.cw, s: d.cs};
+  if (field === 'religion') return {w: d.rw, s: d.rs};
+  if (!d.iw) {
+    d.iw = new Int32Array(d.n); d.is = new Float32Array(d.n);
+    const st = mapIdeologyStates(d.date, d);
+    if (st) for (let i = 0; i < d.n; i++) { const e = st.get(d.pid[i]); if (e) { d.iw[i] = e.lead; d.is[i] = e.share; } }
+  }
+  return {w: d.iw, s: d.is};
+}
 const mapWordName = (w, field) => {
+  if (field === 'ideology') return (MAP_IDEOLOGY[w] || ['Unknown'])[0];
   const raw = (MAP.layerWords || [])[w] || '';
   const known = (field === 'religion' ? (DATA.names || {}) : (DATA.cultureNames || {}))[raw];
   if (known) return known;
@@ -4525,13 +4607,17 @@ const MAP_RELIGION_FIXED = {
 const MAP_RELIGION_SHADES = {catholic: 48, protestant: 66, orthodox: 36, sunni: 40, shiite: 60, ibadi: 52};
 function mapCategoryColours(field) {
   if (mapCategoryRank[field]) return mapCategoryRank[field];
+  if (field === 'ideology') {
+    const colour = new Map(Object.entries(MAP_IDEOLOGY).map(([k, v]) => [+k, v[1]]));
+    return (mapCategoryRank[field] = {colour, ranked: [...colour.keys()], led: new Map()});
+  }
   // Ranked by how many provinces each one leads (over every save), not by how many people it has, so a culture
   // that is the majority in a handful of small provinces still gets a colour of its own.
   const led = new Map();
   for (const date of Object.keys(MAP.provinceLayers || {})) {
     const d = mapProvinceData(date); if (!d) continue;
     for (let i = 0; i < d.n; i++) {
-      const w = field === 'culture' ? d.cw[i] : d.rw[i];
+      const w = mapCatArrays(d, field).w[i];
       if (w) led.set(w, (led.get(w) || 0) + 1);
     }
   }
@@ -4577,9 +4663,43 @@ function mapProvinceExtra(date) {
   mapExtraCache.set(date, out);
   return out;
 }
+/* A state's output: what its provinces' RGOs and artisans made in a day, plus
+   what its factories made, found by adding up the provinces of each state of
+   each owner. `pc` is that per thousand people. */
+const mapStateOutCache = new Map();
+function mapStateOutput(date) {
+  if (mapStateOutCache.has(date)) return mapStateOutCache.get(date);
+  mapDecoded();
+  const flat = (MAP.provinceOutput || {})[date], d = mapProvinceData(date);
+  let out = null;
+  if (flat && flat.length && d) {
+    const own = (mapOwners[date] || {own: new Map()}).own, states = new Map();
+    for (let i = 0; i + 2 < flat.length; i += 3) {
+      const pid = flat[i], o = own.get(pid);
+      if (o === undefined) continue;
+      const key = o + '|' + populationRegionOf(pid);
+      let s = states.get(key);
+      if (!s) { s = {made: 0, fac: 0, pop: 0, pids: []}; states.set(key, s); }
+      s.made += flat[i + 1] / 100; s.fac = Math.max(s.fac, flat[i + 2] / 100); s.pids.push(pid);
+      const j = d.at.get(pid);
+      if (j !== undefined) s.pop += d.size[j];
+    }
+    out = new Map();
+    for (const s of states.values()) {
+      const e = {g: s.made + s.fac, made: s.made, fac: s.fac, pop: s.pop, pc: s.pop > 0 ? (s.made + s.fac) / s.pop * 1000 : 0};
+      for (const pid of s.pids) out.set(pid, e);
+    }
+  }
+  mapStateOutCache.set(date, out);
+  return out;
+}
 function mapProvValue(key, d, i, ex) {
   if (key === 'p:literacy') return d.lit[i];
   if (key === 'p:pop') return d.size[i];
+  if (key === 'p:gdp' || key === 'p:gdppc') {
+    const so = mapStateOutput(d.date), e = so && so.get(d.pid[i]);
+    return e ? (key === 'p:gdp' ? e.g : e.pc) : 0;
+  }
   const e = ex && ex.get(d.pid[i]);
   if (!e) return 0;
   return key === 'p:railroad' ? e[0] : key === 'p:fort' ? e[1] : e[2];
@@ -4597,12 +4717,14 @@ function mapProvLayerInfo(date, key, focus, scope) {
   if (def && def.level === 'province' && d) {
     const colour = new Map();
     if (def.kind === 'cat') {
-      const cats = mapCategoryColours(def.field), share = new Map();
+      const cats = mapCategoryColours(def.field), share = new Map(), arr = mapCatArrays(d, def.field);
       for (let i = 0; i < d.n; i++) {
-        const w = def.field === 'culture' ? d.cw[i] : d.rw[i], s = def.field === 'culture' ? d.cs[i] : d.rs[i];
+        const w = arr.w[i], s = arr.s[i];
         let base = cats.colour.get(w) || MAP_CATEGORY_OTHER;
         if (focus) base = w === focus ? (cats.colour.get(w) || MAP_FOCUS_LIT) : MAP_FOCUS_DIM;
-        const k = focus && w !== focus ? 1 : .5 + .5 * Math.max(0, Math.min(1, (s - .34) / .66));
+        // an ideology rarely holds a majority, so its colours stay strong whatever the lead
+        const k = focus && w !== focus ? 1 : def.field === 'ideology' ? .8 + .2 * Math.max(0, Math.min(1, (s - .25) / .4))
+          : .5 + .5 * Math.max(0, Math.min(1, (s - .34) / .66));
         const rgb = [0, 1, 2].map(j => Math.round(96 + (base[j] - 96) * k));
         colour.set(d.pid[i], (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]);
         share.set(w, (share.get(w) || 0) + 1);
@@ -4650,7 +4772,19 @@ function mapProvinceFigure(date, pid, key) {
   const bit = (label, text) => `<span><span class="rk">${label}</span> <b>${text}</b></span>`;
   if (key === 'p:culture') return bit('Culture', `${mapWordName(d.cw[i], 'culture')} <span class="rk">${pct(d.cs[i])}</span>`);
   if (key === 'p:religion') return bit('Religion', `${mapWordName(d.rw[i], 'religion')} <span class="rk">${pct(d.rs[i])}</span>`);
+  if (key === 'p:ideology') {
+    const e = (mapIdeologyStates(date, d) || new Map()).get(pid);
+    if (!e) return bit('Ideology', 'no figure');
+    const top = e.shares.map((s, k) => [k + 1, s]).filter(x => x[1] >= .005).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    return bit('Ideology in state', top.map(([k, s]) => `${mapWordName(k, 'ideology')} <span class="rk">${pct(s)}</span>`).join(' · '));
+  }
   if (key === 'p:literacy') return bit('Literacy', (d.lit[i] * 100).toFixed(1) + '%') + bit('People', Math.round(d.size[i]).toLocaleString());
+  if (key === 'p:gdp' || key === 'p:gdppc') {
+    const so = mapStateOutput(date), e = so && so.get(pid);
+    if (!e) return bit('Output', 'no figure');
+    const f = v => mapLayerFormat({def: {kind: 'count'}}, v);
+    return bit('Output in state', f(e.g) + ' a day') + bit('Per 1,000 people', f(e.pc)) + bit('Factories', f(e.fac));
+  }
   if (key === 'p:railroad' || key === 'p:fort' || key === 'p:factories') {
     const e = (mapProvinceExtra(date) || new Map()).get(pid) || [0, 0, 0];
     const v = key === 'p:railroad' ? e[0] : key === 'p:fort' ? e[1] : e[2];
@@ -4733,7 +4867,7 @@ function mapLayerLegend(date) {
       const swatch = rgb => `<i style="display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;background:rgb(${rgb.join(',')});border:1px solid rgba(0,0,0,.45)"></i>`;
       box.innerHTML = `<div class="lg-name">${P.def.label}</div>`
         + P.rows.map(r => `<div class="lg-row${mapLayerFocus === r.word ? ' on' : ''}" data-w="${r.word}" title="Click to show only this on the map">${swatch(r.rgb)}${r.name} <span class="rk">${r.n}</span></div>`).join('')
-        + `<div class="lg-note">${P.rows.length} listed · click one to isolate it · paler = more mixed · provinces led</div>`;
+        + `<div class="lg-note">${P.rows.length} listed · click one to isolate it · ${P.def.field === 'ideology' ? 'provinces, by the state they are in' : 'paler = more mixed · provinces led'}</div>`;
     } else {
       const R = mapRampStops();
       const stops = R.map((c, i) => `rgb(${c.join(',')}) ${Math.round(i / (R.length - 1) * 100)}%`).join(',');
@@ -4806,21 +4940,8 @@ function mapLevel(level) {
    Borders read neighbouring province owners directly, including across tile
    seams: playback never scans the full world to find political boundaries. */
 const MAP_TILE_SIZE = 256;
-/* Map quality. Standard is what the maps always did: tiles at about the
-   screen's resolution, drawn with nearest sampling, so every line is crisp.
-   Smooth paints the world tiles at the raster's finer resolution and lets the
-   browser average them down (a zoomed-out coast keeps its islands instead of
-   dropping pixels), draws political borders a few raster pixels wide so that
-   the averaging leaves them about one screen pixel wide rather than a faint
-   smudge, and keeps the finished picture so that clicking, hovering and
-   panning the overlays do not pay for the averaging again. There used to be
-   a third, Max, which only made the same thing slower. */
-let mapQuality = 0;
-try { mapQuality = Math.max(0, Math.min(1, parseInt(localStorage.getItem('mapQuality') || '0', 10) || 0)); } catch (e) {}
-const mapTileLimit = () => [128, 192][mapQuality];
-const MAP_QUALITY_NAMES = ['Standard', 'Smooth'];
+const mapTileLimit = () => 128;
 const mapTiles = new Map();
-let mapPaintCache = null;
 let mapTileDate = null, mapTilePalette = null;
 function mapSameValues(a,b) {
   if (!a || a.length!==b.length) return false;
@@ -4835,6 +4956,7 @@ function mapTileState(date) {
   const identity = new Int32Array(mapMaxProvince + 1).fill(-1);
   for (const p of mapSea) identity[p] = -2;
   for (const [p, owner] of owners) if (!mapSea.has(p)) identity[p] = owner;
+  if (mapIdentityOverride) mapIdentityOverride(identity);
   // Most saves move armies without changing the political raster. Retain the
   // tiles when ownership and occupation are identical, using exact comparison
   // rather than a hash that could leave a stale border after a collision.
@@ -4904,7 +5026,7 @@ function mapTile(level, tx, ty, palette, occupied, thick) {
 function mapPaintTiles(ctx, sc, date, s, cw, ch, dpr) {
   // Choose a stable resolution near physical screen pixels, not an arbitrary
   // zoom=1 special case. Cap density at 2 for bounded work on high-DPI screens.
-  let level=Math.max(0,Math.floor(Math.log2(1/(s*Math.min(dpr,2)*(mapQuality?2:1)))));
+  let level=Math.max(0,Math.floor(Math.log2(1/(s*Math.min(dpr,2)))));
   const maxLevel=Math.ceil(Math.log2(Math.max(MAP.w,MAP.h)));
   level=Math.min(level,maxLevel);
   const x0=Math.max(0,mapOX), y0=Math.max(0,mapOY);
@@ -4923,34 +5045,10 @@ function mapPaintTiles(ctx, sc, date, s, cw, ch, dpr) {
   const endX=Math.ceil(x1/step/MAP_TILE_SIZE), endY=Math.ceil(y1/step/MAP_TILE_SIZE);
   // Align shared edges to device pixels and use nearest sampling. This avoids
   // translucent hairlines between tiles and keeps boundaries crisp at any zoom.
-  // Smoothing only where tiles are shrunk (a larger-than-screen level), so zoomed in it stays blocky.
-  const shrink = mapQuality > 0 && step * s * dpr < 0.999;
-  // Borders are inked a few raster pixels wide where the tiles are averaged
-  // down, so that they come out about one screen pixel wide.
-  const thick = mapQuality > 0 ? Math.max(1, Math.min(3, Math.round(0.9 / (step * s * dpr)))) : 1;
-  // Smooth keeps the finished picture: averaging a whole raster down is the
-  // expensive part, and a click, a hover or a toggle that moves only the
-  // overlays should not pay for it again. Panning and zooming change the key.
-  const cacheable = mapQuality > 0 && !sc;
-  const ckey = cacheable ? [date, mapQuality, mapShowProvinceBorders, mapOX, mapOY, s, dpr, cw, ch, ctx.canvas.width, ctx.canvas.height].join('|') : '';
-  if (cacheable && mapPaintCache && mapPaintCache.key === ckey && mapPaintCache.palette === palette) {
-    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(mapPaintCache.canvas,0,0); ctx.restore();
-    return;
-  }
-  let target = ctx;
-  if (cacheable) {
-    if (!mapPaintCache) mapPaintCache = {canvas: document.createElement('canvas'), key: '', palette: null};
-    const c = mapPaintCache.canvas;
-    if (c.width !== ctx.canvas.width || c.height !== ctx.canvas.height) { c.width = ctx.canvas.width; c.height = ctx.canvas.height; }
-    target = c.getContext('2d');
-    target.setTransform(1,0,0,1,0,0); target.clearRect(0,0,c.width,c.height);
-    target.setTransform(dpr,0,0,dpr,0,0);
-    mapPaintCache.key = ''; mapPaintCache.palette = null;
-  }
-  target.imageSmoothingEnabled=shrink; if(shrink) target.imageSmoothingQuality='high';
-  if(sc){ sc.imageSmoothingEnabled=shrink; if(shrink) sc.imageSmoothingQuality='high'; }
+    ctx.imageSmoothingEnabled=false;
+  if(sc) sc.imageSmoothingEnabled=false;
   for(let ty=firstY;ty<endY;ty++) for(let tx=firstX;tx<endX;tx++) {
-    const tile=mapTile(level,tx,ty,palette,!!sc,thick);
+    const tile=mapTile(level,tx,ty,palette,!!sc,1);
     const lx=tx*MAP_TILE_SIZE, ly=ty*MAP_TILE_SIZE;
     const sx=Math.max(0,x0/step-lx), sy=Math.max(0,y0/step-ly);
     const ex=Math.min(tile.base.width,x1/step-lx), ey=Math.min(tile.base.height,y1/step-ly);
@@ -4958,12 +5056,8 @@ function mapPaintTiles(ctx, sc, date, s, cw, ch, dpr) {
     const dy=Math.round(((ly+sy)*step-mapOY)*s*dpr)/dpr;
     const dw=Math.round(((lx+ex)*step-mapOX)*s*dpr)/dpr-dx;
     const dh=Math.round(((ly+ey)*step-mapOY)*s*dpr)/dpr-dy;
-    target.drawImage(tile.base,sx,sy,ex-sx,ey-sy,dx,dy,dw,dh);
+    ctx.drawImage(tile.base,sx,sy,ex-sx,ey-sy,dx,dy,dw,dh);
     if(sc) sc.drawImage(tile.occ,sx,sy,ex-sx,ey-sy,dx,dy,dw,dh);
-  }
-  if (cacheable) {
-    mapPaintCache.key = ckey; mapPaintCache.palette = palette;
-    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(mapPaintCache.canvas,0,0); ctx.restore();
   }
 }
 
@@ -6035,6 +6129,8 @@ if (MAP) {
     for (const l of MAP_LAYERS) {
       const there = l.level === 'province'
         ? Object.keys(MAP.provinceLayers || {}).length > 0 && (!l.extra || Object.keys(MAP.provinceExtra || {}).length > 0)
+          && (!l.output || Object.keys(MAP.provinceOutput || {}).length > 0)
+          && (!l.ideology || (MAP.ideologyCount > 0 && Object.keys(MAP.provinceIdeology || {}).length > 0))
         : (mapLayerInfo(date, l.key) || DATA.dates.some(d => mapLayerInfo(d, l.key)));
       if (there) (l.level === 'province' ? province : country).append(new Option(l.label, l.key));
     }
@@ -6056,16 +6152,6 @@ if (MAP) {
   };
   const rampSel = document.getElementById('mapramp');
   rampSel.onchange = () => { mapRampName = rampSel.value; mapLayerCache.clear(); mapProvLayerCache.clear(); mapTileDate = null; mapRender(); };
-  const setQuality = v => {
-    mapQuality = Math.max(0, Math.min(1, v | 0));
-    try { localStorage.setItem('mapQuality', String(mapQuality)); } catch (e) {}
-    for (const id of ['mapquality', 'popquality']) { const el = document.getElementById(id); if (el) el.value = String(mapQuality); }
-    mapTiles.clear(); mapRender(); refreshPopulation();
-  };
-  for (const id of ['mapquality', 'popquality']) {
-    const el = document.getElementById(id);
-    if (el) { el.value = String(mapQuality); el.onchange = () => setQuality(+el.value); }
-  }
   const namesBtn = document.getElementById('mapnames');
   namesBtn.onclick = () => {
     mapShowNames = !mapShowNames;
@@ -6502,7 +6588,7 @@ let legacyTab = 'battles';             // 'battles' or 'nations'
 let legacyShown = [];
 
 function warFlag(tag) {
-  const src = (DATA.flags || {})[tag + '|'];
+  const src = flagSrc(tag);
   return src ? `<img class="tagflag" src="${src}" alt="">` : '';
 }
 function warTag(tag) {
@@ -6611,7 +6697,7 @@ function warGreatPowers(opening) {
 /* A flag at one of three sizes: '' in a list, 'big' for a principal
    belligerent, 'hero' across the top. */
 function ibFlag(tag, size) {
-  const src = (DATA.flags || {})[tag + '|'];
+  const src = flagSrc(tag);
   const cls = 'ibflag' + (size ? ' ' + size : '');
   if (src) return `<img class="${cls}" src="${src}" alt="">`;
   return `<span class="${cls} blank" style="background-color:${colourFor(tag)}">`
@@ -7906,31 +7992,6 @@ function populationHome(box, tag, date, extra=[]) {
   return {part:home, cx:capitalBox?(capitalBox.x0+capitalBox.x1)/2:(part.x0+part.x1)/2,
     cy:capitalBox?(capitalBox.y0+capitalBox.y1)/2:(part.y0+part.y1)/2};
 }
-/* The country map, painted smooth.
-
-   The province bitmap is a flat colour per province, with every coastline and
-   border a staircase of whole pixels, and it was sampled a pixel at a time
-   onto a fixed 960-wide canvas: a view 2,000 map pixels across kept every
-   other one, and the coast came out as speckle. So the map is painted in
-   three steps.
-
-   1. Each canvas pixel is sampled 1x1, 2x2 or 3x3 times, whichever puts a
-      sample on every map pixel it covers, and each sample is put in one of
-      six classes: sea, unowned land, a foreign country, a subject, the
-      country itself, and its selected state. The pixel keeps how much of
-      each class it saw.
-   2. Each class's share is blurred, twice, with a box wide enough to round the
-      staircase off, and a pixel takes the class it has most of. That is a
-      smooth coastline and a smooth border, with the one-pixel specks that
-      are noise in the bitmap gone.
-   3. Where the two leading classes are close, the pixel is on a boundary, and
-      the line is drawn with a width and a fade rather than a whole pixel.
-      Water close to land is lightened by a wider blur of the land share, which
-      gives the coast its shallows.
-
-   Provinces and states inside the country keep their pixel borders, a thin
-   line, because there is nothing to smooth them against. The canvas is as wide
-   as the screen it is shown on, up to 1800, so it is sharp on a dense display. */
 let populationMaxProvince = -1;
 function populationProvinceTop() {
   if (populationMaxProvince < 0) {
@@ -7940,210 +8001,8 @@ function populationProvinceTop() {
   }
   return populationMaxProvince;
 }
-// A box blur of `a` in place, `r` either side, the edges held; `tmp` is scratch.
-function atlasBlur(a, tmp, W, H, r) {
-  const inv = 1 / (2 * r + 1);
-  for (let y = 0; y < H; y++) {
-    const row = y * W;
-    let sum = a[row] * (r + 1);
-    for (let k = 1; k <= r; k++) sum += a[row + Math.min(k, W - 1)];
-    for (let x = 0; x < W; x++) {
-      tmp[row + x] = sum * inv;
-      sum += a[row + Math.min(x + r + 1, W - 1)] - a[row + Math.max(x - r, 0)];
-    }
-  }
-  const col = new Float32Array(W);
-  for (let x = 0; x < W; x++) {
-    let s = tmp[x] * (r + 1);
-    for (let k = 1; k <= r; k++) s += tmp[Math.min(k, H - 1) * W + x];
-    col[x] = s;
-  }
-  for (let y = 0; y < H; y++) {
-    const add = Math.min(y + r + 1, H - 1) * W, sub = Math.max(y - r, 0) * W, out = y * W;
-    for (let x = 0; x < W; x++) {
-      a[out + x] = col[x] * inv;
-      col[x] += tmp[add + x] - tmp[sub + x];
-    }
-  }
-}
-const ATLAS_SEA = [30, 47, 61], ATLAS_SHALLOW = [50, 82, 104], ATLAS_WILD = [112, 108, 88];
-const ATLAS_INK = [35, 32, 28], ATLAS_COAST = [14, 22, 30], ATLAS_HIGHLIGHT = [224, 191, 103];
-// Classes: 0 sea, 1 unowned land, 2 foreign country, 3 subject, 4 the country, 5 its selected state.
-function atlasLine(a, b) {
-  if (a > b) [a, b] = [b, a];
-  if (a === 0) return {hw: .9, al: .92, col: ATLAS_COAST};                 // coast
-  if (b <= 2) return a === b ? null : {hw: .6, al: .5, col: [58, 54, 44]}; // unowned against foreign
-  if (a === 4 && b === 5) return {hw: .8, al: .8, col: [110, 80, 20]};      // the selected state
-  return {hw: 1.15, al: .95, col: ATLAS_INK};                              // a national border
-}
-function paintPopulationAtlas(ctx, W, H, view, st) {
-  const N = W * H, top = populationProvinceTop(), owners = st.owners;
-  const cls0 = new Uint8Array(top + 1).fill(1);
-  const ownerOf = new Int16Array(top + 1).fill(-1), stateOf = new Int32Array(top + 1).fill(-1);
-  mapSea.forEach(p => { if (p >= 0 && p <= top) cls0[p] = 0; });
-  for (const [p, o] of owners) {
-    if (p < 0 || p > top || cls0[p] === 0) continue;
-    ownerOf[p] = o; stateOf[p] = st.group.get(p) ?? -1;
-    if (o === st.index) cls0[p] = populationRegion && populationRegionOf(p) === populationRegion ? 5 : 4;
-    else cls0[p] = st.subj.has(o) ? 3 : 2;
-  }
-  const s = W / view.width, k = s < .3 ? 4 : s < .5 ? 3 : s < 1.5 ? 2 : 1, kk = k * k;
-  /* Magnified past one and a half screen pixels to the map pixel, a coast is a
-     staircase of map pixels, and blurring a staircase only rounds its corners.
-     So there the land and sea shares are read with the bilinear weights of the
-     four nearest map pixels instead of counted by sampling, which turns each
-     step into a straight diagonal. `unit` is what a full pixel adds up to. */
-  const bil = s > 1.5, unit = bil ? 255 : kk;
-  // Zoomed out, a coast is a few map pixels per screen pixel, and a blur wide enough
-  // to smooth a big country's coast also washes out islands and thin straits. So
-  // the blur narrows as the view widens, and the sea counts for a little less
-  // than land, which keeps small islands on the map.
-  const wide = s < .5, passes = wide ? 1 : 2;
-  const r = s < 1.3 ? 1 : Math.max(2, Math.min(4, Math.round(.55 * s))), n = 2 * r + 1;
-  const seaW = s < .5 ? .55 : s < 1 ? .75 : 1;
-  const ls = st.scale;
-  // 1. class shares
-  const cnt = [0, 1, 2, 3, 4, 5].map(() => new Uint16Array(N));
-  const lab = new Int32Array(N);
-  const stepX = view.width / W, stepY = view.height / H, mid = k >> 1, smoothLab = s > 1.2;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const i = y * W + x;
-      for (let a = 0; a < (bil ? 0 : k); a++) {
-        const iy = Math.floor(view.y0 + (y + (a + .5) / k) * stepY);
-        for (let b = 0; b < k; b++) {
-          const ix = Math.floor(view.x0 + (x + (b + .5) / k) * stepX);
-          let p = -1, c = 0;
-          if (ix >= 0 && iy >= 0 && ix < MAP.w && iy < MAP.h) { p = mapProv[iy * MAP.w + ix]; c = p < 0 ? 0 : cls0[p]; }
-          cnt[c][i]++;
-          if (!smoothLab && a === mid && b === mid) lab[i] = p;
-        }
-      }
-      if (smoothLab) {
-        // Magnified, a border between two provinces is a staircase of map
-        // pixels. Each of the four nearest pixels votes for its province with
-        // the bilinear weight of its distance, which turns the steps into
-        // straight runs.
-        const fx = view.x0 + (x + .5) * stepX - .5, fy = view.y0 + (y + .5) * stepY - .5;
-        const ix = Math.floor(fx), iy = Math.floor(fy), wx = fx - ix, wy = fy - iy;
-        const at = (px, py) => (px >= 0 && py >= 0 && px < MAP.w && py < MAP.h) ? mapProv[py * MAP.w + px] : -1;
-        const ids = [at(ix, iy), at(ix + 1, iy), at(ix, iy + 1), at(ix + 1, iy + 1)];
-        const ws = [(1 - wx) * (1 - wy), wx * (1 - wy), (1 - wx) * wy, wx * wy];
-        let win = ids[0], top1 = -1;
-        for (let q = 0; q < 4; q++) {
-          let sum = 0;
-          for (let z = 0; z < 4; z++) if (ids[z] === ids[q]) sum += ws[z];
-          if (sum > top1 + 1e-9) { top1 = sum; win = ids[q]; }
-        }
-        lab[i] = win;
-        if (bil) for (let q = 0; q < 4; q++) {
-          const p = ids[q], c = p < 0 ? 0 : cls0[p];
-          cnt[c][i] += Math.round(ws[q] * 255);
-        }
-      }
-    }
-  }
-  // 2. blur each share and keep the two leading classes
-  const best1 = new Float32Array(N), best2 = new Float32Array(N);
-  const c1 = new Uint8Array(N), c2 = new Uint8Array(N);
-  const f = new Float32Array(N), tmp = new Float32Array(N), inv = 1 / unit;
-  for (let c = 0; c < 6; c++) {
-    const src = cnt[c];
-    const wgt = c === 0 ? inv * seaW : inv;
-    for (let i = 0; i < N; i++) f[i] = src[i] * wgt;
-    for (let q = 0; q < passes; q++) atlasBlur(f, tmp, W, H, r);
-    for (let i = 0; i < N; i++) {
-      const v = f[i];
-      if (v > best1[i]) { best2[i] = best1[i]; c2[i] = c1[i]; best1[i] = v; c1[i] = c; }
-      else if (v > best2[i]) { best2[i] = v; c2[i] = c; }
-    }
-  }
-  // the shallows: land share, blurred wide
-  const sea0 = cnt[0], halo = f;
-  for (let i = 0; i < N; i++) halo[i] = 1 - sea0[i] * inv;
-  const hr = wide ? Math.max(2, Math.round(3 * ls)) : Math.max(2, Math.round(4 * ls));
-  atlasBlur(halo, tmp, W, H, hr); atlasBlur(halo, tmp, W, H, hr);
-  // 3. colour, then lines
-  const img = ctx.createImageData(W, H), d = img.data;
-  const own = st.tagRgb || ATLAS_WILD, ownerRgb = new Map();
-  const tint = o => {
-    let v = ownerRgb.get(o);
-    if (!v) {
-      const hex = mapColourOf(MAP.tags[o], st.date);
-      if (hex) { const bc = mapLandColour(hex); v = [0, 1, 2].map(j => Math.round(ATLAS_WILD[j] * .62 + ((bc >> (16 - 8 * j)) & 255) * .38)); }
-      else v = ATLAS_WILD;
-      ownerRgb.set(o, v);
-    }
-    return v;
-  };
-  const lines = [];
-  for (let a = 0; a < 6; a++) for (let b = 0; b < 6; b++) {
-    const l = a === b ? null : atlasLine(a, b);
-    lines[a * 6 + b] = l && {w: 2 * l.hw * ls / n, al: l.al, col: l.col};
-  }
-  const stateLine = wide ? .24 : ls > 1.5 ? .5 : .42;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const i = y * W + x, c = c1[i];
-      const nz = ((Math.imul(x, 0x27d4eb2d) ^ Math.imul(y, 0x165667b1)) >>> 28) * .12 - 1;
-      let R, G, B;
-      if (c === 0) {
-        const t = Math.min(1, halo[i] * 2.6);
-        R = ATLAS_SEA[0] + (ATLAS_SHALLOW[0] - ATLAS_SEA[0]) * t;
-        G = ATLAS_SEA[1] + (ATLAS_SHALLOW[1] - ATLAS_SEA[1]) * t;
-        B = ATLAS_SEA[2] + (ATLAS_SHALLOW[2] - ATLAS_SEA[2]) * t;
-      } else {
-        let v;
-        if (c === 1) v = ATLAS_WILD;
-        else if (c === 2) { const p = lab[i], o = p >= 0 ? ownerOf[p] : -1; v = o >= 0 ? tint(o) : ATLAS_WILD; }
-        else if (c === 3) v = st.lite || ATLAS_WILD;
-        else if (c === 4) v = own;
-        else v = ATLAS_HIGHLIGHT;
-        R = v[0] + nz; G = v[1] + nz; B = v[2] + nz;
-        if (st.layer && c >= 3) {
-          // Colour by the chosen statistic, province by province.
-          const p = lab[i], q = p >= 0 && p <= top ? st.layer.rgb[p] : -1, z = q >= 0 ? q : st.layer.none;
-          R = ((z >> 16) & 255) + nz; G = ((z >> 8) & 255) + nz; B = (z & 255) + nz;
-        }
-      }
-      // boundaries between the two leading classes
-      if (best2[i] > .02) {
-        const l = lines[c * 6 + c2[i]];
-        if (l) {
-          const diff = best1[i] - best2[i];
-          if (diff < l.w) {
-            const u = diff / l.w, al = (1 - u * u * (3 - 2 * u)) * l.al;
-            R += (l.col[0] - R) * al; G += (l.col[1] - G) * al; B += (l.col[2] - B) * al;
-          }
-        }
-      }
-      // the country's own provinces' borders, and foreign countries' borders
-      if (x < W - 1 && y < H - 1) {
-        const p = lab[i], pr = lab[i + 1], pd = lab[i + W];
-        if (p >= 0) {
-          if ((c === 4 || c === 5) && ownerOf[p] === st.index) {
-            if ((pr >= 0 && ownerOf[pr] === st.index && stateOf[pr] !== stateOf[p])
-              || (pd >= 0 && ownerOf[pd] === st.index && stateOf[pd] !== stateOf[p])) {
-              R += (ATLAS_INK[0] - R) * stateLine; G += (ATLAS_INK[1] - G) * stateLine; B += (ATLAS_INK[2] - B) * stateLine;
-            }
-          } else if (c === 2 && ownerOf[p] >= 0) {
-            if ((pr >= 0 && ownerOf[pr] >= 0 && ownerOf[pr] !== ownerOf[p])
-              || (pd >= 0 && ownerOf[pd] >= 0 && ownerOf[pd] !== ownerOf[p])) {
-              R += (ATLAS_INK[0] - R) * .5; G += (ATLAS_INK[1] - G) * .5; B += (ATLAS_INK[2] - B) * .5;
-            }
-          }
-        }
-      }
-      const o4 = i * 4;
-      d[o4] = R; d[o4 + 1] = G; d[o4 + 2] = B; d[o4 + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-}
-/* The country map's view: how far in, and how far the centre has been moved
-   from where the fitted frame had it, in map pixels. Reset whenever the
-   frame itself changes (another country, a state, all possessions). */
-let popLayer='', popScaleCountry=true, popZoom=1, popPanX=0, popPanY=0, popAuto=null, popPainted=null, popRepaintTimer=0, popDragMoved=false;
+let popInsetHits=[];
+let popLayer='', popShowValues=true, popScaleCountry=true, popZoom=1, popPanX=0, popPanY=0, popAuto=null, popPainted=null, popRepaintTimer=0, popDragMoved=false;
 function populationViewFrame(z,px,py){
   const a=popAuto, width=a.width/z, height=width*a.aspect;
   return {x0:a.cx+px-width/2,y0:a.cy+py-height/2,width,height};
@@ -8175,17 +8034,71 @@ function popZoomAt(fx,fy,factor){
 function populationFillLayers(){
   const sel=document.getElementById('poplayer');
   if(sel.dataset.ready)return;
-  const has=Object.keys(MAP.provinceLayers||{}).length>0, hasX=Object.keys(MAP.provinceExtra||{}).length>0;
+  const has=Object.keys(MAP.provinceLayers||{}).length>0, hasX=Object.keys(MAP.provinceExtra||{}).length>0, hasO=Object.keys(MAP.provinceOutput||{}).length>0,
+    hasI=MAP.ideologyCount>0&&Object.keys(MAP.provinceIdeology||{}).length>0;
   for(const l of MAP_LAYERS){
-    if(l.level!=='province'||(l.extra&&!hasX))continue;
+    if(l.level!=='province'||(l.extra&&!hasX)||(l.output&&!hasO)||(l.ideology&&!hasI))continue;
     if(has)sel.add(new Option(l.label,l.key));
   }
   sel.disabled=!has;sel.dataset.ready='1';
 }
 /* What the colours mean on the country map: for a category, the shares of this
    country's people; for a number, the scale the whole world is drawn on. */
+const POP_HIGHLIGHT=[224,191,103];
+/* The country map is the world map's own picture, drawn from the same tiles:
+   the frame is shown by pointing the world renderer at it for the length of
+   one paint, with the colours this view wants (the layer, the puppets lighter,
+   the chosen state lit), and then letting go of it. */
+function populationPaintWorld(ctx,table,date,view,cssW,cssH,dpr,identity){
+  const keep={ox:mapOX,oy:mapOY,borders:mapShowProvinceBorders};
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=`rgb(${MAP_WATER.join(',')})`;ctx.fillRect(0,0,cssW,cssH);
+  mapPaletteOverride=table;mapIdentityOverride=identity||null;mapTileDate=null;
+  mapOX=view.x0;mapOY=view.y0;mapShowProvinceBorders=false;
+  try{mapPaintTiles(ctx,null,date,cssW/view.width,cssW,cssH,dpr);}
+  finally{
+    mapPaletteOverride=null;mapIdentityOverride=null;mapTileDate=null;
+    mapOX=keep.ox;mapOY=keep.oy;mapShowProvinceBorders=keep.borders;
+  }
+  ctx.setTransform(1,0,0,1,0,0);
+}
+/* One figure per state of the country for the layer on the map: what its
+   provinces add up to, averaged where a sum would mean nothing. */
+function populationStateFigures(date,index,key){
+  const d=mapProvinceData(date),def=MAP_LAYERS.find(l=>l.key===key);
+  if(!d||!def)return null;
+  const ex=mapProvinceExtra(date),owners=mapOwners[date].own,agg=new Map();
+  for(let i=0;i<d.n;i++){
+    const pid=d.pid[i];
+    if(owners.get(pid)!==index)continue;
+    const r=populationRegionOf(pid);
+    let a=agg.get(r);
+    if(!a){a={sum:0,wsum:0,w:0,max:0,n:0,words:new Map()};agg.set(r,a);}
+    a.w+=d.size[i];a.n++;
+    if(def.kind==='cat'){
+      const arr=mapCatArrays(d,def.field),w=arr.w[i];
+      a.words.set(w,(a.words.get(w)||0)+d.size[i]);a.share=arr.s[i];
+    }else{
+      const v=mapProvValue(key,d,i,ex);
+      a.sum+=v;a.wsum+=v*d.size[i];a.max=Math.max(a.max,v);
+    }
+  }
+  const out=new Map(),fmt=v=>mapLayerFormat({def,fraction:true},v);
+  for(const [r,a] of agg){
+    let text;
+    if(def.kind==='cat'){
+      const top=[...a.words.entries()].sort((x,y)=>y[1]-x[1])[0];
+      text=top?(top[0]?mapWordName(top[0],def.field)+(def.field==='ideology'?' '+Math.round((a.share||0)*100)+'%':''):'Unknown'):null;
+    }else if(key==='p:literacy')text=a.w>0?fmt(a.wsum/a.w):null;
+    else if(key==='p:railroad')text=fmt(a.n?a.sum/a.n:0);
+    else if(key==='p:pop'||key==='p:fort')text=fmt(a.sum);
+    else text=fmt(a.max);                     // a state's own figure, the same in each province
+    if(text!==null)out.set(r,text);
+  }
+  return out;
+}
 function populationLegend(date,index,owners){
-  const box=document.getElementById('poplegend');
+  const box=document.getElementById('popmaplegend');
   const off=()=>{box.hidden=true;box.replaceChildren();};
   if(!popLayer||index<0)return off();
   const P=mapProvLayerInfo(date,popLayer,0,popScaleCountry?index:undefined);
@@ -8193,16 +8106,25 @@ function populationLegend(date,index,owners){
   box.hidden=false;box.classList.toggle('cat',false);
   if(P.cat){
     const d=P.data,cats=mapCategoryColours(P.def.field),by=new Map();let total=0;
-    for(let i=0;i<d.n;i++){
+    if(P.def.field==='ideology'){
+      // the country's people by ideology, not just by which one leads each state
+      const flat=(MAP.provinceIdeology||{})[date],n=MAP.ideologyCount||0;
+      for(let i=0;flat&&i+n<flat.length;i+=n+1){
+        const pid=flat[i];if(owners.get(pid)!==index)continue;
+        const j=d.at.get(pid),w=j===undefined?0:d.size[j];
+        for(let k=0;k<n;k++){const v=flat[i+1+k]/1000*w;if(v>0)by.set(k+1,(by.get(k+1)||0)+v);}
+        total+=w;
+      }
+    }else for(let i=0;i<d.n;i++){
       if(owners.get(d.pid[i])!==index)continue;
-      const w=P.def.field==='culture'?d.cw[i]:d.rw[i];
+      const w=mapCatArrays(d,P.def.field).w[i];
       by.set(w,(by.get(w)||0)+d.size[i]);total+=d.size[i];
     }
     const rows=[...by.entries()].sort((a,b)=>b[1]-a[1]);
     const swatch=rgb=>`<i style="display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;background:rgb(${rgb.join(',')});border:1px solid rgba(0,0,0,.45)"></i>`;
     box.innerHTML=`<div class="lg-name">${P.def.label}</div>`
       +rows.slice(0,8).map(([w,n])=>`<div class="lg-row">${swatch(cats.colour.get(w)||MAP_CATEGORY_OTHER)}${w?mapWordName(w,P.def.field):'Unknown'} <span class="rk">${total?Math.round(100*n/total):0}%</span></div>`).join('')
-      +`<div class="lg-note">share of people in the provinces shown${rows.length>8?' · '+(rows.length-8)+' more':''}</div>`;
+      +`<div class="lg-note">${P.def.field==='ideology'?'share of this country\u2019s people · states coloured by their largest':'share of people in the provinces shown'}${rows.length>8?' · '+(rows.length-8)+' more':''}</div>`;
     return;
   }
   const R=mapRampStops();
@@ -8251,68 +8173,78 @@ function drawPopulationAtlas(canvas, tag) {
   popAuto={cx:x0+width/2,cy:y0+height/2,width,aspect:height/width};
   if(tag){({x0,y0,width,height}=populationViewFrame(popZoom,popPanX,popPanY));}
   popPainted={x0,y0,width,height};
-  // A selected country is painted as wide as the screen it is shown on (see
-  // paintPopulationAtlas); the all-countries picker stays at 960.
   const cssW=canvas.clientWidth||960, dpr=Math.min(window.devicePixelRatio||1,2);
-  const W=tag?Math.max(960,Math.min([2400,3400][mapQuality],Math.round(cssW*dpr*[1.5,2.2][mapQuality]))):960;
-  canvas.width=W;canvas.height=Math.round(W*height/width);
-  const ctx=canvas.getContext('2d'),pal=mapPalette(date,true);
-  const regionIds=new Map(); let next=0;
-  const group=new Map();
-  for(const [p,owner] of owners){const r=populationRegionOf(p);if(!regionIds.has(r))regionIds.set(r,++next);group.set(p,regionIds.get(r));}
+  const cssH=cssW*height/width;
+  canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
+  const ctx=canvas.getContext('2d');
   const get=(x,y)=>x<0||y<0||x>=MAP.w||y>=MAP.h?-1:mapProv[Math.floor(y)*MAP.w+Math.floor(x)];
   const sea=p=>p===-1||mapSea.has(p);
-  // A subject's land is the overlord's own colour, lightened: mixed 45% of
-  // the way to white, which keeps it apart from both the sea and unowned land.
-  let lite=null;
-  if(subj.size&&mapColourOf(tag,date)){
-    const base=mapLandColour(mapColourOf(tag,date));
-    lite=[(base>>16)&255,(base>>8)&255,base&255].map(v=>Math.round(v+(255-v)*.45));
-  }
+  const table=Int32Array.from(mapPalette(date,true));
+  const mix=(c,rgb,a)=>{const r=(c>>16)&255,g=(c>>8)&255,b=c&255;
+    return (Math.round(r+(rgb[0]-r)*a)<<16)|(Math.round(g+(rgb[1]-g)*a)<<8)|Math.round(b+(rgb[2]-b)*a);};
   if(tag){
     const hex=mapColourOf(tag,date), base=hex?mapLandColour(hex):null;
-    let layer=null;
-    if(popLayer&&mapProvinceData(date)){
-      const P=mapProvLayerInfo(date,popLayer,0,popScaleCountry?index:undefined);
-      if(P){
-        const rgb=new Int32Array(populationProvinceTop()+1).fill(-1);
-        P.colour.forEach((v,p)=>{if(p>=0&&p<rgb.length)rgb[p]=v;});
-        layer={rgb,none:MAP_NO_DATA};
+    let P=null;
+    if(popLayer&&mapProvinceData(date)) P=mapProvLayerInfo(date,popLayer,0,popScaleCountry?index:undefined);
+    for(const [p,o] of owners){
+      if(p<0||p>=table.length||mapSea.has(p))continue;
+      if(o===index){
+        if(P){const c=P.colour.get(p);table[p]=c===undefined?MAP_NO_DATA:c;}
+        if(populationRegion&&populationRegionOf(p)===populationRegion)table[p]=mix(table[p],POP_HIGHLIGHT,.42);
+      }else if(subj.has(o)&&base!==null&&!P){
+        // a subject's land is the overlord's own colour, lightened
+        table[p]=mix(base,[255,255,255],.45);
+      }else if(popGrayOthers){
+        // everything that is not this country (or its puppets) in one plain grey
+        table[p]=(116<<16)|(122<<8)|130;
+      }else if(P){
+        table[p]=mix(table[p],[64,62,58],.6);
       }
     }
     populationLegend(date,index,owners);
-    paintPopulationAtlas(ctx,canvas.width,canvas.height,{x0,y0,width,height},
-      {owners,index,subj,group,lite,date,layer,scale:canvas.width/cssW,
-       tagRgb:base===null?null:[(base>>16)&255,(base>>8)&255,base&255]});
+  }
+  // Borders only between nations, and between the states of the chosen country:
+  // its states are given identities of their own so the renderer draws them apart.
+  const stateIds=new Map();
+  const identity=tag&&popShowBorders?(ids=>{
+    for(const [p,o] of owners){
+      if(o!==index||p<0||p>=ids.length||mapSea.has(p))continue;
+      const r=String(populationRegionOf(p)??p);
+      if(!stateIds.has(r))stateIds.set(r,stateIds.size);
+      ids[p]=100000+stateIds.get(r);
+    }
+  }):null;
+  populationPaintWorld(ctx,table,date,{x0,y0,width,height},cssW,cssH,dpr,identity);
+  popCityHits=[];popInsetHits=[];
+  if(tag){
     /* Names for the neighbours and the subjects, laid out over what the frame
        shows, so a country cut off by the edge is named on the part that is
        there. The country itself is already in the heading. */
-    if(mapShowNames){
+    const o={x0,y0,s:canvas.width/width,k:canvas.width/cssW,W:canvas.width,H:canvas.height};
+    if(mapShowNames||popShowCountryName){
       const win={x0,y0,x1:x0+width,y1:y0+height};
-      mapDrawNameSet(ctx,mapNameLayout(ctx,date,win),
-        {x0,y0,s:canvas.width/width,k:canvas.width/cssW,W:canvas.width,H:canvas.height,skip:new Set([index]),maxFs:22});
+      // Names is for the neighbours; the country's own name is a switch of its own.
+      const skip=new Set(MAP.tags.map((_,i)=>i).filter(i=>(i===index)?!popShowCountryName:!mapShowNames));
+      mapDrawNameSet(ctx,mapNameLayout(ctx,date,win),{...o,skip,maxFs:popShowCountryName&&!mapShowNames?34:22});
     }
-    if(popShowStates){
-      const labels=populationStateLabels(ctx,owners,index,date);
-      mapDrawNameSet(ctx,labels,{x0,y0,s:canvas.width/width,k:canvas.width/cssW,W:canvas.width,H:canvas.height,maxFs:20});
+    if(popShowCities)populationDrawCities(ctx,date,index,owners,o,{x0,y0,width,height});
+    const figs=popShowValues&&popLayer?populationStateFigures(date,index,popLayer):null;
+    if(popShowStates||figs){
+      mapDrawNameSet(ctx,populationStateLabels(ctx,owners,index,date),
+        {...o,maxFs:20,showNames:popShowStates,valueText:figs?r=>figs.get(r)||null:null});
     }
-  }else{
-    const img=ctx.createImageData(canvas.width,canvas.height);
-    for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++){
-      const mx=x0+x*width/canvas.width,my=y0+y*height/canvas.height,p=get(mx,my),o=owners.get(p);
-      let rgb=sea(p)?[30,47,61]:[112,108,88];
-      if(!sea(p) && o!==undefined){
-        const v=pal[p];rgb=[(v>>16)&255,(v>>8)&255,v&255];
-      }
-      const edge=q=>sea(p)!==sea(q)||owners.get(q)!==o;
-      if(edge(get(mx+width/canvas.width,my))||edge(get(mx,my+height/canvas.height)))rgb=[35,32,28];
-      img.data.set([...rgb,255],(y*canvas.width+x)*4);
-    }
-    ctx.putImageData(img,0,0);
-  }
+    // Far-off land goes in small windows, but not when everything is already in the frame by choice,
+    // or when one state has been picked to look at.
+    if(popInsets&&!populationAllLand&&!populationRegion)
+      popInsetHits=populationInsets(ctx,table,date,index,subj,owners,{x0,y0,width,height},o,cssW,cssH,dpr,identity);
+  }else populationLegend(date,-1,owners);
   canvas.style.transform='';canvas.classList.remove('dragging');
-  if(!tag)populationLegend(date,-1,owners);
-  const hit=e=>{const r=canvas.getBoundingClientRect();return get(x0+(e.clientX-r.left)/r.width*width,y0+(e.clientY-r.top)/r.height*height);};
+  const hit=e=>{
+    const r=canvas.getBoundingClientRect(),fx=(e.clientX-r.left)/r.width,fy=(e.clientY-r.top)/r.height;
+    for(const q of popInsetHits)if(fx>=q.fx0&&fx<=q.fx1&&fy>=q.fy0&&fy<=q.fy1)
+      return get(q.v.x0+(fx-q.fx0)/(q.fx1-q.fx0)*q.v.width,q.v.y0+(fy-q.fy0)/(q.fy1-q.fy0)*q.v.height);
+    return get(x0+fx*width,y0+fy*height);
+  };
   canvas.onclick=e=>{
     if(popDragMoved){popDragMoved=false;return;}
     const p=hit(e),t=MAP.tags[owners.get(p)];if(!t||sea(p))return;
@@ -8320,11 +8252,151 @@ function drawPopulationAtlas(canvas, tag) {
     else if(t===tag){populationAllLand=false;populationRegion=populationRegionOf(p);populationRegionSelect.value=populationRegion;popResetView();refreshPopulation();}
   };
   canvas.onmousemove=e=>{
+    const cr=canvas.getBoundingClientRect(),city=popCityHits.find(c=>Math.hypot((e.clientX-cr.left)-c.fx*cr.width,(e.clientY-cr.top)-c.fy*cr.height)<7);
+    if(city){canvas.title=city.text;return;}
     const p=hit(e),o=owners.get(p),t=MAP.tags[o];
     canvas.title=t?(tag?populationRegionName(populationRegionOf(p))+' · ':'')+nameOf(t)
       +(subj.has(o)?' · '+POP_SUBJECT_KINDS[subj.get(o)]+' of '+nameOf(tag):'')
       +(tag&&popLayer&&!sea(p)?' · '+mapProvinceFigure(date,p,popLayer).replace(/<\/span>\s*<b>/g,': ').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim():''):'Sea / unowned land';
   };
+}
+/* The largest cities in view: the most populous provinces of the country (or of the chosen state), a dozen
+   at most, as an atlas marks them -- a black dot where the province's city is drawn in the game, with its
+   name beside it. Where the mod's positions file has no city for a province, the middle of the province is
+   used, so a big province is never left out for want of a position. Provinces of the country outside the
+   frame do not count, so a zoomed view shows the biggest cities of what it shows. */
+let popCityHits=[];
+function populationDrawCities(ctx,date,index,owners,o,frame){
+  const cities=MAP.cities||{},d=mapProvinceData(date);
+  if(!d)return;
+  const ps=mapProvinceStats(),list=[];
+  for(let i=0;i<d.n;i++){
+    const pid=d.pid[i];
+    if(owners.get(pid)!==index||d.size[i]<=0)continue;
+    if(populationRegion&&populationRegionOf(pid)!==populationRegion)continue;
+    const c=cities[pid]||(pid>=0&&pid<=ps.top&&ps.area[pid]?[ps.sx[pid]/ps.area[pid],ps.sy[pid]/ps.area[pid]]:null);
+    if(!c)continue;
+    const sx=(c[0]-o.x0)*o.s,sy=(c[1]-o.y0)*o.s;
+    if(sx<0||sy<0||sx>o.W||sy>o.H)continue;
+    list.push({pid,pop:d.size[i],sx,sy});
+  }
+  list.sort((a,b)=>b.pop-a.pop);
+  const want=populationRegion?8:12;
+  const k=o.k,family=mapNameFont(),fs=11.5*k,placed=[];
+  let drawn=0;
+  ctx.save();ctx.textBaseline='middle';ctx.lineJoin='round';ctx.font=`600 ${fs}px ${family}`;
+  for(const c of list.slice(0,120)){
+    if(drawn>=want)break;
+    const {sx,sy}=c,name=mapProvinceName(c.pid,date),r=3.8*k,w=ctx.measureText(name).width;
+    // the name goes to the right of its dot, or to the left when it would run off the frame
+    const left=sx+r+4*k+w>o.W,tx=left?sx-r-4*k-w:sx+r+4*k;
+    const box={x0:Math.min(sx-r,tx),x1:Math.max(sx+r,tx+w),y0:sy-fs*.6,y1:sy+fs*.6};
+    if(placed.some(q=>box.x0<q.x1+3*k&&box.x1>q.x0-3*k&&box.y0<q.y1&&box.y1>q.y0))continue;
+    placed.push(box);drawn++;
+    ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
+    ctx.fillStyle='#000';ctx.fill();ctx.lineWidth=1*k;ctx.strokeStyle='rgba(255,255,255,.9)';ctx.stroke();
+    ctx.textAlign='left';ctx.lineWidth=3*k;ctx.strokeStyle='rgba(255,255,255,.88)';ctx.strokeText(name,tx,sy);
+    ctx.fillStyle='#111';ctx.fillText(name,tx,sy);
+    popCityHits.push({fx:sx/o.W,fy:sy/o.H,text:name+' · '+mapLayerFormat({def:{kind:'count'}},c.pop)+' people'});
+  }
+  ctx.restore();
+}
+/* Atlas insets. Land of the country, and of its subjects, that the frame does not show -- Alaska or the
+   Philippines on a map of the United States -- is drawn in small windows along the bottom edge, each with
+   its name. Parts of the map close to one another share a window, and the few with the most people win a
+   window when there is more than room for. Returns where the windows are, for clicks to find. */
+const POP_INSET_ASPECT=1.4;
+function populationInsets(ctx,table,date,index,subj,owners,frame,o,cssW,cssH,dpr,identity){
+  const hits=[];
+  const d=mapProvinceData(date);
+  const sources=[];
+  const box=populationBounds.get(index);
+  if(box)for(const part of box.parts)sources.push({owner:index,part});
+  for(const s of subj.keys()){const sb=populationBounds.get(s);if(sb)for(const part of sb.parts)sources.push({owner:s,part});}
+  const fx1=frame.x0+frame.width,fy1=frame.y0+frame.height;
+  const items=[];
+  for(const {owner,part} of sources){
+    if(part.x1>=frame.x0&&part.x0<=fx1&&part.y1>=frame.y0&&part.y0<=fy1)continue;      // already in the frame
+    let pop=0;
+    if(d)for(const p of part.provinces){const j=d.at.get(p);if(j!==undefined)pop+=d.size[j];}
+    if(!pop&&part.area<24)continue;                                                        // a speck without people
+    items.push({owner,part,pop:pop||part.area*.001,box:{x0:part.x0,x1:part.x1,y0:part.y0,y1:part.y1}});
+  }
+  if(!items.length)return hits;
+  items.sort((a,b)=>b.pop-a.pop);
+  const near=MAP.w*.045,span=MAP.w*.2,clusters=[];
+  const gap=(a,b)=>Math.hypot(Math.max(0,a.x0-b.x1,b.x0-a.x1),Math.max(0,a.y0-b.y1,b.y0-a.y1));
+  for(const it of items){
+    let home=null;
+    for(const c of clusters){
+      if(gap(c.box,it.box)>=near)continue;
+      const m={x0:Math.min(c.box.x0,it.box.x0),x1:Math.max(c.box.x1,it.box.x1),y0:Math.min(c.box.y0,it.box.y0),y1:Math.max(c.box.y1,it.box.y1)};
+      if(m.x1-m.x0>span||m.y1-m.y0>span*.6)continue;
+      home=c;c.box=m;break;
+    }
+    if(!home){home={box:{...it.box},items:[],pop:0};clusters.push(home);}
+    home.items.push(it);home.pop+=it.pop;
+  }
+  clusters.sort((a,b)=>b.pop-a.pop);
+  const iw=Math.min(cssW*.22,230),ih=iw/POP_INSET_ASPECT,pad=10,between=8;
+  const fit=Math.max(1,Math.min(4,Math.floor((cssW-2*pad+between)/(iw+between))));
+  const k=o.k,family=mapNameFont();
+  const shown=clusters.slice(0,fit);
+  const nameOfCluster=c=>{
+    // the biggest piece by people: a subject is named by its country, the home country's land by its state
+    const by=new Map();
+    for(const it of c.items){
+      let key,label;
+      if(it.owner===index){
+        let best=null,most=-1;
+        for(const p of it.part.provinces){const j=d&&d.at.get(p),w=j===undefined||!d?0:d.size[j];if(w>most){most=w;best=p;}}
+        const r=best===null?'':populationRegionOf(best);key='r'+r;label=r?populationRegionName(r):nameOf(MAP.tags[index],date);
+      }else{key='o'+it.owner;label=nameOf(MAP.tags[it.owner],date)+' · '+POP_SUBJECT_KINDS[subj.get(it.owner)];}
+      const e=by.get(key)||{label,w:0};e.w+=it.pop;by.set(key,e);
+    }
+    const rows=[...by.values()].sort((a,b)=>b.w-a.w);
+    return rows[0].label+(rows.length>1?' & others':'');
+  };
+  // Where the row of windows goes: the corner of the frame where it covers the least of the country's own
+  // land (and its subjects'), as an atlas puts them in empty sea. Bottom left is preferred, and the right-hand
+  // corners give way to the zoom buttons and, when a layer is on, to the legend.
+  const rowW=shown.length*iw+(shown.length-1)*between;
+  const covers=(x,y)=>{
+    let n=0;
+    for(let yy=y;yy<y+ih;yy+=9)for(let xx=x;xx<x+rowW;xx+=9){
+      const mx=Math.floor(frame.x0+xx/cssW*frame.width),my=Math.floor(frame.y0+yy/cssH*frame.height);
+      if(mx<0||my<0||mx>=MAP.w||my>=MAP.h)continue;
+      const w=owners.get(mapProv[my*MAP.w+mx]);
+      if(w===index||subj.has(w))n++;
+    }
+    return n;
+  };
+  const spots=[[pad,cssH-pad-ih,0],[pad,pad,3],[cssW-pad-rowW,pad,6],[cssW-pad-rowW,cssH-pad-ih,popLayer?1e9:9]];
+  let at=spots[0];
+  let bestCost=Infinity;
+  for(const sp of spots){const cost=covers(sp[0],sp[1])+sp[2];if(cost<bestCost){bestCost=cost;at=sp;}}
+  shown.forEach((c,n)=>{
+    const bw=c.box.x1-c.box.x0+1,bh=c.box.y1-c.box.y0+1;
+    const width=Math.max(bw*1.3,bh*1.3*POP_INSET_ASPECT,MAP.w*.03),height=width/POP_INSET_ASPECT;
+    const view={x0:(c.box.x0+c.box.x1)/2-width/2,y0:(c.box.y0+c.box.y1)/2-height/2,width,height};
+    const oc=document.createElement('canvas');oc.width=Math.round(iw*dpr);oc.height=Math.round(ih*dpr);
+    populationPaintWorld(oc.getContext('2d'),table,date,view,iw,ih,dpr,identity);
+    const X=Math.round((at[0]+n*(iw+between))*k),Y=Math.round(at[1]*k),W=oc.width,H=oc.height;
+    ctx.save();
+    ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=8*k;ctx.fillStyle='#000';ctx.fillRect(X,Y,W,H);ctx.shadowBlur=0;
+    ctx.drawImage(oc,X,Y);
+    // the name, on a strip along the top of the window, cut to fit
+    const sh=15*k;ctx.fillStyle='rgba(20,12,16,.78)';ctx.fillRect(X,Y,W,sh);
+    ctx.font=`600 ${10.5*k}px ${family}`;ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillStyle='#f2e6c9';
+    let label=nameOfCluster(c);
+    while(label.length>3&&ctx.measureText(label).width>W-10*k)label=label.slice(0,-2);
+    ctx.fillText(label===nameOfCluster(c)?label:label.trimEnd()+'…',X+5*k,Y+sh/2+.5*k);
+    ctx.lineWidth=2*k;ctx.strokeStyle='#1d1319';ctx.strokeRect(X-k,Y-k,W+2*k,H+2*k);
+    ctx.lineWidth=1*k;ctx.strokeStyle='rgba(224,191,103,.9)';ctx.strokeRect(X+.5*k,Y+.5*k,W-k,H-k);
+    ctx.restore();
+    hits.push({fx0:X/o.W,fx1:(X+W)/o.W,fy0:Y/o.H,fy1:(Y+H)/o.H,v:view});
+  });
+  return hits;
 }
 /* One label per state of the country: where its biggest province's middle is
    (or the state's own, when that lies inside it), sized to fit the state, and
@@ -8381,6 +8453,9 @@ function refreshPopulation(){
   document.getElementById('popsubjects').disabled=!MAP;
   document.getElementById('popnames').disabled=!MAP;
   document.getElementById('popstatenames').disabled=!MAP;
+  document.getElementById('popvalues').disabled=!MAP;
+  for(const id of ['popcname','popborders','popinsets'])document.getElementById(id).disabled=!MAP;
+  document.getElementById('popcities').disabled=!MAP;
   const tags=new Set(Object.keys(facts));
   if(MAP){mapDecoded();for(const owner of mapOwners[date].own.values())tags.add(MAP.tags[owner]);}
   populationCountrySelect.replaceChildren(new Option('Choose a country',''));
@@ -8423,23 +8498,23 @@ function populationSliceColour(key,culture){
   const hash=[...key].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0);
   return `hsl(${hash%360} 52% ${hash%2?62:49}%)`;
 }
-function renderPopulationPie(id, entries, total, culture=false){
+function renderPopulationPie(id, entries, total, culture=false, ideology=false){
   const host=document.getElementById(id);
   const rows=entries.filter(r=>r[1]>0).sort((a,b)=>b[1]-a[1]);
   const remainder=(total||0)-rows.reduce((n,r)=>n+r[1],0);
   if(rows.length && remainder>0)rows.push(['__unreported',remainder,false]);
   if(!rows.length){host.textContent='Breakdown unavailable for this selection.';return;}
-  const svg=el('svg',{viewBox:'0 0 240 240',role:'img','aria-label':culture?'Culture composition':'Population composition'});
+  const svg=el('svg',{viewBox:'0 0 240 240',role:'img','aria-label':ideology?'Ideology composition':culture?'Culture composition':'Population composition'});
   const legend=document.createElement('div');legend.className='poppielegend';
   const readout=document.createElement('div');readout.className='poppiehint';readout.textContent='Hover a slice or focus a label for details.';
   const sum=rows.reduce((n,r)=>n+r[1],0);let angle=-Math.PI/2;
   for(const [i,[key,size,accepted]] of rows.entries()){
-    const end=angle+size/sum*Math.PI*2,colour=populationSliceColour(key,culture);
+    const end=angle+size/sum*Math.PI*2,colour=ideology?`rgb(${(MAP_IDEOLOGY[key]||[0,[140,140,130]])[1].join(',')})`:populationSliceColour(key,culture);
     const point=a=>[120+108*Math.cos(a),120+108*Math.sin(a)];
     const start=point(angle),finish=point(end);
     const shape=rows.length===1?el('circle',{cx:120,cy:120,r:108}):el('path',{d:`M120,120 L${start} A108,108 0 ${end-angle>Math.PI?1:0},1 ${finish} Z`});
     shape.setAttribute('fill',colour);shape.setAttribute('stroke','#211b20');shape.setAttribute('stroke-width','1');
-    const label=key==='__unreported'?'Unreported':culture?cultureName(key):gameName(key);
+    const label=key==='__unreported'?'Unreported':ideology?mapWordName(key,'ideology'):culture?cultureName(key):gameName(key);
     const detail=label+' · '+size.toLocaleString()+' · '+(total?100*size/total:0).toFixed(1)+'%'+(culture&&accepted?' · Accepted':'');
     const title=el('title',{});title.textContent=detail;shape.append(title);svg.append(shape);
     const button=document.createElement('button');button.className='poppiekey';button.textContent=label;button.title=detail;button.setAttribute('aria-label',detail);
@@ -8467,11 +8542,26 @@ function renderPopulationDetails(){
   host.innerHTML='<div class="ibtitle"></div><dl class="ibfacts">'+entries.map(([k,v])=>'<dt>'+k+'</dt><dd>'+v+'</dd>').join('')+'</dl>';
   host.querySelector('.ibtitle').appendChild(nationIdentity(populationCountry));
   if(populationRegion){const heading=document.createElement('div');heading.className='popscope';heading.textContent=scope;host.insertBefore(heading,host.children[1]);}
-  for(const [id,label] of [['poptypesnapshot','Population Composition'],['popculturesnapshot','Cultures']]){
+  // The people by ideology, for the state or the whole country, from the same per-province figures the map layer reads.
+  const ideo=new Map();let ideoTotal=0;
+  if(MAP&&MAP.ideologyCount>0&&(MAP.provinceIdeology||{})[date]){
+    mapDecoded();
+    const flat=MAP.provinceIdeology[date],n=MAP.ideologyCount,own=mapOwners[date].own,index=MAP.tags.indexOf(populationCountry),pd=mapProvinceData(date);
+    for(let i=0;i+n<flat.length;i+=n+1){
+      const pid=flat[i];if(own.get(pid)!==index)continue;
+      if(populationRegion&&populationRegionOf(pid)!==populationRegion)continue;
+      const j=pd&&pd.at.get(pid),w=j===undefined||j===null?0:pd.size[j];
+      for(let k=0;k<n;k++){const v=flat[i+1+k]/1000*w;if(v>0){ideo.set(k+1,(ideo.get(k+1)||0)+v);ideoTotal+=v;}}
+    }
+  }
+  const sections=[['poptypesnapshot','Population Composition'],['popculturesnapshot','Cultures']];
+  if(ideo.size)sections.push(['popideologysnapshot','Ideology']);
+  for(const [id,label] of sections){
     const section=document.createElement('section'),h=document.createElement('h2'),chart=document.createElement('div');h.textContent=label;chart.id=id;chart.className='poppie';section.append(h,chart);host.append(section);
   }
   renderPopulationPie('poptypesnapshot',Object.entries(types),total);
   renderPopulationPie('popculturesnapshot',cultures,total,true);
+  if(ideo.size)renderPopulationPie('popideologysnapshot',[...ideo.entries()].map(([k,v])=>[k,Math.round(v)]),Math.round(ideoTotal),false,true);
   document.getElementById('popscope').textContent=scope;
   if(populationRegion){
     const series={},totals={};
@@ -8484,6 +8574,29 @@ populationCountrySelect.onchange=()=>openPopulationCountry(populationCountrySele
 populationRegionSelect.onchange=()=>{populationAllLand=false;populationRegion=populationRegionSelect.value;popResetView();refreshPopulation();};
 document.getElementById('popback').onclick=()=>{populationCountry='';populationRegion='';popResetView();refreshPopulation();populationCountrySelect.focus();};
 document.getElementById('popsubjects').onclick=()=>{populationSubjects=!populationSubjects;refreshPopulation();};
+let popGrayOthers=false;
+try{popGrayOthers=localStorage.getItem('popGrayOthers')==='1';}catch(e){}
+document.getElementById('popgray').setAttribute('aria-pressed',popGrayOthers);
+document.getElementById('popgray').onclick=()=>{
+  popGrayOthers=!popGrayOthers;
+  document.getElementById('popgray').setAttribute('aria-pressed',popGrayOthers);
+  try{localStorage.setItem('popGrayOthers',popGrayOthers?'1':'0');}catch(e){}
+  refreshPopulation();
+};
+// Switches kept between visits: what the country map draws besides its colours.
+const popSwitch=(id,key,on)=>{
+  let v=on;try{const s=localStorage.getItem(key);if(s!==null)v=s==='1';}catch(e){}
+  const b=document.getElementById(id);b.setAttribute('aria-pressed',v);
+  b.onclick=()=>{const now=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',now);
+    try{localStorage.setItem(key,now?'1':'0');}catch(e){}
+    if(id==='popcname')popShowCountryName=now;else if(id==='popborders')popShowBorders=now;else if(id==='popinsets')popInsets=now;else popShowCities=now;
+    refreshPopulation();};
+  return v;
+};
+let popShowCountryName=popSwitch('popcname','popCountryName',false);
+let popShowBorders=popSwitch('popborders','popBorders',true);
+let popShowCities=popSwitch('popcities','popCities',false);
+let popInsets=popSwitch('popinsets','popInsets',true);
 let popShowStates=false;
 try{popShowStates=localStorage.getItem('popStateNames')==='1';}catch(e){}
 document.getElementById('popstatenames').setAttribute('aria-pressed',popShowStates);
@@ -8491,6 +8604,11 @@ document.getElementById('popstatenames').onclick=()=>{
   popShowStates=!popShowStates;
   document.getElementById('popstatenames').setAttribute('aria-pressed',popShowStates);
   try{localStorage.setItem('popStateNames',popShowStates?'1':'0');}catch(e){}
+  refreshPopulation();
+};
+document.getElementById('popvalues').onclick=()=>{
+  popShowValues=!popShowValues;
+  document.getElementById('popvalues').setAttribute('aria-pressed',popShowValues);
   refreshPopulation();
 };
 document.getElementById('popnames').onclick=()=>{mapShowNames=!mapShowNames;document.getElementById('popnames').setAttribute('aria-pressed',mapShowNames);const wb=document.getElementById('mapnames');if(wb)wb.setAttribute('aria-pressed',mapShowNames);refreshPopulation();};
@@ -8901,7 +9019,7 @@ function econDrawChart(shown) {
     top.forEach((r, k) => {
       const y = 10 + k * rowH;
       const g = el('g', {class: 'econ-bar', tabindex: 0, role: 'link', 'aria-label': `${r.name}: ${vc.fmt(r[vk])}`});
-      const src = (DATA.flags || {})[r.tag + '|'];
+      const src = flagSrc(r.tag);
       if (src) g.append(el('image', {href: src, x: 0, y: y + 2, width: 30, height: 20, preserveAspectRatio: 'none'}));
       else g.append(el('rect', {x: 0, y: y + 2, width: 30, height: 20, fill: colourFor(r.tag)}));
       const label = el('text', {x: 38, y: y + 17, fill: '#F4E7CC', 'font-size': 13}); label.textContent = r.name; g.append(label);
