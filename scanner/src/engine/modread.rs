@@ -1762,6 +1762,29 @@ impl Reader {
         Ok(out.iter().map(|(p, (x, y))| J::List(vec![J::Int(*p), J::Float(*x), J::Float(*y)])).collect())
     }
 
+    /// Where each province's city is drawn on the map (`city` in positions.txt):
+    /// [province, x, y].
+    fn city_positions(&self) -> D<Vec<J>> {
+        let target = self.map_file("positions.txt");
+        if !is_file(&target) {
+            return Ok(Vec::new());
+        }
+        let mut out: OMap<i64, (f64, f64)> = OMap::new();
+        for (key, block) in self.clausewitz(&target)?.iter() {
+            if !is_dict(block) {
+                continue;
+            }
+            if let Some(c @ V::Dict(d)) = get(block, b"city") {
+                if d.get(b"x").is_some() {
+                    if let Some(p) = py_int(key)? {
+                        out.set(p, (to_float(get(c, b"x"), 0.0), to_float(get(c, b"y"), 0.0)));
+                    }
+                }
+            }
+        }
+        Ok(out.iter().map(|(p, (x, y))| J::List(vec![J::Int(*p), J::Float(*x), J::Float(*y)])).collect())
+    }
+
     fn province_names(&self) -> D<Vec<J>> {
         let target = self.map_file("definition.csv");
         if !is_file(&target) {
@@ -1838,6 +1861,26 @@ impl Reader {
         if parts.len() >= 2 && lower(parts[parts.len() - 2]) == "mod" {
             let up = parts[..parts.len() - 2].join(&SEP.to_string());
             roots.push(joins(&up, &["gfx", "flags"]));
+        }
+        // Flags a campaign flew may live in another mod folder beside this one (a
+        // sub-mod's Soviet flag, say). Those come after the folders the run was
+        // pointed at, so they only fill what is missing.
+        if let Some(base) = &self.base {
+            let folder = joins(base, &["mod"]);
+            if let Ok(Some(mut names)) = listdir(&folder) {
+                names.sort_by_cached_key(|n| lower(n));
+                let own = lower(self.path.trim_end_matches(|c| c == '/' || c == '\\'));
+                for name in names {
+                    let home = join(&folder, &name);
+                    if lower(&home) == own || !is_dir(&home) {
+                        continue;
+                    }
+                    let flags = joins(&home, &["gfx", "flags"]);
+                    if !roots.contains(&flags) {
+                        roots.push(flags);
+                    }
+                }
+            }
         }
         roots.into_iter().filter(|r| is_dir(r)).map(J::Str).collect()
     }
@@ -2377,6 +2420,7 @@ pub fn export(path: &str) -> D<J> {
         r.sea_provinces().map_err(later)?.into_iter().map(J::Int).collect()
     } else { Vec::new() }));
     put("positions", J::List(if has_map { r.unit_positions().map_err(later)? } else { Vec::new() }));
+    put("cities", J::List(if has_map { r.city_positions().map_err(later)? } else { Vec::new() }));
     put("flag_styles", r.flag_styles().map_err(later)?);
     put("flag_roots", J::List(r.flag_roots()));
     put("map_bmp", J::Str(if has_map { bmp } else { String::new() }));

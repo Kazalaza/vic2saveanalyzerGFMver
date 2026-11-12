@@ -33,7 +33,7 @@ use crate::fx::{FxMap, FxSet};
 use crate::pyfmt::Num;
 use std::io::Write;
 
-const MAGIC: &[u8; 8] = b"V2ENGC10";
+const MAGIC: &[u8; 8] = b"V2ENGC12";
 
 pub struct W {
     out: Vec<u8>,
@@ -424,7 +424,7 @@ fn get_stacks(r: &mut R) -> X<Vec<Stack>> {
     Ok(stacks)
 }
 
-keep_struct!(Meta { file, date, player, world_pop, province_owner, province_names, state_names, province_layers, province_extra, great_nations, great_tags,
+keep_struct!(Meta { file, date, player, world_pop, province_owner, province_names, state_names, province_layers, province_extra, province_output, province_ideology, great_nations, great_tags,
                     subjects, wars, market });
 
 /// What `prepare` leaves of a nation: everything but the per-province
@@ -610,7 +610,7 @@ impl Store {
 
 // ------------------------------------------------------------- the mod
 
-const MOD_MAGIC: &[u8] = b"V2ENGM04";
+const MOD_MAGIC: &[u8] = b"V2ENGM05";
 
 /// Where the mod read from `path` is kept, when Python has signed its files
 /// (`mod_reader.mod_signature`, which it takes for the stamp anyway): keyed

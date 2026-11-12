@@ -566,6 +566,7 @@ fn read_bytes(path: &str, reading: &Reading, raw: &[u8],
         seen: Vec::new(),
         layers: Vec::new(),
         extra: Vec::new(),
+        ideology: Vec::new(),
     };
     let tables = Tables {
         army_techs: &reading.army_techs,
@@ -875,7 +876,7 @@ pub fn bench(args: &[String]) {
         let c = std::time::Instant::now();
         let mut scan = Scan { world_pop: 0, owners: Vec::new(), names: Vec::new(), nations: FxMap::default(),
                               pop_ids: Vec::new(), pop_kinds: Vec::new(), seen: Vec::new(),
-                              layers: Vec::new(), extra: Vec::new() };
+                              layers: Vec::new(), extra: Vec::new(), ideology: Vec::new() };
         for (key, at, stop) in &blocks {
             if !key.is_empty() && key.iter().all(|c| c.is_ascii_digit()) {
                 read_province(&raw, *at, *stop, to_int_b(key), &run.reading.pop_types,

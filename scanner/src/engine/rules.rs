@@ -118,6 +118,7 @@ pub struct Mod {
     pub culture_colours: FxMap<String, String>,
     pub sea: Vec<i64>,
     pub positions: Vec<(i64, f64, f64)>,
+    pub cities: Vec<(i64, f64, f64)>,
     pub flag_styles: FxMap<String, (String, bool)>,
     pub flag_roots: Vec<String>,
     pub map_bmp: String,
@@ -343,6 +344,10 @@ impl Mod {
             gov_colours: j.at("gov_colours").pairs().iter().map(|(t, g)| (t.clone(), texts(g))).collect(),
             sea: j.at("sea").list().iter().map(|x| x.int()).collect(),
             positions: j.at("positions").list().iter().map(|p| {
+                let p = p.list();
+                (p[0].int(), p[1].float(), p[2].float())
+            }).collect(),
+            cities: j.at("cities").list().iter().map(|p| {
                 let p = p.list();
                 (p[0].int(), p[1].float(), p[2].float())
             }).collect(),

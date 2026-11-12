@@ -227,8 +227,9 @@ pub fn flag_suffixes(government: &str, styles: &FxMap<String, (String, bool)>) -
     [format!("_{}", variant), String::new()]
 }
 
-/// `_read_tga`: (width, height, rgb) of an uncompressed or run-length TGA
-/// at 24 or 32 bits, or None.
+/// `_read_tga`: (width, height, rgb) of a TGA, or None. Uncompressed and
+/// run-length images are read as true colour (15, 16, 24 or 32 bits), with a
+/// colour map (8-bit indices) or in grey (8 bits): the game takes all of them.
 fn read_tga(blob: &[u8]) -> Option<(usize, usize, Vec<u8>)> {
     if blob.len() < 18 {
         return None;
@@ -237,32 +238,54 @@ fn read_tga(blob: &[u8]) -> Option<(usize, usize, Vec<u8>)> {
     let width = u16::from_le_bytes([blob[12], blob[13]]) as usize;
     let height = u16::from_le_bytes([blob[14], blob[15]]) as usize;
     let (bpp, descriptor) = (blob[16] as usize, blob[17]);
-    if !(imgtype == 2 || imgtype == 10) || !(bpp == 24 || bpp == 32) || width == 0 || height == 0 {
+    let (mapped, grey, rle) = match imgtype {
+        1 => (true, false, false),
+        2 => (false, false, false),
+        3 => (false, true, false),
+        9 => (true, false, true),
+        10 => (false, false, true),
+        11 => (false, true, true),
+        _ => return None,
+    };
+    let ok_bpp = if mapped || grey { bpp == 8 } else { matches!(bpp, 15 | 16 | 24 | 32) };
+    if !ok_bpp || width == 0 || height == 0 || (mapped && cmaptype != 1) {
         return None;
     }
     let mut at = 18 + idlen;
+    // the colour map: entries of 15/16/24/32 bits
+    let (first, count, entry_bits) = (u16::from_le_bytes([blob[3], blob[4]]) as usize,
+        u16::from_le_bytes([blob[5], blob[6]]) as usize, blob[7] as usize);
+    let entry = (entry_bits + 7) / 8;
+    let mut palette: Vec<[u8; 3]> = Vec::new();
     if cmaptype != 0 {
-        at += u16::from_le_bytes([blob[5], blob[6]]) as usize * (blob[7] as usize / 8);
+        if !matches!(entry_bits, 15 | 16 | 24 | 32) {
+            return None;
+        }
+        for i in 0..count {
+            let e = blob.get(at + i * entry..at + (i + 1) * entry)?;
+            palette.push(pixel_rgb(e, entry_bits));
+        }
+        at += count * entry;
     }
-    let step = bpp / 8;
+    let step = (bpp + 7) / 8;
     let want = width * height;
-    let px: Vec<u8> = if imgtype == 2 {
+    let px: Vec<u8> = if !rle {
         blob.get(at.min(blob.len())..(at + want * step).min(blob.len())).unwrap_or(&[]).to_vec()
     } else {
         let mut buf = Vec::with_capacity(want * step);
         while buf.len() < want * step && at < blob.len() {
             let packet = blob[at];
             at += 1;
-            let count = (packet & 0x7f) as usize + 1;
+            let n = (packet & 0x7f) as usize + 1;
             if packet & 0x80 != 0 {
                 let one = &blob[at.min(blob.len())..(at + step).min(blob.len())];
-                for _ in 0..count {
+                for _ in 0..n {
                     buf.extend_from_slice(one);
                 }
                 at += step;
             } else {
-                buf.extend_from_slice(&blob[at.min(blob.len())..(at + count * step).min(blob.len())]);
-                at += count * step;
+                buf.extend_from_slice(&blob[at.min(blob.len())..(at + n * step).min(blob.len())]);
+                at += n * step;
             }
         }
         buf
@@ -272,9 +295,15 @@ fn read_tga(blob: &[u8]) -> Option<(usize, usize, Vec<u8>)> {
     }
     let mut rgb = vec![0u8; want * 3];
     for i in 0..want {
-        rgb[3 * i] = px[i * step + 2];
-        rgb[3 * i + 1] = px[i * step + 1];
-        rgb[3 * i + 2] = px[i * step];
+        let v = &px[i * step..(i + 1) * step];
+        let c = if mapped {
+            *palette.get((v[0] as usize).checked_sub(first)?).unwrap_or(&[0, 0, 0])
+        } else if grey {
+            [v[0], v[0], v[0]]
+        } else {
+            pixel_rgb(v, bpp)
+        };
+        rgb[3 * i..3 * i + 3].copy_from_slice(&c);
     }
     if descriptor & 0x20 == 0 {
         let stride = width * 3;
@@ -285,6 +314,41 @@ fn read_tga(blob: &[u8]) -> Option<(usize, usize, Vec<u8>)> {
         rgb = flipped;
     }
     Some((width, height, rgb))
+}
+
+/// One pixel of a TGA as RGB: 15/16 bits are 5-5-5, 24/32 are blue, green, red (, alpha).
+fn pixel_rgb(v: &[u8], bits: usize) -> [u8; 3] {
+    if bits == 15 || bits == 16 {
+        let w = u16::from_le_bytes([v[0], v[1]]);
+        let ex = |c: u16| ((c << 3) | (c >> 2)) as u8;
+        [ex((w >> 10) & 31), ex((w >> 5) & 31), ex(w & 31)]
+    } else {
+        [v[2], v[1], v[0]]
+    }
+}
+
+/// Why a nation has no flag: for the files it would fly, whether there is
+/// none or one that could not be read -- the two look the same on the page.
+pub fn flag_problem(roots: &[String], tag: &str, government: &str,
+                    styles: &FxMap<String, (String, bool)>) -> String {
+    let mut told: Vec<String> = Vec::new();
+    let mut absent: Vec<String> = Vec::new();
+    for suffix in flag_suffixes(government, styles) {
+        let name = format!("{}{}.tga", tag, suffix);
+        match roots.iter().map(|r| std::path::Path::new(r).join(&name)).find(|p| p.is_file()) {
+            None => absent.push(name),
+            Some(f) => {
+                let blob = std::fs::read(&f).unwrap_or_default();
+                told.push(if blob.len() >= 18 {
+                    format!("{} is there but cannot be read (TGA type {}, {} bit)", name, blob[2], blob[16])
+                } else {
+                    format!("{} is there but empty or broken", name)
+                });
+            }
+        }
+    }
+    told.extend(if absent.is_empty() { None } else { Some(format!("no {} in the flag folders", absent.join(" or "))) });
+    told.join("; ")
 }
 
 /// Python's `round(x)` to an int: halves to even.

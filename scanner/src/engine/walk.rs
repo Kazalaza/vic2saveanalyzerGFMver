@@ -220,8 +220,9 @@ pub fn parse_block(tok: &mut Tokens, skip: &[&[u8]]) -> V {
 
 /// `read_pop(tok)`: a pop's scalars, in the order first seen, the last of
 /// a repeated one kept.
-fn read_pop<'a>(tok: &mut Tokens<'a>) -> Vec<(&'a [u8], &'a [u8])> {
+fn read_pop<'a>(tok: &mut Tokens<'a>) -> (Vec<(&'a [u8], &'a [u8])>, Option<&'a [u8]>) {
     let mut out: Vec<(&[u8], &[u8])> = Vec::new();
+    let mut ideology: Option<&'a [u8]> = None;
     loop {
         let t = match tok.next() {
             None => break,
@@ -243,7 +244,16 @@ fn read_pop<'a>(tok: &mut Tokens<'a>) -> Vec<(&'a [u8], &'a [u8])> {
             Some(v) => v,
         };
         if tok.get(val) == b"{" {
-            tok.skip_to_close();
+            if tok.get(t) == b"ideology" {
+                let start = tok.pos;
+                tok.skip_to_close();
+                let stop = tok.pos.min(tok.text.len());
+                if start <= stop {
+                    ideology = Some(&tok.text[start..stop]);
+                }
+            } else {
+                tok.skip_to_close();
+            }
         } else {
             let key = unquote(tok.get(t));
             let value = unquote(tok.get(val));
@@ -253,7 +263,7 @@ fn read_pop<'a>(tok: &mut Tokens<'a>) -> Vec<(&'a [u8], &'a [u8])> {
             }
         }
     }
-    out
+    (out, ideology)
 }
 
 // ------------------------------------------------------ Python's numbers
@@ -517,18 +527,22 @@ fn read_country(text_: &[u8], at: usize, tag: &str, tables: &Tables) -> Result<C
                             }
                         }
                         let mut here = 0i64;
+                        let mut made = 0.0f64;
                         for bld in as_list(get(&block, b"state_buildings")) {
                             if let V::Dict(_) = bld {
                                 out.factory_count += 1;
                                 let lv = to_int(get(bld, b"level"), 1)?;
                                 out.factory_levels += lv;
                                 here += lv;
-                                out.factory_income += to_float(get(bld, b"last_income"), 0.0);
+                                let income = to_float(get(bld, b"last_income"), 0.0);
+                                out.factory_income += income;
+                                made += income;
                             }
                         }
                         if here > 0 {
                             for pid in &all_ids {
                                 out.state_factories.push((*pid, here));
+                                out.state_factory_income.push((*pid, (made * 100.0).round() as i64));
                             }
                         }
                     }
@@ -660,7 +674,7 @@ fn read_province(text_: &[u8], at: usize, pid: i64, pop_types: &[Vec<u8>], mob_t
             }
             Entry::Block(block_at) => {
                 if pop_types.iter().any(|t| t.as_slice() == key) {
-                    let pop = read_pop(&mut Tokens::new(text_, block_at));
+                    let (pop, ideology) = read_pop(&mut Tokens::new(text_, block_at));
                     let field = |name: &[u8]| pop.iter().find(|(k, _)| *k == name).map(|(_, v)| *v);
                     pops.push(Pop {
                         kind: key,
@@ -675,6 +689,7 @@ fn read_province(text_: &[u8], at: usize, pid: i64, pop_types: &[Vec<u8>], mob_t
                         literacy: field(b"literacy"),
                         life: field(b"life_needs"),
                         production_income: field(b"production_income"),
+                        ideology,
                     });
                 } else if key == b"rgo" {
                     let block = parse_block(&mut Tokens::new(text_, block_at), &[]);

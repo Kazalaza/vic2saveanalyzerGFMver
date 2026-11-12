@@ -112,6 +112,12 @@ pub struct Meta {
     pub province_layers: Vec<(i64, Sym, Sym, i64)>,
     /// (province, railroad level, fort level, factory levels in its state).
     pub province_extra: Vec<(i64, i64, i64, i64)>,
+    /// (province, what its RGO and artisans made in a day, what its state's
+    /// factories made), both in hundredths.
+    pub province_output: Vec<(i64, i64, i64)>,
+    /// (province, each ideology's share of its people in thousandths, from
+    /// ideology number 1 up).
+    pub province_ideology: Vec<(i64, Vec<i64>)>,
     pub great_nations: Vec<i64>,
     /// `great_nations` turned into tags by the save's own country order, which
     /// is the order the game numbers its countries in. Empty when the save
@@ -494,8 +500,18 @@ pub fn build(file: String, date: String, player: String, scan: &Scan, countries:
                     fac.insert(*p, *n);
                 }
             }
-            scan.extra.iter().map(|(p, r, f)| (*p, *r, *f, fac.get(p).copied().unwrap_or(0))).collect()
+            scan.extra.iter().map(|(p, r, f, _)| (*p, *r, *f, fac.get(p).copied().unwrap_or(0))).collect()
         },
+        province_output: {
+            let mut inc: FxMap<i64, i64> = FxMap::default();
+            for c in countries.iter() {
+                for (p, n) in &c.state_factory_income {
+                    inc.insert(*p, *n);
+                }
+            }
+            scan.extra.iter().map(|(p, _, _, o)| (*p, *o, inc.get(p).copied().unwrap_or(0))).collect()
+        },
+        province_ideology: scan.ideology.clone(),
         great_nations: rest.great,
         great_tags: rest.great_tags,
         subjects: rest.subjects,

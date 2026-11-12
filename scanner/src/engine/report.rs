@@ -337,6 +337,25 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
         push_json_float(o, xy[1]);
         o.push(']');
     });
+    // Where each owned province's city is drawn (positions.txt `city`), in the
+    // same cell units as the spots, for the country map's city dots.
+    let owned: FxSet<i64> = parsed.iter()
+        .flat_map(|k| k.meta.province_owner.iter().map(|(p, _, _)| *p))
+        .collect();
+    let mut cities: OMap<i64, [f64; 2]> = OMap::new();
+    for (pid, x, y) in &m.cities {
+        if owned.contains(pid) {
+            cities.set(*pid, [round(x / scale as f64, 1), round((full_height as f64 - y) / scale as f64, 1)]);
+        }
+    }
+    j.push_str(",\"cities\":");
+    int_keyed(&mut j, &cities, |o, xy| {
+        o.push('[');
+        push_json_float(o, xy[0]);
+        o.push(',');
+        push_json_float(o, xy[1]);
+        o.push(']');
+    });
     j.push_str(",\"names\":");
     // Every named province, not only those with a unit position: a mod that
     // adds provinces (GFM adds thousands) may not give the new ones one, and
@@ -537,6 +556,56 @@ fn build_map(m: &Mod, parsed: &[Kept1], scale: i64) -> Option<MapOut> {
             push_int(&mut j, *fort);
             j.push(',');
             push_int(&mut j, *fac);
+        }
+        j.push(']');
+    }
+    // What each province made in a day, and what its state's factories did:
+    // three to a province, by save, in hundredths.
+    j.push_str("},\"provinceOutput\":{");
+    for (si, k) in parsed.iter().enumerate() {
+        if si > 0 {
+            j.push(',');
+        }
+        push_json_str(&mut j, &k.meta.date);
+        j.push_str(":[");
+        for (i, (pid, made, fac)) in k.meta.province_output.iter().enumerate() {
+            if i > 0 {
+                j.push(',');
+            }
+            push_int(&mut j, *pid);
+            j.push(',');
+            push_int(&mut j, *made);
+            j.push(',');
+            push_int(&mut j, *fac);
+        }
+        j.push(']');
+    }
+    // Each owned province's people by ideology, in thousandths: the
+    // province, then `ideologyCount` shares, ideology number 1 first.
+    let ideo_n = parsed.iter()
+        .flat_map(|k| k.meta.province_ideology.iter().map(|(_, v)| v.len()))
+        .max().unwrap_or(0);
+    j.push_str(&format!("}},\"ideologyCount\":{},\"provinceIdeology\":{{", ideo_n));
+    for (si, k) in parsed.iter().enumerate() {
+        if si > 0 {
+            j.push(',');
+        }
+        push_json_str(&mut j, &k.meta.date);
+        j.push_str(":[");
+        let mut first = true;
+        for (pid, shares) in k.meta.province_ideology.iter() {
+            if shares.is_empty() {
+                continue;
+            }
+            if !first {
+                j.push(',');
+            }
+            first = false;
+            push_int(&mut j, *pid);
+            for n in 0..ideo_n {
+                j.push(',');
+                push_int(&mut j, shares.get(n).copied().unwrap_or(0));
+            }
         }
         j.push(']');
     }
@@ -748,9 +817,9 @@ fn name_for(tag: &str, government: &str, m: &Mod) -> String {
 }
 
 /// `flags_for(mod, parsed, war_book)`: (greatPowers JSON, flags JSON).
-fn flags_for(m: &Mod, parsed: &[Kept1], book: &Book) -> (String, String) {
+fn flags_for(m: &Mod, parsed: &[Kept1], book: &Book) -> (String, String, String, Vec<String>) {
     if m.country_order.is_empty() {
-        return ("{}".into(), "{}".into());
+        return ("{}".into(), "{}".into(), "{}".into(), Vec::new());
     }
     let mut flags: OMap<String, String> = OMap::new();
     let mut tried: FxSet<String> = FxSet::default();
@@ -819,9 +888,58 @@ fn flags_for(m: &Mod, parsed: &[Kept1], book: &Book) -> (String, String) {
             }
         }
     }
+    // The flag each nation flew at each save: the report's `tag|` flag is the
+    // last one, which would put the Soviet flag on Russia in 1830. Only a nation
+    // whose flag changed gets an entry; the rest keep the one flag.
+    let mut hist: std::collections::BTreeMap<&str, Vec<(&str, String)>> = std::collections::BTreeMap::new();
+    for k in parsed {
+        for n in &k.nations {
+            let suffix = mapflags::flag_suffixes(&n.government, &m.flag_styles)[0].clone();
+            let key = format!("{}|{}", n.tag, if suffix.is_empty() { "base" } else { suffix.as_str() });
+            if !flags.contains_key(&key) && tried.insert(key.clone()) {
+                if let Some(uri) = mapflags::flag_image(&m.flag_roots, &n.tag, &n.government, &m.flag_styles) {
+                    flags.set(key.clone(), uri);
+                }
+            }
+            if flags.contains_key(&key) {
+                hist.entry(n.tag.as_str()).or_default().push((k.meta.date.as_str(), key));
+            }
+        }
+    }
+    let mut hj = String::from("{");
+    let mut firstt = true;
+    for (tag, list) in &hist {
+        if list.iter().all(|(_, k)| *k == list[0].1) {
+            continue;
+        }
+        if !firstt {
+            hj.push(',');
+        }
+        firstt = false;
+        push_json_str(&mut hj, tag);
+        hj.push_str(":{");
+        for (i, (d, k)) in list.iter().enumerate() {
+            if i > 0 {
+                hj.push(',');
+            }
+            push_json_str(&mut hj, d);
+            hj.push(':');
+            push_json_str(&mut hj, k);
+        }
+        hj.push('}');
+    }
+    hj.push('}');
+    // Nations left with no flag at all, and why: no file, or one that cannot be read.
+    let mut missing: Vec<String> = Vec::new();
+    for tag in order.iter().copied() {
+        if !flags.contains_key(&format!("{}|", tag)) {
+            let gov = last_gov.get(tag).copied().unwrap_or("");
+            missing.push(format!("{}: {}", tag, mapflags::flag_problem(&m.flag_roots, tag, gov, &m.flag_styles)));
+        }
+    }
     let mut fj = String::new();
     obj(&mut fj, flags.iter().map(|(k, v)| (k.as_str(), v)), |o, v| push_json_str(o, v));
-    (gp, fj)
+    (gp, fj, hj, missing)
 }
 
 pub fn growth_series(readings: &[(&str, Option<f64>)], span: f64) -> OMap<String, f64> {
@@ -1262,7 +1380,7 @@ fn page(run: &Run, m: &Mod, c: &Campaign, prices: &[PriceRow], snaps: &[SnapRow]
     // The payload's sections do not depend on one another, so each is
     // made on a thread of its own and they are laid end to end after, in
     // the order Python's dict holds them.
-    let (built, map, (great_powers, flags), succession_json, series_facts, tables, (market, price_ends)) =
+    let (built, map, (great_powers, flags, flag_history, flags_missing), succession_json, series_facts, tables, (market, price_ends)) =
         std::thread::scope(|s| {
             let wars_job = s.spawn(|| {
                 let mapping = Mapping { province_names: &m.province_names,
@@ -1299,6 +1417,49 @@ fn page(run: &Run, m: &Mod, c: &Campaign, prices: &[PriceRow], snaps: &[SnapRow]
                 tag_names.insert(t.clone(), name_for(t, "", m));
             }
         }
+    }
+    // Names that changed between saves (Russia, then the Soviet Union): the
+    // name each nation had at each save, only for those where it differed.
+    let mut name_hist = String::from("{");
+    if !m.localisation.is_empty() {
+        let mut per: std::collections::BTreeMap<&str, Vec<(&str, String)>> = std::collections::BTreeMap::new();
+        for k in &c.parsed {
+            for n in &k.nations {
+                per.entry(n.tag.as_str()).or_default().push((k.meta.date.as_str(), name_for(&n.tag, &n.government, m)));
+            }
+        }
+        let mut firstn = true;
+        for (tag, list) in &per {
+            if list.iter().all(|(_, n)| *n == list[0].1) {
+                continue;
+            }
+            if !firstn {
+                name_hist.push(',');
+            }
+            firstn = false;
+            push_json_str(&mut name_hist, tag);
+            name_hist.push_str(":{");
+            for (i, (d, n)) in list.iter().enumerate() {
+                if i > 0 {
+                    name_hist.push(',');
+                }
+                push_json_str(&mut name_hist, d);
+                name_hist.push(':');
+                push_json_str(&mut name_hist, n);
+            }
+            name_hist.push('}');
+        }
+    }
+    name_hist.push('}');
+    if !flags_missing.is_empty() && !run.quiet {
+        crate::outln!("{} nations have no flag in the report:", flags_missing.len());
+        for line in flags_missing.iter().take(10) {
+            crate::outln!("  {}", line);
+        }
+        if flags_missing.len() > 10 {
+            crate::outln!("  ... and {} more", flags_missing.len() - 10);
+        }
+        crate::outln!("Flags are looked for in: {}", m.flag_roots.join(" | "));
     }
     if let Some(mp) = &map {
         if mp.derived > 0 && !run.quiet {
@@ -1340,7 +1501,9 @@ fn page(run: &Run, m: &Mod, c: &Campaign, prices: &[PriceRow], snaps: &[SnapRow]
             }
         }
     }
-    p.push_str("},\"cultureNames\":");
+    p.push_str("},\"nameHistory\":");
+    p.push_str(&name_hist);
+    p.push_str(",\"cultureNames\":");
     m.culture_names.write(&mut p);
     p.push_str(",\"names\":");
     m.display_names.write(&mut p);
@@ -1371,6 +1534,8 @@ fn page(run: &Run, m: &Mod, c: &Campaign, prices: &[PriceRow], snaps: &[SnapRow]
     p.push_str(&great_powers);
     p.push_str(",\"flags\":");
     p.push_str(&flags);
+    p.push_str(",\"flagHistory\":");
+    p.push_str(&flag_history);
     p.push_str(",\"technology\":");
     m.technology.write(&mut p);
     p.push_str(",\"wars\":[");
